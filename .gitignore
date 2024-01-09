@@ -1,0 +1,22 @@
+# Copyright 2024 SECO Mind Srl
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# editors
+.vscode
+*.swp
+*~
+
+# python
+.venv
+__pycache__/
+
+# build
+/build*
+/twister-out*
+
+# documentation
+doc/_build
+doc/doxygen
+doc/xml
+doc/html

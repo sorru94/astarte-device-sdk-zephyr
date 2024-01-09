@@ -1,0 +1,20 @@
+# (C) Copyright 2024, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ASTARTE_DEVICE_SDK
+	bool "Astarte device SDK"
+	help
+	  This option enables the Astarte device SDK library
+
+config ASTARTE_DEVICE_SDK_GET_VALUE_DEFAULT
+	int "unit_testable_component_get_value() default return value"
+	depends on ASTARTE_DEVICE_SDK
+	default 0
+	help
+	  This option primarily exists as an example of a library Kconfig
+	  setting.
+
+	  This option specifies the value for unit_testable_component_get_value()
+	  to return when the input parameter is zero.  (Otherwise
+	  the function returns the input parameter value.)

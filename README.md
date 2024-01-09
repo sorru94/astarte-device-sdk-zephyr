@@ -1,0 +1,1 @@
+# Astarte Device SDK Zephyr

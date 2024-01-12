@@ -1,0 +1,5 @@
+tests:
+  lib.astarte_device_sdk.integration:
+    tags: astarte_device_sdk
+    integration_platforms:
+      - native_sim

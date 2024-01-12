@@ -3,4 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 zephyr_library()
-zephyr_library_sources(unit_testable_component.c)
+
+FILE(GLOB lib_sources *.c)
+zephyr_library_sources(${lib_sources})
+
+zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)

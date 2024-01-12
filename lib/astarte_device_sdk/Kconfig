@@ -4,6 +4,7 @@
 
 config ASTARTE_DEVICE_SDK
 	bool "Astarte device SDK"
+	select MBEDTLS
 	help
 	  This option enables the Astarte device SDK library
 

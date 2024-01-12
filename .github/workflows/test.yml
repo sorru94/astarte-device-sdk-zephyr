@@ -32,6 +32,7 @@ jobs:
     container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
+
     concurrency:
       group: unit-${{ github.ref }}
       cancel-in-progress: true
@@ -55,12 +56,17 @@ jobs:
       - name: Run unit tests with code coverage
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west twister --force-color --ninja -v --inline-logs --filter runnable -p unit_testing --coverage --coverage-tool lcov -T tests/lib
+          west twister --force-color --ninja -v --inline-logs --filter runnable -p unit_testing -T tests/lib
 
-      - name: Filter coverage report
+      - name: Run integration tests with code coverage
         working-directory: astarte-device-sdk-zephyr
         run: |
-          lcov --remove twister-out/coverage.info */zephyr/* -o twister-out/filtered_coverage.info --rc lcov_branch_coverage=1
+          west twister --force-color --ninja -v --inline-logs --filter runnable --integration -T tests/lib    
+
+      # - name: Filter coverage report
+      #   working-directory: astarte-device-sdk-zephyr
+      #   run: |
+      #     lcov --remove twister-out/coverage.info */zephyr/* -o twister-out/filtered_coverage.info --rc lcov_branch_coverage=1
 
       # - name: Upload coverage results to codecov
       #   uses: codecov/codecov-action@v3
@@ -70,13 +76,13 @@ jobs:
       #     verbose: true
       #     files: filtered_coverage.info
 
-      - name: Print coverage report summary
-        working-directory: astarte-device-sdk-zephyr
-        run: |
-          lcov --list twister-out/filtered_coverage.info --rc lcov_branch_coverage=1
+      # - name: Print coverage report summary
+      #   working-directory: astarte-device-sdk-zephyr
+      #   run: |
+      #     lcov --list twister-out/filtered_coverage.info --rc lcov_branch_coverage=1
 
-      - name: Upload coverage report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Coverage Data (Subset unit_testing)
-          path: astarte-device-sdk-zephyr/twister-out/coverage
+      # - name: Upload coverage report artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: Coverage Data (Subset unit_testing)
+      #     path: astarte-device-sdk-zephyr/twister-out/coverage

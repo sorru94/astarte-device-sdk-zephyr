@@ -1,0 +1,80 @@
+#
+# This file is part of Astarte.
+#
+# Copyright 2024 SECO Mind Srl
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: Static
+
+on:
+  push:
+  pull_request:
+
+env:
+  LLVM_VERSION: "16"
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: clang-format-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: astarte-device-sdk-zephyr
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: Check format
+        working-directory: astarte-device-sdk-zephyr
+        run: |
+          clang-format --style=file --dry-run -Werror lib/astarte_device_sdk/*.c include/astarte_device_sdk/*.h
+          clang-format --style=file --dry-run -Werror samples/*/src/*.c
+          clang-format --style=file --dry-run -Werror tests/*/*/src/*.c
+  code-checker:
+    runs-on: ubuntu-latest
+    container: ghcr.io/zephyrproject-rtos/ci:v0.26.2
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+    concurrency:
+      group: code-checker-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: astarte-device-sdk-zephyr
+      - name: Initialize
+        working-directory: astarte-device-sdk-zephyr
+        run: |
+          west init -l .
+          west update -o=--depth=1 -n
+      - name: Install LLVM
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh $LLVM_VERSION
+          sudo update-alternatives --install /bin/clang-tidy clang-tidy /bin/clang-tidy-$LLVM_VERSION 100
+      - name: Install Python dependencies
+        working-directory: astarte-device-sdk-zephyr
+        run: pip install -r $PWD/scripts/requirements.txt
+      - name: Run clang-tidy
+        working-directory: astarte-device-sdk-zephyr
+        run: west static

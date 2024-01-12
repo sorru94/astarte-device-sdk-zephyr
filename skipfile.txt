@@ -1,0 +1,4 @@
++*/include/astarte_device_sdk/*.h
++*/lib/astarte_device_sdk/*.c
++*/samples/simple/src/*.c
+-*

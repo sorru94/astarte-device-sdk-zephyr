@@ -22,7 +22,6 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/pairing.h>
-#include <astarte_device_sdk/unit_testable_component.h>
 
 #include "nvs.h"
 #include "wifi.h"
@@ -85,8 +84,7 @@ int main(void)
     }
 
     while (1) {
-        int value = unit_testable_component_get_value(0);
-        LOG_INF("Hello world! %s, %d", CONFIG_BOARD, value); // NOLINT
+        LOG_INF("Hello world! %s", CONFIG_BOARD); // NOLINT
         k_msleep(CONFIG_SLEEP_MS); // sleep for 1 second
     }
     return 0;

@@ -6,14 +6,16 @@
 .vscode
 *.swp
 *~
+.idea
 
 # python
 .venv
 __pycache__/
 
 # build
-/build*
+build*
 /twister-out*
+cmake-build-*/
 
 # documentation
 doc/_build

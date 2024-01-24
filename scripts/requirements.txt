@@ -4,3 +4,4 @@
 
 codechecker
 colored
+clang-tidy==16.0.4

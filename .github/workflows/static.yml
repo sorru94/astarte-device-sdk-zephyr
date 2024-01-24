@@ -50,7 +50,7 @@ jobs:
           clang-format --style=file --dry-run -Werror tests/*/*/*/src/*.c
   code-checker:
     runs-on: ubuntu-latest
-    container: ghcr.io/zephyrproject-rtos/ci:v0.26.2
+    container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
     concurrency:
@@ -66,12 +66,6 @@ jobs:
         run: |
           west init -l .
           west update -o=--depth=1 -n
-      - name: Install LLVM
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh $LLVM_VERSION
-          sudo update-alternatives --install /bin/clang-tidy clang-tidy /bin/clang-tidy-$LLVM_VERSION 100
       - name: Install Python dependencies
         working-directory: astarte-device-sdk-zephyr
         run: pip install -r $PWD/scripts/requirements.txt

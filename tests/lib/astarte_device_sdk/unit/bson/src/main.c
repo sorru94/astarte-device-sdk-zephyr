@@ -7,7 +7,7 @@
 /*
  * @file astarte-device-sdk-zephyr/tests/lib/astarte_device_sdk/unit/bson/src/main.c
  *
- * @details This test suite verifies that the methods provided with the unit_testable_component
+ * @details This test suite verifies that the methods provided with the bson
  * module works correctly.
  *
  * @note This should be run with the latest version of zephyr present on master (or 3.6.0)

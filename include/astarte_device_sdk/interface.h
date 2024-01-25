@@ -1,5 +1,19 @@
-#ifndef AD_INTERFACE_H
-#define AD_INTERFACE_H
+/*
+ * (C) Copyright 2024, SECO Mind Srl
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef ASTARTE_DEVICE_SDK_INTERFACE_H
+#define ASTARTE_DEVICE_SDK_INTERFACE_H
+
+/**
+ * @file interface.h
+ * @brief Astarte interface representation
+ * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html.
+ * @ingroup astarte_device_sdk
+ * @{
+ */
 
 #include <inttypes.h>
 
@@ -13,7 +27,7 @@ typedef enum
 {
     OWNERSHIP_DEVICE = 1, /**< Device owned interface */
     OWNERSHIP_SERVER, /**< Server owned interface*/
-} ad_interface_ownership_t;
+} astarte_interface_ownership_t;
 
 /**
  * @brief interface type
@@ -25,7 +39,7 @@ typedef enum
 {
     TYPE_DATASTREAM = 1, /**< Datastream interface */
     TYPE_PROPERTIES, /**< Properties interface */
-} ad_interface_type_t;
+} astarte_interface_type_t;
 
 /**
  * @brief interface aggregation
@@ -37,22 +51,30 @@ typedef enum
 {
     AGGREGATION_INDIVIDUAL = 1, /**< Aggregation individual */
     AGGREGATION_OBJECT, /**< Aggregation object */
-} ad_interface_aggregation_t;
+} astarte_interface_aggregation_t;
+
+/**
+ * @brief Maximum allowed length of an interface name
+ *
+ * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#astarte-interface-schema-interface_name
+ */
+#define INTERFACE_NAME_MAX_SIZE 128
 
 /**
  * @brief Astarte interface definition
  *
  * This struct represents a subset of the information contained in an Astarte interface, and can be
  * used to specify some details about a specific interface.
- * 
  */
 typedef struct
 {
     const char *name; /**< Interface name */
     uint32_t major_version; /**< Major version */
     uint32_t minor_version; /**< Minor version */
-    ad_interface_ownership_t ownership; /**< Ownership, see #interface_ownership_t */
-    ad_interface_type_t type; /**< Type, see #interface_type_t */
-} ad_interface_t;
+    astarte_interface_ownership_t ownership; /**< Ownership, see #astarte_interface_ownership_t */
+    astarte_interface_type_t type; /**< Type, see #astarte_interface_type_t */
+} astarte_interface_t;
 
-#endif // AD_INTERFACE_H
+/** @} */
+
+#endif // ASTARTE_DEVICE_SDK_INTERFACE_H

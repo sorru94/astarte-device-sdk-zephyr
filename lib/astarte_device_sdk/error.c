@@ -29,6 +29,8 @@ static const astarte_err_msg_t astarte_err_msg_table[] = {
     ERR_TBL_IT(ASTARTE_ERR_HTTP_REQUEST),
     ERR_TBL_IT(ASTARTE_ERR_JSON),
     ERR_TBL_IT(ASTARTE_ERR_MBEDTLS),
+    ERR_TBL_IT(ASTARTE_ERR_INTERFACE_ALREADY_PRESENT),
+    ERR_TBL_IT(ASTARTE_ERR_INTERFACE_NOT_FOUND),
 };
 
 static const char astarte_unknown_msg[] = "ERROR";

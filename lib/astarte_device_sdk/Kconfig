@@ -4,6 +4,7 @@
 
 config ASTARTE_DEVICE_SDK
 	bool "Astarte device SDK"
+	select JSON_LIBRARY
 	select HTTP_CLIENT
 	select NET_SOCKETS
 	select DNS_RESOLVER
@@ -12,6 +13,12 @@ config ASTARTE_DEVICE_SDK
 	help
 	  This option enables the Astarte device SDK library
 
+config ASTARTE_DEVICE_SDK_PAIRING_JWT
+	string "JWT to be used when registering a new device"
+	depends on ASTARTE_DEVICE_SDK
+	help
+	  This option should be set to a valid value when using the pairing API to register a new
+	  device.
 
 config ASTARTE_DEVICE_SDK_HOSTNAME
 	string "Hostname for the Astarte APIs"
@@ -26,6 +33,28 @@ config ASTARTE_DEVICE_SDK_CA_CERT_TAG
 	help
 	  The CA certificate should be added by the user with the tls_credential_add function.
 	  This configuration option should be set to the tag used when adding the CA certificate.
+
+config ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
+	bool "Dynamic generation of the device ID"
+	depends on ASTARTE_DEVICE_SDK
+	default false
+	help
+	  This option enables the dynamic generation of device IDs using hardware information or
+	  starting from a provided namespace.
+
+config ASTARTE_DEVICE_SDK_DEVICE_ID
+	string "Device ID"
+	depends on ASTARTE_DEVICE_SDK
+	depends on !ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
+	help
+	  Device ID to be used for registration on Astarte.
+
+config ASTARTE_DEVICE_SDK_REALM_NAME
+	string "Realm name"
+	depends on ASTARTE_DEVICE_SDK
+	help
+	  Astarte realm name where to connect the device.
+
 config ASTARTE_DEVICE_SDK_GET_VALUE_DEFAULT
 	int "unit_testable_component_get_value() default return value"
 	depends on ASTARTE_DEVICE_SDK
@@ -54,6 +83,11 @@ config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS
 endmenu
 
 menu "Logging options"
+
+module = ASTARTE_DEVICE_SDK_PAIRING
+module-str = Log level for Astarte device SDK pairing utilities
+module-help = Sets log level for Astarte device SDK pairing utilities.
+source "subsys/logging/Kconfig.template.log_config"
 
 module = ASTARTE_DEVICE_SDK_CRYPTO
 module-str = Log level for Astarte device SDK certificate generation suite

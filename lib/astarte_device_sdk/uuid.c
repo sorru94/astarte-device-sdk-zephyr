@@ -20,7 +20,7 @@
 
 #define UUID_STR_LEN 36
 
-LOG_MODULE_REGISTER(uuid); // NOLINT
+LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEVEL); // NOLINT
 
 // All the macros below follow the standard for the Universally Unique Identifier as defined
 // by the IETF in the RFC 4122.
@@ -75,7 +75,7 @@ struct uuid
     uint8_t node[UUID_LEN_NODE];
 };
 
-static void uuid_from_struct(const struct uuid *input, uuid_t out)
+static void uuid_from_struct(const struct uuid *input, astarte_uuid_t out)
 {
     uint32_t tmp32 = 0U;
     uint16_t tmp16 = 0U;
@@ -96,7 +96,7 @@ static void uuid_from_struct(const struct uuid *input, uuid_t out)
     memcpy(out_p + UUID_OFFSET_NODE, input->node, UUID_LEN_NODE);
 }
 
-static void uuid_to_struct(const uuid_t input, struct uuid *out)
+static void uuid_to_struct(const astarte_uuid_t input, struct uuid *out)
 {
     uint32_t tmp32 = 0U;
     uint16_t tmp16 = 0U;
@@ -117,8 +117,8 @@ static void uuid_to_struct(const uuid_t input, struct uuid *out)
     memcpy(out->node, in_p + UUID_OFFSET_NODE, UUID_LEN_NODE);
 }
 
-astarte_err_t uuid_generate_v5(
-    const uuid_t namespace, const void *data, size_t data_size, uuid_t out)
+astarte_err_t astarte_uuid_generate_v5(
+    const astarte_uuid_t namespace, const void *data, size_t data_size, astarte_uuid_t out)
 {
     const size_t sha_256_bytes = 32;
     uint8_t sha_result[sha_256_bytes];
@@ -130,7 +130,7 @@ astarte_err_t uuid_generate_v5(
     int mbedtls_err = mbedtls_md_setup(&ctx, md_info, 0);
     // NOLINTBEGIN(hicpp-signed-bitwise) Only using the mbedtls_err to check if zero
     mbedtls_err |= mbedtls_md_starts(&ctx);
-    mbedtls_err |= mbedtls_md_update(&ctx, namespace, UUID_LEN);
+    mbedtls_err |= mbedtls_md_update(&ctx, namespace, ASTARTE_UUID_SIZE);
     mbedtls_err |= mbedtls_md_update(&ctx, data, data_size);
     mbedtls_err |= mbedtls_md_finish(&ctx, sha_result);
     // NOLINTEND(hicpp-signed-bitwise)
@@ -155,7 +155,7 @@ astarte_err_t uuid_generate_v5(
     return ASTARTE_OK;
 }
 
-astarte_err_t uuid_to_string(const uuid_t uuid, char *out, size_t out_size)
+astarte_err_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
     size_t min_out_size = UUID_STR_LEN + sizeof(char);
     if (out_size < min_out_size) {
@@ -182,11 +182,11 @@ astarte_err_t uuid_to_string(const uuid_t uuid, char *out, size_t out_size)
 }
 
 // NOLINTNEXTLINE(hicpp-function-size)
-astarte_err_t uuid_from_string(const char *input, uuid_t out)
+astarte_err_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
 {
     // Length check
     if (strlen(input) != UUID_STR_LEN) {
-        return -1;
+        return ASTARTE_ERR;
     }
 
     // Sanity check
@@ -197,7 +197,7 @@ astarte_err_t uuid_from_string(const char *input, uuid_t out)
             || (i == UUID_STR_POSITION_THIRD_HYPHEN) || (i == UUID_STR_POSITION_FOURTH_HYPHEN)) {
             if (char_i != '-') {
                 LOG_WRN("Found invalid character %c in hyphen position %d", char_i, i); // NOLINT
-                return -1;
+                return ASTARTE_ERR;
             }
             continue;
         }
@@ -205,7 +205,7 @@ astarte_err_t uuid_from_string(const char *input, uuid_t out)
         // checking is the given input is not hexadecimal
         if (!isxdigit(char_i)) {
             LOG_WRN("Found invalid character %c in position %d", char_i, i); // NOLINT
-            return -1;
+            return ASTARTE_ERR;
         }
     }
 
@@ -234,13 +234,13 @@ astarte_err_t uuid_from_string(const char *input, uuid_t out)
     }
 
     uuid_from_struct(&uuid_struct, out);
-    return 0;
+    return ASTARTE_OK;
 }
 
-void uuid_generate_v4(uuid_t out)
+void astarte_uuid_generate_v4(astarte_uuid_t out)
 {
-    uint8_t random_result[UUID_LEN];
-    sys_rand_get(random_result, UUID_LEN);
+    uint8_t random_result[ASTARTE_UUID_SIZE];
+    sys_rand_get(random_result, ASTARTE_UUID_SIZE);
 
     struct uuid random_uuid_struct;
     uuid_to_struct(random_result, &random_uuid_struct);

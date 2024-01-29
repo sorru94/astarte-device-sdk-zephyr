@@ -13,17 +13,19 @@
 #define ASTARTE_DEVICE_SDK_ERROR_H
 
 /**
- * @defgroup utils Utils
+ * @defgroup errors Errors
  * @ingroup astarte_device_sdk
  * @{
  */
 
+#include "astarte_device_sdk/astarte.h"
+
 // clang-format off
 
 /**
-* @brief Astarte return codes.
+* @brief Astarte Device SDK return codes.
 *
-* @detail Astarte Device SDK return codes. ASTARTE_OK is always returned when no errors occurred.
+* @details ASTARTE_OK is always returned when no errors occurred.
 */
 typedef enum
 {
@@ -38,13 +40,13 @@ extern "C" {
 #endif
 
 /**
- * @brief Returns string for astarte_err_t error codes
+ * @brief Returns string for astarte_err_t error codes.
  *
- * This function finds the error code in a pre-generated lookup-table and
- * returns its string representation.
+ * @details This function finds the error code in a pre-generated lookup-table and returns its
+ * string representation.
  *
- * @param code astarte_err_t error code
- * @return string error message
+ * @param[in] code Error code
+ * @return String error message
  */
 const char *astarte_err_to_name(astarte_err_t code);
 

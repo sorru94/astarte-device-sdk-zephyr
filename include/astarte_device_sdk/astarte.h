@@ -17,4 +17,7 @@
 #define ASTARTE_DEVICE_SDK_MINOR 1
 #define ASTARTE_DEVICE_SDK_PATCH 0
 
+#include <stddef.h>
+#include <stdint.h>
+
 #endif // ASTARTE_DEVICE_SDK_ASTARTE_H

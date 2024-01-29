@@ -19,3 +19,13 @@ config ASTARTE_DEVICE_SDK_GET_VALUE_DEFAULT
 	  This option specifies the value for unit_testable_component_get_value()
 	  to return when the input parameter is zero.  (Otherwise
 	  the function returns the input parameter value.)
+
+menu "Logging options"
+
+
+module = ASTARTE_DEVICE_SDK_UUID
+module-str = Log level for Astarte device SDK UUID generation utilities
+module-help = Sets log level for Astarte device SDK UUID generation utilities.
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

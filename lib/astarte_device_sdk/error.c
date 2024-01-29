@@ -22,6 +22,7 @@ typedef struct
 static const astarte_err_msg_t astarte_err_msg_table[] = {
     ERR_TBL_IT(ASTARTE_OK),
     ERR_TBL_IT(ASTARTE_ERR),
+    ERR_TBL_IT(ASTARTE_ERR_MBEDTLS),
 };
 
 static const char astarte_unknown_msg[] = "ERROR";

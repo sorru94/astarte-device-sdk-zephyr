@@ -22,6 +22,10 @@ config ASTARTE_DEVICE_SDK_GET_VALUE_DEFAULT
 
 menu "Logging options"
 
+module = ASTARTE_DEVICE_SDK_CRYPTO
+module-str = Log level for Astarte device SDK certificate generation suite
+module-help = Sets log level for Astarte device SDK certificate generation suite.
+source "subsys/logging/Kconfig.template.log_config"
 
 module = ASTARTE_DEVICE_SDK_UUID
 module-str = Log level for Astarte device SDK UUID generation utilities

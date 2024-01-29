@@ -30,7 +30,7 @@
 typedef enum
 {
    ASTARTE_OK = 0, /**< No errors. */
-   ASTARTE_ERR = 1, /**< A generic error occurred. This is usually an internal error in the SDK */
+   ASTARTE_ERR_MBEDTLS = 8, /**< Internal error from the MBEDTLS library. */
 } astarte_err_t;
 
 // clang-format on

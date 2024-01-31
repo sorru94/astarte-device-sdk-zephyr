@@ -99,6 +99,11 @@ module-str = Log level for Astarte device SDK connectivity utilities
 module-help = Sets log level for Astarte device SDK connectivity utilities.
 source "subsys/logging/Kconfig.template.log_config"
 
+module = ASTARTE_DEVICE_SDK_DEVICE
+module-str = Log level for Astarte device SDK device
+module-help = Sets log level for Astarte device SDK device.
+source "subsys/logging/Kconfig.template.log_config"
+
 module = ASTARTE_DEVICE_SDK_UUID
 module-str = Log level for Astarte device SDK UUID generation utilities
 module-help = Sets log level for Astarte device SDK UUID generation utilities.

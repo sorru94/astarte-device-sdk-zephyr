@@ -70,7 +70,7 @@ class WestCommandStatic(WestCommand):
 
         # Add some options using the standard argparse module API.
         parser.add_argument("-p", "--pristine", help="west build pristine flag", default="auto")
-        parser.add_argument("-s", "--sample", help="name of the sample analyze", default="simple")
+        parser.add_argument("-s", "--sample", help="name of the sample analyze", default="register")
         parser.add_argument("-e", "--export", help="an additional (optional) export type")
 
         return parser  # gets stored as self.parser
@@ -104,7 +104,7 @@ class WestCommandStatic(WestCommand):
         cmd = [
             "west build",
             f"-p {args.pristine}",
-            "-b qemu_x86",
+            "-b native_sim",
             f"$PWD/samples/{args.sample} --",
             "-DZEPHYR_SCA_VARIANT=codechecker",
             "-DCONFIG_MINIMAL_LIBC=y",

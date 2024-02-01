@@ -55,18 +55,6 @@ config ASTARTE_DEVICE_SDK_REALM_NAME
 	help
 	  Astarte realm name where to connect the device.
 
-config ASTARTE_DEVICE_SDK_GET_VALUE_DEFAULT
-	int "unit_testable_component_get_value() default return value"
-	depends on ASTARTE_DEVICE_SDK
-	default 0
-	help
-	  This option primarily exists as an example of a library Kconfig
-	  setting.
-
-	  This option specifies the value for unit_testable_component_get_value()
-	  to return when the input parameter is zero.  (Otherwise
-	  the function returns the input parameter value.)
-
 menu "Development options"
 
 config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS
@@ -107,6 +95,11 @@ source "subsys/logging/Kconfig.template.log_config"
 module = ASTARTE_DEVICE_SDK_UUID
 module-str = Log level for Astarte device SDK UUID generation utilities
 module-help = Sets log level for Astarte device SDK UUID generation utilities.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_BSON
+module-str = Log level for Astarte device SDK BSON generation utilities
+module-help = Sets log level for Astarte device SDK BSON generation utilities.
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu

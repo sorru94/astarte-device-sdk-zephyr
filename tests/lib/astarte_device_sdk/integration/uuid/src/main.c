@@ -9,9 +9,9 @@
 
 #include <string.h>
 
-ZTEST_SUITE(astarte_device_sdk, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(astarte_device_sdk_uuid, NULL, NULL, NULL, NULL, NULL);
 
-ZTEST(astarte_device_sdk, test_uuid_v5)
+ZTEST(astarte_device_sdk_uuid, test_uuid_v5)
 {
     astarte_uuid_t namespace;
     int result;
@@ -28,7 +28,7 @@ ZTEST(astarte_device_sdk, test_uuid_v5)
         "uuid_str != 63c8fb48-02ab-53f4-a254-52956dcbbce4");
 }
 
-ZTEST(astarte_device_sdk, test_uuid_from_string)
+ZTEST(astarte_device_sdk_uuid, test_uuid_from_string)
 {
     const char *first_uuid_v4_string = "44b35f73-cfbd-43b4-8fef-ca7baea1375f";
     astarte_uuid_t first_uuid_v4;
@@ -71,7 +71,7 @@ ZTEST(astarte_device_sdk, test_uuid_from_string)
             "uuid_v5!= from expected value");
 }
 
-ZTEST(astarte_device_sdk, test_uuid_to_string)
+ZTEST(astarte_device_sdk_uuid, test_uuid_to_string)
 {
     char first_uuid_v4_byte_array[37];
     const astarte_uuid_t first_uuid_v4 = { 0x44, 0xb3, 0x5f, 0x73, 0xcf, 0xbd, 0x43, 0xb4, 0x8f,

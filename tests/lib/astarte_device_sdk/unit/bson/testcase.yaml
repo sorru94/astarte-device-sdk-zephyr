@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
-  lib.astarte_device_sdk.integration:
+  lib.astarte_device_sdk.unit.bson:
     tags: astarte_device_sdk
-    integration_platforms:
-      - native_sim
+    type: unit

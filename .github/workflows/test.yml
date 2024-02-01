@@ -52,12 +52,7 @@ jobs:
         run: |
           west init -l .
           west update -o=--depth=1 -n
-
-      - name: Run unit tests with code coverage
-        working-directory: astarte-device-sdk-zephyr
-        run: |
-          west twister --force-color --ninja -v --inline-logs --filter runnable -p unit_testing -T tests/lib
-
+          
       - name: Run integration tests with code coverage
         working-directory: astarte-device-sdk-zephyr
         run: |

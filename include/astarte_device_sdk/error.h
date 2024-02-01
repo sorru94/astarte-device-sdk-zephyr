@@ -25,7 +25,7 @@
 /**
 * @brief Astarte Device SDK return codes.
 *
-* @details ASTARTE_OK is always returned when no errors occurred.
+* @details Astarte Device SDK return codes. ASTARTE_OK is always returned when no errors occurred.
 */
 typedef enum
 {
@@ -38,6 +38,7 @@ typedef enum
    ASTARTE_ERR_HTTP_REQUEST = 6, /**< An HTTP request could not be processed. */
    ASTARTE_ERR_JSON = 7, /**< Attempting to parse/encode a malformed JSON document. */
    ASTARTE_ERR_MBEDTLS = 8, /**< Internal error from the MBEDTLS library. */
+   ASTARTE_ERR_NOT_FOUND = 9, /**< The resource was not found. */
 } astarte_err_t;
 
 // clang-format on

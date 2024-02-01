@@ -47,7 +47,7 @@ jobs:
         run: |
           clang-format --style=file --dry-run -Werror lib/astarte_device_sdk/*.c include/astarte_device_sdk/*.h
           clang-format --style=file --dry-run -Werror samples/*/src/*.c
-          clang-format --style=file --dry-run -Werror tests/*/*/*/src/*.c
+          clang-format --style=file --dry-run -Werror tests/lib/astarte_device_sdk/*/*/src/*.c
   code-checker:
     runs-on: ubuntu-latest
     container: ghcr.io/zephyrproject-rtos/ci:v0.26.6

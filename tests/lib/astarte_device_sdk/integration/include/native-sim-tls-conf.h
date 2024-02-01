@@ -1,3 +1,8 @@
+/*
+ * (C) Copyright 2024, SECO Mind Srl
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef NATIVE_SIM_TLS_CONF_H
 #define NATIVE_SIM_TLS_CONF_H

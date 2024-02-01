@@ -1,3 +1,9 @@
+<!--
+Copyright 2024 SECO Mind Srl
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Astarte Device SDK Zephyr
 
 Astarte device library for the Zephyr framework.

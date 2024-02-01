@@ -1,3 +1,8 @@
+/*
+ * (C) Copyright 2024, SECO Mind Srl
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef ESP_WROVER_KIT_TLS_CONF_H
 #define ESP_WROVER_KIT_TLS_CONF_H

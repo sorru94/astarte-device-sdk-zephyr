@@ -39,13 +39,19 @@ jobs:
         with:
           path: astarte-device-sdk-zephyr
 
+      - name: Replace zephyr revision
+        working-directory: astarte-device-sdk-zephyr
+        run: |
+          sed -i 's/revision: v3.5.0/revision: main/g' west.yml
+
       - name: Initialize
         working-directory: astarte-device-sdk-zephyr
         run: |
           west init -l .
           west update -o=--depth=1 -n
+          west blobs fetch hal_espressif
 
-      - name: Build simple sample
+      - name: Build register sample
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west twister -T samples/simple -v --inline-logs --integration
+          west twister -T samples/register -v --inline-logs --integration --disable-warnings-as-errors

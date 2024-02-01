@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-menu "Libraries"
+menu "Astarte device SDK"
 
 rsource "astarte_device_sdk/Kconfig"
 

@@ -65,12 +65,14 @@ class WestCommandClean(WestCommand):
         """
         workspace_path = Path(self.topdir)
         module_path = workspace_path.joinpath("astarte-device-sdk-zephyr")
-        build_dirs = [
-            workspace_path.joinpath("build"),
-            workspace_path.joinpath("twister-out"),
-            module_path.joinpath("build"),
-            module_path.joinpath("twister-out"),
-        ]
+        build_dirs = (
+            [
+                workspace_path.joinpath("build"),
+                module_path.joinpath("build"),
+            ]
+            + list(Path(workspace_path).glob("twister-out*"))
+            + list(Path(module_path).glob("twister-out*"))
+        )
         for build_dir in build_dirs:
             if build_dir.is_dir():
                 shutil.rmtree(build_dir)

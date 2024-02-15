@@ -39,6 +39,8 @@ typedef enum
    ASTARTE_ERR_JSON = 7, /**< Attempting to parse/encode a malformed JSON document. */
    ASTARTE_ERR_MBEDTLS = 8, /**< Internal error from the MBEDTLS library. */
    ASTARTE_ERR_NOT_FOUND = 9, /**< The resource was not found. */
+   ASTARTE_ERR_INTERFACE_ALREADY_PRESENT = 10, /**< Interface is already present in the introspection */
+   ASTARTE_ERR_INTERFACE_NOT_FOUND = 11, /**< Interface not found in the introspection */
 } astarte_err_t;
 
 // clang-format on

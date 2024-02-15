@@ -22,3 +22,6 @@ doc/_build
 doc/doxygen
 doc/xml
 doc/html
+
+# cache
+.cache

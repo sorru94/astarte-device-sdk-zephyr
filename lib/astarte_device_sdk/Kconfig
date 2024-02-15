@@ -102,4 +102,9 @@ module-str = Log level for Astarte device SDK BSON generation utilities
 module-help = Sets log level for Astarte device SDK BSON generation utilities.
 source "subsys/logging/Kconfig.template.log_config"
 
+module = ASTARTE_DEVICE_SDK_INTROSPECTION
+module-str = Log level for Astarte device SDK introspection
+module-help = Sets log level for Astarte device SDK introspection.
+source "subsys/logging/Kconfig.template.log_config"
+
 endmenu

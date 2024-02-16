@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ASTARTE_DEVICE_SDK_ERROR_H
+#define ASTARTE_DEVICE_SDK_ERROR_H
+
 /**
  * @file error.h
  * @brief Astarte error types.
  */
-
-#ifndef ASTARTE_DEVICE_SDK_ERROR_H
-#define ASTARTE_DEVICE_SDK_ERROR_H
 
 /**
  * @defgroup errors Errors
@@ -41,6 +41,9 @@ typedef enum
    ASTARTE_ERR_NOT_FOUND = 9, /**< The resource was not found. */
    ASTARTE_ERR_INTERFACE_ALREADY_PRESENT = 10, /**< Interface is already present in the introspection */
    ASTARTE_ERR_INTERFACE_NOT_FOUND = 11, /**< Interface not found in the introspection */
+   ASTARTE_ERR_TLS = 12, /**< Error from the TLS credential zephyr module. */
+   ASTARTE_ERR_MQTT = 13, /**< Internal error from the MQTT library. */
+   ASTARTE_ERR_TIMEOUT = 14 /**< Operation timed out. */
 } astarte_err_t;
 
 // clang-format on

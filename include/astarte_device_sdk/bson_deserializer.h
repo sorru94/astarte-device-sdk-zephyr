@@ -27,17 +27,24 @@
 
 typedef struct
 {
-    uint32_t size; /** Total size of the document in bytes */
-    const void *list; /** Pointer to the head of the list of elements in the BSON document */
-    uint32_t list_size; /** Size of the list in bytes */
+    /** @brief Total size of the document in bytes */
+    uint32_t size;
+    /** @brief Pointer to the head of the list of elements in the BSON document */
+    const void *list;
+    /** @brief Size of the list in bytes */
+    uint32_t list_size;
 } bson_document_t;
 
 typedef struct
 {
-    uint8_t type; /** Element type, see astarte_bson_types.h for the available types */
-    const char *name; /** String containing the element name */
-    size_t name_len; /** Length in bytes of the element name, not including the null terminator */
-    const void *value; /** Pointer to the element content */
+    /** @brief Element type, see astarte_bson_types.h for the available types */
+    uint8_t type;
+    /** @brief String containing the element name */
+    const char *name;
+    /** @brief Length in bytes of the element name, not including the null terminator */
+    size_t name_len;
+    /** @brief Pointer to the element content */
+    const void *value;
 } bson_element_t;
 
 #ifdef __cplusplus

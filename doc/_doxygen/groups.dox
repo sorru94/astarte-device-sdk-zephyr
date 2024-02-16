@@ -7,7 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 /**
 
 @defgroup astarte_device_sdk Astarte device library
-@brief Astarte device library
+@{
+
+@}
+
+*/
+
+/**
+
+@defgroup utils Utilities
+@ingroup astarte_device_sdk
 @{
 
 @}

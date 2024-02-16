@@ -7,6 +7,9 @@
 /**
  * @file bson_types.h
  * @brief Astarte BSON types definitions.
+ *
+ * @ingroup utils
+ * @{
  */
 
 #ifndef ASTARTE_DEVICE_SDK_BSON_TYPES_H
@@ -27,5 +30,9 @@
 #define BSON_SUBTYPE_DEFAULT_BINARY '\0'
 
 // clang-format on
+
+/**
+ * @}
+ */
 
 #endif // ASTARTE_DEVICE_SDK_BSON_TYPES_H

@@ -10,6 +10,8 @@ config ASTARTE_DEVICE_SDK
 	select DNS_RESOLVER
 	select NETWORKING
 	select MBEDTLS
+	select MQTT_LIB
+	select MQTT_LIB_TLS
 	help
 	  This option enables the Astarte device SDK library
 
@@ -29,10 +31,17 @@ config ASTARTE_DEVICE_SDK_HOSTNAME
 config ASTARTE_DEVICE_SDK_CA_CERT_TAG
 	int "CA root certificate TLS security tag"
 	depends on ASTARTE_DEVICE_SDK
-	depends on !ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS
+	depends on !ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS
 	help
 	  The CA certificate should be added by the user with the tls_credential_add function.
 	  This configuration option should be set to the tag used when adding the CA certificate.
+
+config ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG
+	int "TLS security tag for client certificate"
+	depends on ASTARTE_DEVICE_SDK
+	help
+	  The Astarte device SDK will use this TLS security tag to add the client certificate to
+	  Zephyr's cretentials.
 
 config ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
 	bool "Dynamic generation of the device ID"
@@ -57,14 +66,16 @@ config ASTARTE_DEVICE_SDK_REALM_NAME
 
 menu "Development options"
 
-config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS
+config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS
 	bool "Disable TLS for all sockets"
 	depends on ASTARTE_DEVICE_SDK
 	default false
 	help
-	  This option will disable TLS for all created sockets.
-	  It will make it possible to connect to a local Astarte instance accepting
-	  only unsafe connections.
+	  Enable this option to connect to a local Astarte instance.
+	  With this option enabled:
+	  - All HTTP(s) operations will be performed over an unsecure channel. Without TLS.
+	  - All MQTT(s) operations will still be perfomed using mutual TLS authentication.
+	  	However, any error related the server certificate will be ignored.
 
 	  Should be used only for development purposes as it's highly unsafe.
 

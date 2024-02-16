@@ -7,8 +7,6 @@
 #ifndef CA_CERTIFICATES_H
 #define CA_CERTIFICATES_H
 
-#define CA_CERTIFICATE_ROOT_TAG 1
-
 /* By default only certificates in DER format are supported. If you want to use
  * certificate in PEM format, you can enable support for it in Kconfig.
  */

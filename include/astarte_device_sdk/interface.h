@@ -11,6 +11,10 @@
  * @file interface.h
  * @brief Astarte interface representation
  * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html.
+ */
+
+/**
+ * @defgroup interface Interface
  * @ingroup astarte_device_sdk
  * @{
  */

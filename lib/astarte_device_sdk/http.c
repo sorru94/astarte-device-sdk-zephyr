@@ -14,7 +14,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL); // NOLINT
 
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
 #include <zephyr/net/tls_credentials.h>
 #endif
 
@@ -22,9 +22,9 @@ LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL); // 
  *       Checks over configuration values       *
  ***********************************************/
 
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
 #warning "TLS has been disabled (unsafe)!"
-#endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS) */
+#endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS) */
 
 BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME) != 1, "Missing hostname in configuration");
 
@@ -98,7 +98,7 @@ astarte_err_t astarte_http_post(const char *url, const char **header_fields, con
 
     req.method = HTTP_POST;
     req.host = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
     req.port = "80";
 #else
     req.port = "443";
@@ -164,7 +164,7 @@ astarte_err_t astarte_http_get(const char *url, const char **header_fields, int3
 
     req.method = HTTP_GET;
     req.host = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
     req.port = "80";
 #else
     req.port = "443";
@@ -220,7 +220,7 @@ astarte_err_t astarte_http_get(const char *url, const char **header_fields, int3
 static int create_and_connect_socket(void)
 {
     char hostname[] = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
     char port[] = "80";
 #else
     char port[] = "443";
@@ -238,7 +238,7 @@ static int create_and_connect_socket(void)
 
     dump_addrinfo(broker_addrinfo);
 
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
     int proto = IPPROTO_TCP;
 #else
     int proto = IPPROTO_TLS_1_2;
@@ -250,7 +250,7 @@ static int create_and_connect_socket(void)
         return -1;
     }
 
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_TLS)
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
     sec_tag_t sec_tag_opt[] = {
         CONFIG_ASTARTE_DEVICE_SDK_CA_CERT_TAG,
     };

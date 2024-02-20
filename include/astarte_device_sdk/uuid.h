@@ -10,11 +10,8 @@
 /**
  * @file uuid.h
  * @brief Utility functions for the generation and parsing of Universal Unique Identifier.
- */
-
-/**
- * @defgroup utils Utility functions
- * @ingroup astarte_device_sdk
+ *
+ * @ingroup utils
  * @{
  */
 

@@ -31,6 +31,9 @@ static const astarte_err_msg_t astarte_err_msg_table[] = {
     ERR_TBL_IT(ASTARTE_ERR_MBEDTLS),
     ERR_TBL_IT(ASTARTE_ERR_INTERFACE_ALREADY_PRESENT),
     ERR_TBL_IT(ASTARTE_ERR_INTERFACE_NOT_FOUND),
+    ERR_TBL_IT(ASTARTE_ERR_TLS),
+    ERR_TBL_IT(ASTARTE_ERR_MQTT),
+    ERR_TBL_IT(ASTARTE_ERR_TIMEOUT),
 };
 
 static const char astarte_unknown_msg[] = "ERROR";

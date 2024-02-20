@@ -17,7 +17,7 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/error.h"
 
-#define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 16000
+#define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 4096
 #define ASTARTE_CRYPTO_CSR_BUFFER_SIZE 4096
 
 #ifdef __cplusplus

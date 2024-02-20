@@ -25,6 +25,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Typedefined serializer handle.
+ */
 typedef struct bson_serializer_t *bson_serializer_handle_t;
 
 /**

@@ -47,6 +47,20 @@ static sec_tag_t sec_tag_list[] = {
 // Placed here as there is no way to pass user data to the MQTT callback
 static bool mqtt_is_connected;
 
+/**
+ * @brief Internal struct for an instance of an Astarte device.
+ *
+ * @warning Users should not modify the content of this struct directly
+ */
+struct astarte_device
+{
+    int32_t mqtt_connection_timeout_ms;
+    int32_t mqtt_connected_timeout_ms;
+    char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
+    char broker_port[ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1];
+    struct mqtt_client mqtt_client;
+};
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -124,40 +138,50 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_err_t astarte_device_init(astarte_device_config_t *cfg, astarte_device_t *device)
+astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle)
 {
     astarte_err_t res = ASTARTE_OK;
-    char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
 
+    astarte_device_handle_t device = calloc(1, sizeof(struct astarte_device));
+    if (!device) {
+        LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__); // NOLINT
+        res = ASTARTE_ERR_OUT_OF_MEMORY;
+        goto failure;
+    }
+
+    char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
     res = astarte_pairing_get_broker_url(
         cfg->http_timeout_ms, cfg->cred_secr, broker_url, ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
     if (res != ASTARTE_OK) {
         LOG_ERR("Failed in obtaining the MQTT broker URL"); // NOLINT
-        return res;
+        goto failure;
     }
 
     int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
     if (strncmp_rc != 0) {
         LOG_ERR("MQTT broker URL is malformed"); // NOLINT
-        return ASTARTE_ERR_HTTP_REQUEST;
+        res = ASTARTE_ERR_HTTP_REQUEST;
+        goto failure;
     }
     char *broker_url_token = strtok(&broker_url[strlen("mqtts://")], ":"); // NOLINT
     if (!broker_url_token) {
         LOG_ERR("MQTT broker URL is malformed"); // NOLINT
-        return ASTARTE_ERR_HTTP_REQUEST;
+        res = ASTARTE_ERR_HTTP_REQUEST;
+        goto failure;
     }
     strncpy(device->broker_hostname, broker_url_token, ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
     broker_url_token = strtok(NULL, "/");
     if (!broker_url_token) {
         LOG_ERR("MQTT broker URL is malformed"); // NOLINT
-        return ASTARTE_ERR_HTTP_REQUEST;
+        res = ASTARTE_ERR_HTTP_REQUEST;
+        goto failure;
     }
     strncpy(device->broker_port, broker_url_token, ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1);
 
     res = astarte_pairing_get_client_certificate(cfg->http_timeout_ms, cfg->cred_secr, privkey_pem,
         sizeof(privkey_pem), crt_pem, sizeof(crt_pem));
     if (res != ASTARTE_OK) {
-        return res;
+        goto failure;
     }
 
     LOG_DBG("Client certificate (PEM): \n%s", crt_pem); // NOLINT
@@ -167,24 +191,37 @@ astarte_err_t astarte_device_init(astarte_device_config_t *cfg, astarte_device_t
         TLS_CREDENTIAL_SERVER_CERTIFICATE, crt_pem, strlen(crt_pem) + 1);
     if (tls_rc != 0) {
         LOG_ERR("Failed adding client crt to credentials %d.", tls_rc); // NOLINT
-        return ASTARTE_ERR_TLS;
+        res = ASTARTE_ERR_TLS;
+        goto failure;
     }
 
     tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
         TLS_CREDENTIAL_PRIVATE_KEY, privkey_pem, strlen(privkey_pem) + 1);
     if (tls_rc != 0) {
         LOG_ERR("Failed adding client private key to credentials %d.", tls_rc); // NOLINT
-        return ASTARTE_ERR_TLS;
+        res = ASTARTE_ERR_TLS;
+        goto failure;
     }
 
     device->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     device->mqtt_connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
+    *handle = device;
     mqtt_is_connected = false;
 
     return res;
+
+failure:
+    free(device);
+    return res;
 }
 
-astarte_err_t astarte_device_connect(astarte_device_t *device)
+astarte_err_t astarte_device_destroy(astarte_device_handle_t handle)
+{
+    free(handle);
+    return ASTARTE_OK;
+}
+
+astarte_err_t astarte_device_connect(astarte_device_handle_t device)
 {
     struct zsock_addrinfo *broker_addrinfo = NULL;
     struct zsock_addrinfo hints;
@@ -239,7 +276,7 @@ astarte_err_t astarte_device_connect(astarte_device_t *device)
     return ASTARTE_OK;
 }
 
-astarte_err_t astarte_device_poll(astarte_device_t *device)
+astarte_err_t astarte_device_poll(astarte_device_handle_t device)
 {
     // Poll the socket
     struct zsock_pollfd socket_fds[1];

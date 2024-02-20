@@ -30,6 +30,14 @@
 #define ASTARTE_MAX_MQTT_BROKER_PORT_LEN 5
 
 /**
+ * @brief Handle for an instance of an Astarte device.
+ *
+ * @details Each handle is a pointer to an opaque internally allocated data struct containing
+ * all the data for the Astarte device.
+ */
+typedef struct astarte_device *astarte_device_handle_t;
+
+/**
  * @brief Configuration struct for an Astarte device.
  *
  * @details This configuration struct might be used to create a new instance of a device
@@ -47,28 +55,12 @@ typedef struct
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
 } astarte_device_config_t;
 
-/**
- * @brief Internal struct for an instance of an Astarte device.
- *
- * @warning Users should not modify the content of this struct directly
- */
-typedef struct
-{
-    /** @cond INTERNAL_HIDDEN */
-    int32_t mqtt_connection_timeout_ms;
-    int32_t mqtt_connected_timeout_ms;
-    char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
-    char broker_port[ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1];
-    struct mqtt_client mqtt_client;
-    /** @endcond */
-} astarte_device_t;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Initialize an Astarte device.
+ * @brief Allocate a new instance of an Astarte device.
  *
  * @details This function has to be called to initialize the device SDK before doing anything else.
  *
@@ -76,10 +68,19 @@ extern "C" {
  * registered on Astarte.
  *
  * @param[in] cfg Configuration struct.
- * @param[out] device Device instance to initialize.
+ * @param[out] device Device instance inizialized.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_init(astarte_device_config_t *cfg, astarte_device_t *device);
+astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
+
+/**
+ * @brief Destroy the Astarte device instance.
+ *
+ * @note The device handle will become invalid after this operation.
+ *
+ * @return ASTARTE_OK if successful, otherwise an error code.
+ */
+astarte_err_t astarte_device_destroy(astarte_device_handle_t handle);
 
 /**
  * @brief Connect a device to Astarte.
@@ -87,7 +88,7 @@ astarte_err_t astarte_device_init(astarte_device_config_t *cfg, astarte_device_t
  * @param[in] device Device instance to connect to Astarte.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_connect(astarte_device_t *device);
+astarte_err_t astarte_device_connect(astarte_device_handle_t device);
 
 /**
  * @brief Poll data from Astarte.
@@ -95,7 +96,7 @@ astarte_err_t astarte_device_connect(astarte_device_t *device);
  * @param[in] device Device instance to poll data from Astarte.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_poll(astarte_device_t *device);
+astarte_err_t astarte_device_poll(astarte_device_handle_t device);
 
 #ifdef __cplusplus
 }

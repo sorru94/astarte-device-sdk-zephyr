@@ -27,6 +27,14 @@ typedef struct
     /** @endcond */
 } introspection_t;
 
+typedef struct
+{
+    const astarte_interface_t *interface;
+    /** @cond INTERNAL_HIDDEN */
+    sys_dnode_t node;
+    /** @endcond */
+} introspection_node_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,6 +55,9 @@ astarte_err_t introspection_init(introspection_t *introspection);
 /**
  * @brief Adds an interface to the introspection list
  *
+ * @details No update will be performed by this function. If an interface with the
+ * Same name is already present an error will be returned.
+ *
  * @param[in,out] introspection a pointer to an introspection struct initialized using
  * #introspection_new
  * @param[in] interface the pointer to an interface struct
@@ -56,6 +67,24 @@ astarte_err_t introspection_init(introspection_t *introspection);
  * @retval ASTARTE_OK insertion completed successfully
  */
 astarte_err_t introspection_add(
+    introspection_t *introspection, const astarte_interface_t *interface);
+
+/**
+ * @brief Updates or adds an interface in the introspection list
+ *
+ * @details If no interface with the same name as the one passed exists,
+ * the function adds the interface to the introspection list. If an interface matching the name is
+ * present, the function checks the new interface to ensure it is a valid interface update.
+ *
+ * @param[in,out] introspection a pointer to an introspection struct initialized using
+ * #introspection_new
+ * @param[in] interface the pointer to an interface struct
+ * @return result code of the operation:
+ * @retval ASTARTE_ERR_INTERFACE_ALREADY_PRESENT the interface was already present
+ * @retval ASTARTE_ERR_OUT_OF_MEMORY couldn't allocate the memory for the new node
+ * @retval ASTARTE_OK insertion completed successfully
+ */
+astarte_err_t introspection_update(
     introspection_t *introspection, const astarte_interface_t *interface);
 
 /**
@@ -109,6 +138,29 @@ size_t introspection_get_string_size(introspection_t *introspection);
  * @param[in] buffer_size Size of the buffer retrieved by calling #introspection_get_string_len
  */
 void introspection_fill_string(introspection_t *introspection, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Returns the first node of the introspection that can be used to iterate the collection
+ *
+ * @param[in] introspection a pointer to an introspection struct initialized using
+ * #introspection_new
+ * @return pointer to the first node that can be passed to #introspection_iter_next for iteration.
+ * @retval NULL If no node on the introspection is found
+ */
+const introspection_node_t *introspection_iter(introspection_t *introspection);
+
+/**
+ * @brief Returns the next node of the introspection
+ *
+ * @param[in] introspection a pointer to an introspection struct initialized using
+ * #introspection_new
+ * @param[in] current a pointer to the current introspection_node_t
+ * @return pointer to the current node of the passed introspection.
+ * @retval NULL If iteration is complete and there are no more nodes in this introspection
+ * or if a NULL pointer gets passed as the current pointer parameter
+ */
+const introspection_node_t *introspection_iter_next(
+    introspection_t *introspection, const introspection_node_t *current);
 
 /**
  * @brief Deallocates the introspection struct

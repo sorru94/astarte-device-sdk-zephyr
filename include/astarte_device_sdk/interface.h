@@ -21,6 +21,8 @@
 
 #include <inttypes.h>
 
+#include "astarte_device_sdk/error.h"
+
 /**
  * @brief interface ownership
  *
@@ -78,6 +80,16 @@ typedef struct
     astarte_interface_ownership_t ownership; /**< Ownership, see #astarte_interface_ownership_t */
     astarte_interface_type_t type; /**< Type, see #astarte_interface_type_t */
 } astarte_interface_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+astarte_err_t astarte_interface_validate(const astarte_interface_t *interface);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */
 

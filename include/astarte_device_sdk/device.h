@@ -22,6 +22,7 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/bson_deserializer.h"
+#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
@@ -176,6 +177,21 @@ astarte_err_t astarte_device_connect(astarte_device_handle_t device);
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_poll(astarte_device_handle_t device);
+
+/**
+ * @brief Publish BSON formatted data.
+ *
+ * @warning TODO remove this function once TX API is complete.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface where to publish data.
+ * @param[in] path Path where to publish data.
+ * @param[in] bson Data to publish.
+ * @param[in] qos Quality of service for MQTT publish.
+ * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ */
+astarte_err_t publish_bson(astarte_device_handle_t device, const char *interface_name,
+    const char *path, bson_serializer_handle_t bson, int qos);
 
 #ifdef __cplusplus
 }

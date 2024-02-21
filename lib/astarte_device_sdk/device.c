@@ -132,6 +132,19 @@ static void send_emptycache(astarte_device_handle_t device);
  * @param[in] device Handle to the device instance.
  */
 static void send_introspection(astarte_device_handle_t device);
+/**
+ * @brief Publish data.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface where to publish data.
+ * @param[in] path Path where to publish data.
+ * @param[in] data Data to publish.
+ * @param[in] length Size of data to publish.
+ * @param[in] qos Quality of service for MQTT publish.
+ * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ */
+static astarte_err_t publish_data(astarte_device_handle_t device, const char *interface_name,
+    const char *path, void *data, int data_size, int qos);
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -462,6 +475,24 @@ astarte_err_t astarte_device_poll(astarte_device_handle_t device)
     return (socket_rc == 0) ? ASTARTE_ERR_TIMEOUT : ASTARTE_OK;
 }
 
+astarte_err_t publish_bson(astarte_device_handle_t device, const char *interface_name,
+    const char *path, bson_serializer_handle_t bson, int qos)
+{
+    int len = 0;
+    void *data = (void *) bson_serializer_get_document(bson, &len);
+    if (!data) {
+        LOG_ERR("Error during BSON serialization"); // NOLINT
+        return ASTARTE_ERR;
+    }
+    if (len < 0) {
+        LOG_ERR("BSON document is too long for MQTT publish."); // NOLINT
+        LOG_ERR("Interface: %s, path: %s", interface_name, path); // NOLINT
+        return ASTARTE_ERR;
+    }
+
+    return publish_data(device, interface_name, path, data, len, qos);
+}
+
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
@@ -777,4 +808,48 @@ static void send_emptycache(astarte_device_handle_t device)
     if (res != 0) {
         LOG_ERR("MQTT publish failed during send_introspection."); // NOLINT
     }
+}
+
+static astarte_err_t publish_data(astarte_device_handle_t device, const char *interface_name,
+    const char *path, void *data, int data_size, int qos)
+{
+    if (path[0] != '/') {
+        LOG_ERR("Invalid path: %s (must be start with /)", path); // NOLINT
+        return ASTARTE_ERR_INVALID_PARAM;
+    }
+
+    if (qos < 0 || qos > 2) {
+        LOG_ERR("Invalid QoS: %d (must be 0, 1 or 2)", qos); // NOLINT
+        return ASTARTE_ERR_INVALID_PARAM;
+    }
+
+    char topic[MAX_MQTT_TOPIC_SIZE] = { 0 };
+    int print_ret
+        = snprintf(topic, MAX_MQTT_TOPIC_SIZE, "%s/%s%s", device->base_topic, interface_name, path);
+    if ((print_ret < 0) || (print_ret >= MAX_MQTT_TOPIC_SIZE)) {
+        LOG_ERR("Error encoding topic"); // NOLINT
+        return ASTARTE_ERR;
+    }
+
+    struct mqtt_publish_param msg;
+    msg.retain_flag = 0U;
+    msg.message.topic.topic.utf8 = topic;
+    msg.message.topic.topic.size = strlen(topic);
+    msg.message.topic.qos = qos;
+    msg.message.payload.data = data;
+    msg.message.payload.len = data_size;
+    msg.message_id = device->mqtt_message_id++;
+
+    int ret = mqtt_publish(&device->mqtt_client, &msg);
+    if (ret != 0) {
+        LOG_ERR("Failed to publish message: %d", ret); // NOLINT
+        return ASTARTE_ERR_MQTT;
+    }
+
+    // NOLINTNEXTLINE
+    LOG_INF("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic, msg.message_id,
+        msg.message.topic.qos, data_size);
+    LOG_HEXDUMP_DBG(data, data_size, "Published payload:"); // NOLINT
+
+    return ASTARTE_OK;
 }

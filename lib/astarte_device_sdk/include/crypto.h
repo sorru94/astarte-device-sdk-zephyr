@@ -44,6 +44,17 @@ astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privk
 astarte_err_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size);
 
+/**
+ * @brief Get the common name for a PEM certificate.
+ *
+ * @param[in] cert_pem Certificate in the PEM format.
+ * @param[out] cert_cn Resulting common name.
+ * @param[in] cert_cn_size Size of preallocated common name buffer/
+ * @return ASTARTE_OK if successful, otherwise an error code.
+ */
+astarte_err_t astarte_crypto_get_certificate_common_name(
+    const char *cert_pem, char *cert_cn, size_t cert_cn_size);
+
 #ifdef __cplusplus
 }
 #endif

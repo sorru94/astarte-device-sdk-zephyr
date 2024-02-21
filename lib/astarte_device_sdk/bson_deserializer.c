@@ -48,7 +48,7 @@ static uint64_t read_uint64(const void *buff);
  ***********************************************/
 
 // NOLINTNEXTLINE(hicpp-function-size)
-bool bson_deserializer_check_validity(const void *buffer, int buffer_size)
+bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size)
 {
     bson_document_t document;
 

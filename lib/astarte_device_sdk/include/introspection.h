@@ -91,7 +91,7 @@ astarte_err_t introspection_remove(introspection_t *introspection, char *interfa
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
  * #introspection_new
- * @return size of the introspection string in bytes
+ * @return size of the introspection string in bytes, including the NULL terminator.
  */
 size_t introspection_get_string_size(introspection_t *introspection);
 

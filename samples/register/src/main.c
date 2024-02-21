@@ -31,7 +31,8 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
  * Constants and defines
  ***********************************************/
 
-#define MQTT_POLL_TIMEOUT_MS 150
+#define MQTT_POLL_TIMEOUT_MS 200
+#define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
 
 const static astarte_interface_t device_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
@@ -52,6 +53,25 @@ const static astarte_interface_t server_datastream_interface = {
 /************************************************
  * Static functions declaration
  ***********************************************/
+
+/**
+ * @brief Handler for astarte connection events.
+ *
+ * @param event Astarte device connection event pointer.
+ */
+static void astarte_connection_events_handler(astarte_device_connection_event_t *event);
+/**
+ * @brief Handler for astarte disconnection events.
+ *
+ * @param event Astarte device disconnection event pointer.
+ */
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event);
+/**
+ * @brief Handler for astarte data event.
+ *
+ * @param event Astarte device data event pointer.
+ */
+static void astarte_data_events_handler(astarte_device_data_event_t *event);
 
 /************************************************
  * Global functions definition
@@ -111,6 +131,9 @@ int main(void)
     device_config.http_timeout_ms = timeout_ms;
     device_config.mqtt_connection_timeout_ms = timeout_ms;
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
+    device_config.connection_cbk = astarte_connection_events_handler;
+    device_config.disconnection_cbk = astarte_disconnection_events_handler;
+    device_config.data_cbk = astarte_data_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
@@ -132,16 +155,56 @@ int main(void)
         return -1;
     }
 
+    k_timepoint_t disconnect_timepoint = sys_timepoint_calc(K_MSEC(DEVICE_OPERATIONAL_TIME_MS));
+    int count = 0;
     while (1) {
-        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_SLEEP_MS));
+        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
         astarte_err = astarte_device_poll(device);
         if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
             return -1;
         }
 
-        LOG_INF("Hello world! %s", CONFIG_BOARD); // NOLINT
+        if (++count % (CONFIG_SLEEP_MS / MQTT_POLL_TIMEOUT_MS) == 0) {
+            LOG_INF("Hello world! %s", CONFIG_BOARD); // NOLINT
+            count = 0;
+        }
         k_sleep(sys_timepoint_timeout(timepoint));
+
+        if (K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
+            break;
+        }
     }
+
+    LOG_INF("End of loop, disconnection imminent %s", CONFIG_BOARD); // NOLINT
+
+    astarte_err = astarte_device_destroy(device);
+    if (astarte_err != ASTARTE_OK) {
+        LOG_ERR("Failed destroying the device."); // NOLINT
+        return -1;
+    }
+
     return 0;
+}
+
+/************************************************
+ * Static functions definitions
+ ***********************************************/
+
+static void astarte_connection_events_handler(astarte_device_connection_event_t *event)
+{
+    LOG_INF("Astarte device connected, session_present: %d", event->session_present); // NOLINT
+}
+
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event)
+{
+    (void) event;
+    LOG_INF("Astarte device disconnected"); // NOLINT
+}
+
+static void astarte_data_events_handler(astarte_device_data_event_t *event)
+{
+    // NOLINTNEXTLINE
+    LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
+        event->interface_name, event->path, event->bson_element.type);
 }

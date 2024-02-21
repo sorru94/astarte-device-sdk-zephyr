@@ -164,6 +164,44 @@ exit:
     return exit_code;
 }
 
+astarte_err_t astarte_crypto_get_certificate_common_name(
+    const char *cert_pem, char *cert_cn, size_t cert_cn_size)
+{
+    astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    mbedtls_x509_crt crt;
+    mbedtls_x509_crt_init(&crt);
+
+    size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation
+    int ret = mbedtls_x509_crt_parse(&crt, (unsigned char *) cert_pem, cert_length);
+    if (ret < 0) {
+        LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret); // NOLINT
+        goto exit;
+    }
+
+    mbedtls_x509_name *subj_it = &crt.subject;
+    while (subj_it && (MBEDTLS_OID_CMP(MBEDTLS_OID_AT_CN, &subj_it->oid) != 0)) {
+        subj_it = subj_it->next;
+    }
+
+    if (!subj_it) {
+        LOG_ERR("CN not found in certificate"); // NOLINT
+        exit_code = ASTARTE_ERR_NOT_FOUND;
+        goto exit;
+    }
+
+    ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
+    if ((ret < 0) || (ret >= cert_cn_size)) {
+        LOG_ERR("Error encoding certificate common name"); // NOLINT
+        exit_code = ASTARTE_ERR;
+        goto exit;
+    }
+    exit_code = ASTARTE_OK;
+
+exit:
+    mbedtls_x509_crt_free(&crt);
+
+    return exit_code;
+}
 /************************************************
  *         Static functions definitions         *
  ***********************************************/

@@ -7,6 +7,7 @@
 
 #include "astarte_device_sdk/pairing.h"
 #include "crypto.h"
+#include "introspection.h"
 #include "pairing_private.h"
 
 #include <stdlib.h>
@@ -59,6 +60,7 @@ struct astarte_device
     char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
     char broker_port[ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1];
     struct mqtt_client mqtt_client;
+    introspection_t introspection;
 };
 
 /************************************************
@@ -201,6 +203,20 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
         LOG_ERR("Failed adding client private key to credentials %d.", tls_rc); // NOLINT
         res = ASTARTE_ERR_TLS;
         goto failure;
+    }
+
+    res = introspection_init(&device->introspection);
+    if (res != ASTARTE_OK) {
+        LOG_ERR("Introspection initialization failure %s.", astarte_err_to_name(res)); // NOLINT
+        return res;
+    }
+    for (size_t i = 0; i < cfg->interfaces_size; i++) {
+        res = introspection_add(&device->introspection, cfg->interfaces[i]);
+        if (res != ASTARTE_OK) {
+            LOG_ERR("Introspection add failure %s.", astarte_err_to_name(res)); // NOLINT
+            introspection_free(device->introspection);
+            return res;
+        }
     }
 
     device->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;

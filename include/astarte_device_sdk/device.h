@@ -22,6 +22,7 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
 
 /** @brief Max allowed hostname characters are 253 */
@@ -53,6 +54,10 @@ typedef struct
     int32_t mqtt_connected_timeout_ms;
     /** @brief Credential secret to be used for connecting to Astarte. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
+    /** @brief Array of interfaces to be added to the device. */
+    const astarte_interface_t **interfaces;
+    /** @brief Number of elements in the interfaces array. */
+    size_t interfaces_size;
 } astarte_device_config_t;
 
 #ifdef __cplusplus

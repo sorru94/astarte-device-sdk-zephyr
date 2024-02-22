@@ -43,7 +43,8 @@ typedef enum
    ASTARTE_ERR_INTERFACE_NOT_FOUND = 11, /**< Interface not found in the introspection */
    ASTARTE_ERR_TLS = 12, /**< Error from the TLS credential zephyr module. */
    ASTARTE_ERR_MQTT = 13, /**< Internal error from the MQTT library. */
-   ASTARTE_ERR_TIMEOUT = 14 /**< Operation timed out. */
+   ASTARTE_ERR_TIMEOUT = 14, /**< Operation timed out. */
+   ASTARTE_ERR_BSON_SERIALIZER = 15 /**< BSON serialization error. */
 } astarte_err_t;
 
 // clang-format on

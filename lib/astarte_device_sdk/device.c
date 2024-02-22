@@ -482,12 +482,12 @@ astarte_err_t publish_bson(astarte_device_handle_t device, const char *interface
     void *data = (void *) bson_serializer_get_document(bson, &len);
     if (!data) {
         LOG_ERR("Error during BSON serialization"); // NOLINT
-        return ASTARTE_ERR;
+        return ASTARTE_ERR_BSON_SERIALIZER;
     }
     if (len < 0) {
         LOG_ERR("BSON document is too long for MQTT publish."); // NOLINT
         LOG_ERR("Interface: %s, path: %s", interface_name, path); // NOLINT
-        return ASTARTE_ERR;
+        return ASTARTE_ERR_BSON_SERIALIZER;
     }
 
     return publish_data(device, interface_name, path, data, len, qos);

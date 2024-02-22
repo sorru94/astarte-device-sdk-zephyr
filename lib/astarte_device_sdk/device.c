@@ -560,10 +560,6 @@ static ssize_t handle_published_message(
         received += ret;
     }
 
-    if (!discarded) {
-        LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256u), "Received payload:"); // NOLINT
-    }
-
     if (pub->message.topic.qos == MQTT_QOS_1_AT_LEAST_ONCE) {
         struct mqtt_puback_param puback = { .message_id = pub->message_id };
         ret = mqtt_publish_qos1_ack(&device->mqtt_client, &puback);
@@ -580,6 +576,8 @@ static ssize_t handle_published_message(
     }
 
     if (!discarded) {
+        LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256u), "Received payload:"); // NOLINT
+
         const char *topic = (const char *) pub->message.topic.topic.utf8;
         on_incoming(device, topic, strlen(topic), (const char *) msg_buffer, message_size);
     }

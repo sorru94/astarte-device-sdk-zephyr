@@ -26,12 +26,17 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        sample:
+        - "datastreams"
+        - "register"
     runs-on: ubuntu-latest
     container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
     concurrency:
-      group: build-${{ github.ref }}
+      group: build-${{ matrix.sample }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
@@ -51,7 +56,7 @@ jobs:
           west update -o=--depth=1 -n
           west blobs fetch hal_espressif
 
-      - name: Build register sample
+      - name: Build ${{ matrix.sample }} sample
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west twister -T samples/register -v --inline-logs --integration --disable-warnings-as-errors
+          west twister -T samples/${{ matrix.sample }} -v --inline-logs --integration --disable-warnings-as-errors

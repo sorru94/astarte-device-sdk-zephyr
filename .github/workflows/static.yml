@@ -45,16 +45,22 @@ jobs:
       - name: Check format
         working-directory: astarte-device-sdk-zephyr
         run: |
-          clang-format --style=file --dry-run -Werror lib/astarte_device_sdk/*.c include/astarte_device_sdk/*.h
-          clang-format --style=file --dry-run -Werror samples/*/src/*.c
+          clang-format --style=file --dry-run -Werror include/astarte_device_sdk/*.h
+          clang-format --style=file --dry-run -Werror lib/astarte_device_sdk/*.c lib/astarte_device_sdk/include/*.h
+          clang-format --style=file --dry-run -Werror samples/*/src/*.c samples/*/include/*.h
           clang-format --style=file --dry-run -Werror tests/lib/astarte_device_sdk/*/*/src/*.c
   code-checker:
+    strategy:
+      matrix:
+        sample:
+        - "datastreams"
+        - "register"
     runs-on: ubuntu-latest
     container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
     concurrency:
-      group: code-checker-${{ github.ref }}
+      group: code-checker-${{ matrix.sample }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
@@ -75,4 +81,4 @@ jobs:
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Run clang-tidy
         working-directory: astarte-device-sdk-zephyr
-        run: west static
+        run: west static --sample ${{ matrix.sample }}

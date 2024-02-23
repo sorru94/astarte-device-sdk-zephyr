@@ -21,7 +21,10 @@
 #include <zephyr/net/mqtt.h>
 
 #include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/bson_deserializer.h"
+#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
 
 /** @brief Max allowed hostname characters are 253 */
@@ -36,6 +39,68 @@
  * all the data for the Astarte device.
  */
 typedef struct astarte_device *astarte_device_handle_t;
+
+/**
+ * @brief Typedefined struct containing data for a single connection event.
+ */
+typedef struct
+{
+    astarte_device_handle_t device;
+    int session_present;
+    void *user_data;
+} astarte_device_connection_event_t;
+
+/**
+ * @brief Typedefined function pointer for connection events.
+ */
+typedef void (*astarte_device_connection_cbk_t)(astarte_device_connection_event_t *event);
+
+/**
+ * @brief Typedefined struct containing data for a single disconnection event.
+ */
+typedef struct
+{
+    astarte_device_handle_t device;
+    void *user_data;
+} astarte_device_disconnection_event_t;
+
+/**
+ * @brief Typedefined function pointer for disconnection events.
+ */
+typedef void (*astarte_device_disconnection_cbk_t)(astarte_device_disconnection_event_t *event);
+
+/**
+ * @brief Typedefined struct containing data for a data reception event.
+ */
+typedef struct
+{
+    astarte_device_handle_t device;
+    const char *interface_name;
+    const char *path;
+    bson_element_t bson_element;
+    void *user_data;
+} astarte_device_data_event_t;
+
+/**
+ * @brief Typedefined function pointer for data reception events.
+ */
+typedef void (*astarte_device_data_cbk_t)(astarte_device_data_event_t *event);
+
+/**
+ * @brief Typedefined struct containing data for a property unset reception event.
+ */
+typedef struct
+{
+    astarte_device_handle_t device;
+    const char *interface_name;
+    const char *path;
+    void *user_data;
+} astarte_device_unset_event_t;
+
+/**
+ * @brief Typedefined function pointer for property unset reception events.
+ */
+typedef void (*astarte_device_unset_cbk_t)(astarte_device_unset_event_t *event);
 
 /**
  * @brief Configuration struct for an Astarte device.
@@ -53,6 +118,20 @@ typedef struct
     int32_t mqtt_connected_timeout_ms;
     /** @brief Credential secret to be used for connecting to Astarte. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
+    /** @brief Optional callback for a connection event. */
+    astarte_device_connection_cbk_t connection_cbk;
+    /** @brief Optional callback for a disconnection event. */
+    astarte_device_disconnection_cbk_t disconnection_cbk;
+    /** @brief Optional callback for a data reception event. */
+    astarte_device_data_cbk_t data_cbk;
+    /** @brief Optional callback for a unset property event. */
+    astarte_device_unset_cbk_t unset_cbk;
+    /** @brief User data passed to each callback function. */
+    void *cbk_user_data;
+    /** @brief Array of interfaces to be added to the device. */
+    const astarte_interface_t **interfaces;
+    /** @brief Number of elements in the interfaces array. */
+    size_t interfaces_size;
 } astarte_device_config_t;
 
 #ifdef __cplusplus
@@ -68,7 +147,7 @@ extern "C" {
  * registered on Astarte.
  *
  * @param[in] cfg Configuration struct.
- * @param[out] device Device instance inizialized.
+ * @param[out] handle Device instance inizialized.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
@@ -78,6 +157,7 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
  *
  * @note The device handle will become invalid after this operation.
  *
+ * @param[in] handle Device instance to be destroyed.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_destroy(astarte_device_handle_t handle);
@@ -97,6 +177,21 @@ astarte_err_t astarte_device_connect(astarte_device_handle_t device);
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_poll(astarte_device_handle_t device);
+
+/**
+ * @brief Publish BSON formatted data.
+ *
+ * @warning TODO remove this function once TX API is complete.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface where to publish data.
+ * @param[in] path Path where to publish data.
+ * @param[in] bson Data to publish.
+ * @param[in] qos Quality of service for MQTT publish.
+ * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ */
+astarte_err_t publish_bson(astarte_device_handle_t device, const char *interface_name,
+    const char *path, bson_serializer_handle_t bson, int qos);
 
 #ifdef __cplusplus
 }

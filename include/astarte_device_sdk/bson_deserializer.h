@@ -61,7 +61,7 @@ extern "C" {
  * @param[in] buffer_size Size of the allocated buffer containing the document.
  * @return True when BSON file is valid, false otherwise.
  */
-bool bson_deserializer_check_validity(const void *buffer, int buffer_size);
+bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size);
 
 /**
  * @brief Initialize a document type from a BSON data buffer.

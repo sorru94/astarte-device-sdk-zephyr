@@ -20,12 +20,20 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
+#include <astarte_device_sdk/bson_serializer.h>
+#include <astarte_device_sdk/bson_types.h>
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/pairing.h>
 
-#include "nvs.h"
 #include "wifi.h"
+
+/************************************************
+ *       Checks over configuration values       *
+ ***********************************************/
+
+BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
+    "Missing credential secret in datastreams example");
 
 /************************************************
  * Constants and defines
@@ -88,12 +96,6 @@ int main(void)
     wifi_init();
 #endif
 
-    // Initialize NVS driver
-    if (nvs_init() != 0) {
-        LOG_ERR("NVS intialization failed!"); // NOLINT
-        return -1;
-    }
-
     k_sleep(K_SECONDS(5)); // sleep for 5 seconds
 
 #if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
@@ -101,28 +103,8 @@ int main(void)
         ca_certificate_root, sizeof(ca_certificate_root));
 #endif
 
-    bool has_cred_secr = false;
-    if (nvs_has_cred_secr(&has_cred_secr) != 0) {
-        return -1;
-    }
-
     int32_t timeout_ms = 3 * MSEC_PER_SEC;
-    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = { 0 };
-    if (has_cred_secr) {
-        if (nvs_get_cred_secr(cred_secr, sizeof(cred_secr)) != 0) {
-            return -1;
-        }
-    } else {
-        astarte_err = astarte_pairing_register_device(timeout_ms, cred_secr, sizeof(cred_secr));
-        if (astarte_err != ASTARTE_OK) {
-            return -1;
-        }
-        if (nvs_store_cred_secr(cred_secr) != 0) {
-            return -1;
-        }
-    }
-
-    LOG_WRN("Credential secret: '%s'", cred_secr); // NOLINT
+    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
         = { &device_datastream_interface, &server_datastream_interface };
@@ -207,4 +189,22 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event)
     // NOLINTNEXTLINE
     LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
         event->interface_name, event->path, event->bson_element.type);
+
+    if (strcmp(event->interface_name, "org.astarteplatform.zephyr.examples.ServerDatastream") == 0
+        && strcmp(event->path, "/boolean_endpoint") == 0
+        && event->bson_element.type == BSON_TYPE_BOOLEAN) {
+        bool answer = !bson_deserializer_element_to_bool(event->bson_element);
+        LOG_INF("Sending answer %d.", answer); // NOLINT
+
+        bson_serializer_handle_t bson = bson_serializer_new();
+        bson_serializer_append_boolean(bson, "v", answer);
+        bson_serializer_append_end_of_document(bson);
+
+        int qos = 0;
+        astarte_err_t res = publish_bson(event->device,
+            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint", bson, qos);
+        if (res != ASTARTE_OK) {
+            LOG_INF("Failue sending answer %d.", answer); // NOLINT
+        }
+    }
 }

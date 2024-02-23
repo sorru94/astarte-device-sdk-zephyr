@@ -73,8 +73,6 @@ struct astarte_device
     astarte_device_data_cbk_t data_cbk;
     astarte_device_unset_cbk_t unset_cbk;
     void *cbk_user_data;
-    const astarte_interface_t **interfaces; /* TODO: remove this when introspection will work*/
-    size_t interfaces_size; /* TODO: remove this when introspection will work*/
 };
 
 /************************************************
@@ -351,8 +349,6 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
     device->cbk_user_data = cfg->cbk_user_data;
     device->mqtt_is_connected = false;
     device->mqtt_message_id = 1U;
-    device->interfaces = cfg->interfaces; /* TODO: to be removed */
-    device->interfaces_size = cfg->interfaces_size; /* TODO: to be removed */
     *handle = device;
 
     return res;
@@ -712,11 +708,9 @@ static void setup_subscriptions(astarte_device_handle_t device)
         return;
     }
 
-    // TODO: for now this section uses a static array, waiting for the following issue.
-    // https://github.com/secomind/astarte-device-sdk-zephyr/issues/44
-
-    for (size_t i = 0; i < device->interfaces_size; i++) {
-        const astarte_interface_t *interface = device->interfaces[i];
+    for (const introspection_node_t *iterator = introspection_iter(&device->introspection);
+         iterator != NULL; iterator = introspection_iter_next(&device->introspection, iterator)) {
+        const astarte_interface_t *interface = iterator->interface;
 
         if (interface->ownership == OWNERSHIP_SERVER) {
             // Subscribe to server interface subtopics

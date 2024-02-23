@@ -215,3 +215,102 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_remove_twice) // NOLI
     LOG_INF("Freeing introspection"); // NOLINT
     introspection_free(introspection);
 }
+
+ZTEST(astarte_device_sdk_introspection, test_introspection_iter) // NOLINT
+{
+    LOG_INF("Creating introspection"); // NOLINT
+    introspection_t introspection;
+    introspection_init(&introspection);
+
+    LOG_INF("Adding interfaces"); // NOLINT
+    check_add_interface_ok(&introspection, &test_interface_a);
+    check_add_interface_ok(&introspection, &test_interface_b);
+    check_add_interface_ok(&introspection, &test_interface_c);
+
+    LOG_INF("Creating introspection iterator"); // NOLINT
+    const introspection_node_t *introspection_iterator = introspection_iter(&introspection);
+    LOG_INF("First interface '%s'", introspection_iterator->interface); // NOLINT
+    zassert_equal_ptr(&test_interface_a, introspection_iterator->interface);
+
+    LOG_INF("Advancing iterator"); // NOLINT
+    introspection_iterator = introspection_iter_next(&introspection, introspection_iterator);
+    LOG_INF("Second interface '%s'", introspection_iterator->interface); // NOLINT
+    zassert_equal_ptr(&test_interface_b, introspection_iterator->interface);
+
+    LOG_INF("Advancing iterator"); // NOLINT
+    introspection_iterator = introspection_iter_next(&introspection, introspection_iterator);
+    LOG_INF("Third interface '%s'", introspection_iterator->interface); // NOLINT
+    zassert_equal_ptr(&test_interface_c, introspection_iterator->interface);
+
+    LOG_INF("Advancing iterator"); // NOLINT
+    introspection_iterator = introspection_iter_next(&introspection, introspection_iterator);
+    LOG_INF("No fourth interface %p", introspection_iterator); // NOLINT
+    zassert_equal_ptr(NULL, introspection_iterator);
+
+    LOG_INF("Advancing iterator"); // NOLINT
+    introspection_iterator = introspection_iter_next(&introspection, introspection_iterator);
+    LOG_INF("No fourth interface %p", introspection_iterator); // NOLINT
+    zassert_equal_ptr(NULL, introspection_iterator);
+
+    LOG_INF("Freeing introspection"); // NOLINT
+    introspection_free(introspection);
+}
+
+static void check_update_interface(introspection_t *introspection,
+    const astarte_interface_t *interface, astarte_err_t expected_res)
+{
+    LOG_INF("Updating interface '%s'", interface->name); // NOLINT
+
+    zassert_equal(expected_res, introspection_update(introspection, interface),
+        "Unexpected result while updating interface '%s'", interface->name);
+}
+
+static void check_update_interface_ok(
+    introspection_t *introspection, const astarte_interface_t *interface)
+{
+    check_update_interface(introspection, interface, ASTARTE_OK);
+}
+
+const astarte_interface_t test_interface_a_v2_valid = {
+    .name = "test.interface.a",
+    .major_version = 0,
+    .minor_version = 2,
+    .ownership = OWNERSHIP_SERVER,
+    .type = TYPE_PROPERTIES,
+};
+
+ZTEST(astarte_device_sdk_introspection, test_introspection_update_ok) // NOLINT
+{
+    LOG_INF("Creating introspection"); // NOLINT
+    introspection_t introspection;
+    introspection_init(&introspection);
+
+    LOG_INF("Adding interfaces"); // NOLINT
+    check_add_interface_ok(&introspection, &test_interface_a);
+    check_add_interface_ok(&introspection, &test_interface_b);
+    check_add_interface_ok(&introspection, &test_interface_c);
+
+    LOG_INF("Updating the interface '%s'", test_interface_a_v2_valid.name); // NOLINT
+    check_update_interface_ok(&introspection, &test_interface_a_v2_valid);
+
+    LOG_INF("Freeing introspection"); // NOLINT
+    introspection_free(introspection);
+}
+
+ZTEST(astarte_device_sdk_introspection, test_introspection_update_invalid_version) // NOLINT
+{
+    LOG_INF("Creating introspection"); // NOLINT
+    introspection_t introspection;
+    introspection_init(&introspection);
+
+    LOG_INF("Adding interfaces"); // NOLINT
+    check_add_interface_ok(&introspection, &test_interface_a);
+    check_add_interface_ok(&introspection, &test_interface_b);
+    check_add_interface_ok(&introspection, &test_interface_c);
+
+    LOG_INF("Updating the interface '%s' with the same struct", test_interface_a.name); // NOLINT
+    check_update_interface(&introspection, &test_interface_a, ASTARTE_ERR_INTERFACE_CONFLICTING);
+
+    LOG_INF("Freeing introspection"); // NOLINT
+    introspection_free(introspection);
+}

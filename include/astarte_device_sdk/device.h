@@ -26,6 +26,7 @@
 #include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
+#include "astarte_device_sdk/type.h"
 
 /** @brief Max allowed hostname characters are 253 */
 #define ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN 253
@@ -142,12 +143,13 @@ extern "C" {
  * @brief Allocate a new instance of an Astarte device.
  *
  * @details This function has to be called to initialize the device SDK before doing anything else.
+ * If an error code is returned the astarte_device_free function must not be called.
  *
  * @note A device can be instantiated and connected to Astarte only if it has been previously
  * registered on Astarte.
  *
  * @param[in] cfg Configuration struct.
- * @param[out] handle Device instance inizialized.
+ * @param[out] handle Device instance initialized.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
@@ -179,19 +181,18 @@ astarte_err_t astarte_device_connect(astarte_device_handle_t device);
 astarte_err_t astarte_device_poll(astarte_device_handle_t device);
 
 /**
- * @brief Publish BSON formatted data.
- *
- * @warning TODO remove this function once TX API is complete.
+ * @brief Send an individual value through the device connection.
  *
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
- * @param[in] bson Data to publish.
+ * @param[in] value Correctly initialized astarte value.
+ * @param[in] timestamp Nullable Timestamp of the message.
  * @param[in] qos Quality of service for MQTT publish.
- * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t publish_bson(astarte_device_handle_t device, const char *interface_name,
-    const char *path, bson_serializer_handle_t bson, int qos);
+astarte_err_t astarte_device_stream_individual(astarte_device_handle_t device, char *interface_name,
+    char *path, astarte_value_t value, const int64_t *timestamp, uint8_t qos);
 
 #ifdef __cplusplus
 }

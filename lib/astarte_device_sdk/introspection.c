@@ -190,7 +190,7 @@ size_t introspection_get_string_size(introspection_t *introspection)
     introspection_node_t *iter_node = NULL;
     size_t len = 0;
 
-    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node) // NOLINT
+    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node)
     {
         size_t name_len = strnlen(iter_node->interface->name, INTERFACE_NAME_MAX_SIZE);
         size_t major_len = get_digit_count(iter_node->interface->major_version);
@@ -212,7 +212,7 @@ void introspection_fill_string(introspection_t *introspection, char *buffer, siz
     introspection_node_t *iter_node = NULL;
     size_t result_len = 0;
 
-    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node) // NOLINT
+    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node)
     {
         result_len += snprintf(buffer + result_len, buffer_size - result_len, "%s:%u:%u;",
             iter_node->interface->name, iter_node->interface->major_version,
@@ -223,7 +223,7 @@ void introspection_fill_string(introspection_t *introspection, char *buffer, siz
     buffer[buffer_size - 1] = '\0';
 }
 
-const introspection_node_t *introspection_iter(introspection_t *introspection)
+introspection_node_t *introspection_iter(introspection_t *introspection)
 {
     // this is just used in the successive macro call to extract the type of the container
     introspection_node_t *iter_node = NULL;
@@ -231,10 +231,9 @@ const introspection_node_t *introspection_iter(introspection_t *introspection)
     return SYS_DLIST_PEEK_HEAD_CONTAINER(introspection->list, iter_node, node);
 }
 
-const introspection_node_t *introspection_iter_next(
-    introspection_t *introspection, const introspection_node_t *current)
+introspection_node_t *introspection_iter_next(
+    introspection_t *introspection, introspection_node_t *current)
 {
-    // NOLINTNEXTLINE(incompatible-pointer-types-discards-qualifiers)
     return SYS_DLIST_PEEK_NEXT_CONTAINER(introspection->list, current, node);
 }
 
@@ -261,7 +260,7 @@ static introspection_node_t *find_node_by_name(introspection_t *introspection, c
 {
     introspection_node_t *iter_node = NULL;
 
-    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node) // NOLINT
+    SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node)
     {
         if (strncmp(interface_name, iter_node->interface->name, INTERFACE_NAME_MAX_SIZE) == 0) {
             return iter_node;

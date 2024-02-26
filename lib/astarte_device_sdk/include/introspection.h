@@ -147,7 +147,7 @@ void introspection_fill_string(introspection_t *introspection, char *buffer, siz
  * @return pointer to the first node that can be passed to #introspection_iter_next for iteration.
  * @retval NULL If no node on the introspection is found
  */
-const introspection_node_t *introspection_iter(introspection_t *introspection);
+introspection_node_t *introspection_iter(introspection_t *introspection);
 
 /**
  * @brief Returns the next node of the introspection
@@ -159,8 +159,8 @@ const introspection_node_t *introspection_iter(introspection_t *introspection);
  * @retval NULL If iteration is complete and there are no more nodes in this introspection
  * or if a NULL pointer gets passed as the current pointer parameter
  */
-const introspection_node_t *introspection_iter_next(
-    introspection_t *introspection, const introspection_node_t *current);
+introspection_node_t *introspection_iter_next(
+    introspection_t *introspection, introspection_node_t *current);
 
 /**
  * @brief Deallocates the introspection struct

@@ -59,4 +59,4 @@ jobs:
       - name: Build ${{ matrix.sample }} sample
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west twister -T samples/${{ matrix.sample }} -v --inline-logs --integration --disable-warnings-as-errors
+          west twister -T samples/${{ matrix.sample }} -v --inline-logs --integration

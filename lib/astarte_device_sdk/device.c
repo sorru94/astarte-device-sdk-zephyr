@@ -708,7 +708,7 @@ static void setup_subscriptions(astarte_device_handle_t device)
         return;
     }
 
-    for (const introspection_node_t *iterator = introspection_iter(&device->introspection);
+    for (introspection_node_t *iterator = introspection_iter(&device->introspection);
          iterator != NULL; iterator = introspection_iter_next(&device->introspection, iterator)) {
         const astarte_interface_t *interface = iterator->interface;
 

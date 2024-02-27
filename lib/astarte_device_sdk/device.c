@@ -5,9 +5,6 @@
  */
 #include "astarte_device_sdk/device.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/mqtt.h>
@@ -32,10 +29,6 @@ LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
 /************************************************
  *        Defines, constants and typedef        *
  ***********************************************/
-
-/* Buffers for private key and client certificate */
-static unsigned char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
-static unsigned char crt_pem[ASTARTE_PAIRING_MAX_CLIENT_CRT_LEN + 1];
 
 /* Buffers for MQTT client. */
 #define MQTT_RX_TX_BUFFER_SIZE 256U
@@ -63,10 +56,18 @@ static sec_tag_t sec_tag_list[] = {
  */
 struct astarte_device
 {
+    /** @brief Timeout for http requests. */
+    int32_t http_timeout_ms;
     /** @brief Timeout for socket polls before connection to an MQTT broker. */
     int32_t mqtt_connection_timeout_ms;
     /** @brief Timeout for socket polls on an already connected MQTT broker. */
     int32_t mqtt_connected_timeout_ms;
+    /** @brief Private key for the device in the PEM format. */
+    char privkey_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_PRIVKEY_BUFFER_SIZE];
+    /** @brief Device certificate in the PEM format. */
+    char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE + 1];
+    /** @brief Device's credential secret. */
+    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT broker hostname. */
     char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
     /** @brief MQTT broker port. */
@@ -130,6 +131,23 @@ static ssize_t handle_published_message(
  */
 static void on_incoming(astarte_device_handle_t device, const char *topic, size_t topic_len,
     const char *data, size_t data_len);
+/**
+ * @brief Fetch a new client certificate from Astarte.
+ *
+ * @details This function also adds the new certificate to the device TLS credentials.
+ *
+ * @param[out] device Handle to the device instance where information from the new certificate will
+ * be stored.
+ * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ */
+static astarte_err_t get_new_client_certificate(astarte_device_handle_t device);
+/**
+ * @brief Delete old client certificate and get a new one from Astarte.
+ *
+ * @param[in] device Handle to the device instance.
+ * @return ASTARTE_OK if publish has been successful, an error code otherwise.
+ */
+static astarte_err_t update_client_certificate(astarte_device_handle_t device);
 /**
  * @brief Setup all the MQTT subscriptions for the device.
  *
@@ -309,41 +327,6 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
     }
     strncpy(device->broker_port, broker_url_token, ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1);
 
-    res = astarte_pairing_get_client_certificate(cfg->http_timeout_ms, cfg->cred_secr, privkey_pem,
-        sizeof(privkey_pem), crt_pem, sizeof(crt_pem));
-    if (res != ASTARTE_OK) {
-        goto failure;
-    }
-
-    // The base topic for this device is returned by Astarte in the common name of the certificate
-    // It will be usually be in the format: <REALM>/<DEVICE ID>
-    res = astarte_crypto_get_certificate_common_name(
-        crt_pem, device->base_topic, MAX_MQTT_BASE_TOPIC_SIZE);
-    if ((res != ASTARTE_OK) || (strlen(device->base_topic) == 0)) {
-        LOG_ERR("Error in certificate common name extraction."); // NOLINT
-        goto failure;
-    }
-
-    LOG_DBG("Client certificate (PEM): \n%s", crt_pem); // NOLINT
-    LOG_DBG("Client private key (PEM): \n%s", privkey_pem); // NOLINT
-    LOG_DBG("Received device topic is: %s", device->base_topic); // NOLINT
-
-    int tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-        TLS_CREDENTIAL_SERVER_CERTIFICATE, crt_pem, strlen(crt_pem) + 1);
-    if (tls_rc != 0) {
-        LOG_ERR("Failed adding client crt to credentials %d.", tls_rc); // NOLINT
-        res = ASTARTE_ERR_TLS;
-        goto failure;
-    }
-
-    tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-        TLS_CREDENTIAL_PRIVATE_KEY, privkey_pem, strlen(privkey_pem) + 1);
-    if (tls_rc != 0) {
-        LOG_ERR("Failed adding client private key to credentials %d.", tls_rc); // NOLINT
-        res = ASTARTE_ERR_TLS;
-        goto failure;
-    }
-
     LOG_DBG("Initializing introspection"); // NOLINT
     res = introspection_init(&device->introspection);
     if (res != ASTARTE_OK) {
@@ -359,8 +342,10 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
         }
     }
 
+    device->http_timeout_ms = cfg->http_timeout_ms;
     device->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     device->mqtt_connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
+    memcpy(device->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
     device->connection_cbk = cfg->connection_cbk;
     device->disconnection_cbk = cfg->disconnection_cbk;
     device->data_cbk = cfg->data_cbk;
@@ -408,6 +393,28 @@ astarte_err_t astarte_device_destroy(astarte_device_handle_t handle)
 
 astarte_err_t astarte_device_connect(astarte_device_handle_t device)
 {
+    // Check if certificate is valid
+    if (strlen(device->crt_pem) == 0) {
+        astarte_err_t res = get_new_client_certificate(device);
+        if (res != ASTARTE_OK) {
+            return res;
+        }
+    } else {
+        astarte_err_t res = astarte_pairing_verify_client_certificate(
+            device->http_timeout_ms, device->cred_secr, device->crt_pem);
+        if (res == ASTARTE_ERR_CLIENT_CERT_INVALID) {
+            res = update_client_certificate(device);
+            if (res != ASTARTE_OK) {
+                LOG_ERR("Failed to update the client crt %s.", astarte_err_to_name(res)); // NOLINT
+                return res;
+            }
+        }
+        if (res != ASTARTE_OK) {
+            return res;
+        }
+    }
+
+    // Get broker address info
     struct zsock_addrinfo *broker_addrinfo = NULL;
     struct zsock_addrinfo hints;
     hints.ai_family = AF_INET;
@@ -456,6 +463,18 @@ astarte_err_t astarte_device_connect(astarte_device_handle_t device)
         return ASTARTE_ERR_MQTT;
     }
 
+    return ASTARTE_OK;
+}
+
+astarte_err_t astarte_device_disconnect(astarte_device_handle_t handle)
+{
+    if (handle->mqtt_is_connected) {
+        int res = mqtt_disconnect(&handle->mqtt_client);
+        if (res < 0) {
+            LOG_ERR("Device disconnection failure %d", res); // NOLINT
+            return ASTARTE_ERR_MQTT;
+        }
+    }
     return ASTARTE_OK;
 }
 
@@ -721,6 +740,60 @@ static void on_incoming(astarte_device_handle_t device, const char *topic, size_
     };
 
     device->data_cbk(&event);
+}
+
+static astarte_err_t get_new_client_certificate(astarte_device_handle_t device)
+{
+    astarte_err_t res = astarte_pairing_get_client_certificate(device->http_timeout_ms,
+        device->cred_secr, device->privkey_pem, sizeof(device->privkey_pem), device->crt_pem,
+        sizeof(device->crt_pem));
+    if (res != ASTARTE_OK) {
+        return res;
+    }
+
+    // The base topic for this device is returned by Astarte in the common name of the certificate
+    // It will be usually be in the format: <REALM>/<DEVICE ID>
+    res = astarte_crypto_get_certificate_info(
+        device->crt_pem, device->base_topic, MAX_MQTT_BASE_TOPIC_SIZE);
+    if ((res != ASTARTE_OK) || (strlen(device->base_topic) == 0)) {
+        LOG_ERR("Error in certificate common name extraction."); // NOLINT
+        return res;
+    }
+
+    int tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
+        TLS_CREDENTIAL_SERVER_CERTIFICATE, device->crt_pem, strlen(device->crt_pem) + 1);
+    if (tls_rc != 0) {
+        LOG_ERR("Failed adding client crt to credentials %d.", tls_rc); // NOLINT
+        return ASTARTE_ERR_TLS;
+    }
+
+    tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
+        TLS_CREDENTIAL_PRIVATE_KEY, device->privkey_pem, strlen(device->privkey_pem) + 1);
+    if (tls_rc != 0) {
+        LOG_ERR("Failed adding client private key to credentials %d.", tls_rc); // NOLINT
+        return ASTARTE_ERR_TLS;
+    }
+
+    return res;
+}
+
+static astarte_err_t update_client_certificate(astarte_device_handle_t device)
+{
+    int tls_rc = tls_credential_delete(
+        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+    if (tls_rc != 0) {
+        LOG_ERR("Failed removing the client certificate from credentials %d.", tls_rc); // NOLINT
+        return ASTARTE_ERR_TLS;
+    }
+
+    tls_rc = tls_credential_delete(
+        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PRIVATE_KEY);
+    if (tls_rc != 0) {
+        LOG_ERR("Failed removing the client private key from credentials %d.", tls_rc); // NOLINT
+        return ASTARTE_ERR_TLS;
+    }
+
+    return get_new_client_certificate(device);
 }
 
 static void setup_subscriptions(astarte_device_handle_t device)

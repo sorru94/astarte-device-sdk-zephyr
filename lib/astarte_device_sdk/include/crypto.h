@@ -17,11 +17,6 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/error.h"
 
-/** @brief Private key buffer size */
-#define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 4096
-/** @brief Certificate signing request buffer size */
-#define ASTARTE_CRYPTO_CSR_BUFFER_SIZE 4096
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,10 +46,10 @@ astarte_err_t astarte_crypto_create_csr(
  *
  * @param[in] cert_pem Certificate in the PEM format.
  * @param[out] cert_cn Resulting common name.
- * @param[in] cert_cn_size Size of preallocated common name buffer/
+ * @param[in] cert_cn_size Size of preallocated common name buffer
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_crypto_get_certificate_common_name(
+astarte_err_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size);
 
 #ifdef __cplusplus

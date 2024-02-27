@@ -6,8 +6,6 @@
 
 #include "astarte_device_sdk/error.h"
 
-#include <stdlib.h>
-
 #define ERR_TBL_IT(err)                                                                            \
     {                                                                                              \
         err, #err                                                                                  \
@@ -41,6 +39,7 @@ static const astarte_err_msg_t astarte_err_msg_table[] = {
     ERR_TBL_IT(ASTARTE_ERR_MQTT),
     ERR_TBL_IT(ASTARTE_ERR_TIMEOUT),
     ERR_TBL_IT(ASTARTE_ERR_BSON_SERIALIZER),
+    ERR_TBL_IT(ASTARTE_ERR_CLIENT_CERT_INVALID),
 };
 
 static const char astarte_unknown_msg[] = "ERROR";

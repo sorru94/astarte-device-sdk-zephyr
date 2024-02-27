@@ -7,12 +7,11 @@
 #include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/bson_types.h"
 
-#include <zephyr/logging/log.h>
-#include <zephyr/sys/byteorder.h>
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
 
 LOG_MODULE_REGISTER(bson_serializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL); // NOLINT
 

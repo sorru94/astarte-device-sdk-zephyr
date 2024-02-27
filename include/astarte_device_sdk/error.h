@@ -46,7 +46,8 @@ typedef enum
    ASTARTE_ERR_TLS = 14, /**< Error from the TLS credential zephyr module. */
    ASTARTE_ERR_MQTT = 15, /**< Internal error from the MQTT library. */
    ASTARTE_ERR_TIMEOUT = 16, /**< Operation timed out. */
-   ASTARTE_ERR_BSON_SERIALIZER = 17 /**< BSON serialization error. */
+   ASTARTE_ERR_BSON_SERIALIZER = 17, /**< BSON serialization error. */
+   ASTARTE_ERR_CLIENT_CERT_INVALID = 18 /**< Astarte marked the device client certificate as invalid. */
 } astarte_err_t;
 
 // clang-format on

@@ -169,6 +169,16 @@ extern "C" {
 astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
 
 /**
+ * @brief Disconnect the Astarte device instance.
+ *
+ * @note It will be possible to re-connect the device after disconnection.
+ *
+ * @param[in] handle Device instance to be disconnected.
+ * @return ASTARTE_OK if successful, otherwise an error code.
+ */
+astarte_err_t astarte_device_disconnect(astarte_device_handle_t handle);
+
+/**
  * @brief Destroy the Astarte device instance.
  *
  * @note The device handle will become invalid after this operation.

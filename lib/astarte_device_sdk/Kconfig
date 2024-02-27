@@ -82,6 +82,43 @@ config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS
 
 endmenu
 
+menu "Advanced options"
+
+config ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE
+	int "Receive buffer size for HTTP requests"
+	depends on ASTARTE_DEVICE_SDK
+	default 4096
+	help
+	  Use this option to increase/decrease the receive buffer size for http requests.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_PRIVKEY_BUFFER_SIZE
+	int "Buffer size for client private TLS key"
+	depends on ASTARTE_DEVICE_SDK
+	default 1024
+	help
+	  Use this option to increase/decrease the buffer size where the TLS client private key is
+	  stored.
+	  The TLS private key is used during mutual TLS authentication.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_CSR_BUFFER_SIZE
+	int "Buffer size for client TLS certificate signing request"
+	depends on ASTARTE_DEVICE_SDK
+	default 1024
+	help
+	  Use this option to increase/decrease the buffer size where the client TLS certificate signing
+	  request (CSR) is stored.
+	  The CSR is used to obtaing the client certificate during mutual TLS authentication.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE
+	int "Buffer size for client TLS certificate"
+	depends on ASTARTE_DEVICE_SDK
+	default 1024
+	help
+	  Use this option to increase/decrease the buffer size where the TLS client certificate is
+	  stored.
+
+endmenu
+
 menu "Logging options"
 
 module = ASTARTE_DEVICE_SDK_PAIRING

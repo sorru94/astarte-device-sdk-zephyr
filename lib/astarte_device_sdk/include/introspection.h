@@ -14,7 +14,6 @@
  */
 
 #include <zephyr/sys/dlist.h>
-#include <zephyr/sys/util.h>
 
 #include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"

@@ -6,10 +6,8 @@
 
 #include "introspection.h"
 
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/dlist.h>
@@ -18,8 +16,8 @@
 #include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
 
-LOG_MODULE_REGISTER( // NOLINT
-    astarte_introspection, CONFIG_ASTARTE_DEVICE_SDK_INTROSPECTION_LOG_LEVEL); // NOLINT
+// NOLINTNEXTLINE
+LOG_MODULE_REGISTER(astarte_introspection, CONFIG_ASTARTE_DEVICE_SDK_INTROSPECTION_LOG_LEVEL);
 
 /**
  * @brief Function used to find a `introspection_node_t` from an interface_name

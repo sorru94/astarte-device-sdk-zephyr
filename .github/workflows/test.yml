@@ -42,17 +42,12 @@ jobs:
         with:
           path: astarte-device-sdk-zephyr
 
-      - name: Replace zephyr revision
-        working-directory: astarte-device-sdk-zephyr
-        run: |
-          sed -i 's/revision: v3.5.0/revision: main/g' west.yml
-
       - name: Initialize
         working-directory: astarte-device-sdk-zephyr
         run: |
           west init -l .
           west update -o=--depth=1 -n
-          
+
       - name: Run integration tests with code coverage
         working-directory: astarte-device-sdk-zephyr
         run: |

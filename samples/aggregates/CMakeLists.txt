@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.20.0)
 include(../common/CommonConfig.cmake)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(sample_register)
+project(sample_aggregates)
 
 include(../common/CommonComponents.cmake)
 

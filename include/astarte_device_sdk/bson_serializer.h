@@ -79,6 +79,7 @@ astarte_err_t bson_serializer_serialize_document(
  *
  * @details This function returns BSON document size in bytes.
  * @param[in] bson a valid handle for the serializer instance.
+ * @return Size in bytes for the serialized document.
  */
 size_t bson_serializer_document_size(bson_serializer_handle_t bson);
 

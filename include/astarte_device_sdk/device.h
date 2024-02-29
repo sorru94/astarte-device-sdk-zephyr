@@ -46,8 +46,11 @@ typedef struct astarte_device *astarte_device_handle_t;
  */
 typedef struct
 {
+    /** @brief Handle to the device triggering the event */
     astarte_device_handle_t device;
+    /** @brief MQTT session present flag */
     int session_present;
+    /** @brief User data configured during device initialization */
     void *user_data;
 } astarte_device_connection_event_t;
 
@@ -61,7 +64,9 @@ typedef void (*astarte_device_connection_cbk_t)(astarte_device_connection_event_
  */
 typedef struct
 {
+    /** @brief Handle to the device triggering the event */
     astarte_device_handle_t device;
+    /** @brief User data configured during device initialization */
     void *user_data;
 } astarte_device_disconnection_event_t;
 
@@ -75,10 +80,15 @@ typedef void (*astarte_device_disconnection_cbk_t)(astarte_device_disconnection_
  */
 typedef struct
 {
+    /** @brief Handle to the device triggering the event */
     astarte_device_handle_t device;
+    /** @brief Name of the interface for which the data event has been triggered */
     const char *interface_name;
+    /** @brief Path for which the data event has been triggered */
     const char *path;
+    /** @brief BSON element contained in the data event */
     bson_element_t bson_element;
+    /** @brief User data configured during device initialization */
     void *user_data;
 } astarte_device_data_event_t;
 
@@ -92,9 +102,13 @@ typedef void (*astarte_device_data_cbk_t)(astarte_device_data_event_t *event);
  */
 typedef struct
 {
+    /** @brief Handle to the device triggering the event */
     astarte_device_handle_t device;
+    /** @brief Name of the interface for which the data event has been triggered */
     const char *interface_name;
+    /** @brief Path for which the data event has been triggered */
     const char *path;
+    /** @brief User data configured during device initialization */
     void *user_data;
 } astarte_device_unset_event_t;
 

@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/** @brief Bson document object */
 typedef struct
 {
     /** @brief Total size of the document in bytes */
@@ -35,6 +36,7 @@ typedef struct
     uint32_t list_size;
 } bson_document_t;
 
+/** @brief Bson element object */
 typedef struct
 {
     /** @brief Element type, see astarte_bson_types.h for the available types */

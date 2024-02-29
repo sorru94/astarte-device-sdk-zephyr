@@ -11,7 +11,6 @@
  * @file
  * @brief Astarte introspection representation
  * https://docs.astarte-platform.org/astarte/latest/080-mqtt-v1-protocol.html#introspection
- * @{
  */
 
 #include <zephyr/sys/dlist.h>
@@ -20,6 +19,7 @@
 #include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
 
+/** @brief Introspection struct. */
 typedef struct
 {
     /** @cond INTERNAL_HIDDEN */
@@ -27,10 +27,11 @@ typedef struct
     /** @endcond */
 } introspection_t;
 
+/** @brief Introspection node, used internally. */
 typedef struct
 {
-    const astarte_interface_t *interface;
     /** @cond INTERNAL_HIDDEN */
+    const astarte_interface_t *interface;
     sys_dnode_t node;
     /** @endcond */
 } introspection_node_t;
@@ -59,7 +60,7 @@ astarte_err_t introspection_init(introspection_t *introspection);
  * Same name is already present an error will be returned.
  *
  * @param[in,out] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
  * @retval ASTARTE_ERR_INTERFACE_ALREADY_PRESENT the interface was already present
@@ -77,7 +78,7 @@ astarte_err_t introspection_add(
  * present, the function checks the new interface to ensure it is a valid interface update.
  *
  * @param[in,out] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
  * @retval ASTARTE_ERR_INTERFACE_ALREADY_PRESENT the interface was already present
@@ -93,7 +94,7 @@ astarte_err_t introspection_update(
  * @details A null pointer is returned if no interface is found for the passed interface_name
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface_name the name of one of the interfaces contained in the introspection list
  * @return pointer to the interface matching the passed interface_name
  * @retval NULL no interface was found
@@ -104,7 +105,7 @@ const astarte_interface_t *introspection_get(introspection_t *introspection, cha
  * @brief Removes an interface from the introspection list
  *
  * @param[in,out] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface_name the name of one of the interfaces contained in the introspection list
  * @return result code of the operation:
  * @retval ASTARTE_ERR_INTERFACE_NOT_FOUND no interface matching the name was found
@@ -119,7 +120,7 @@ astarte_err_t introspection_remove(introspection_t *introspection, char *interfa
  * A buffer of the returned size in bytes can be allocated and passed to #introspection_fill_string
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @return size of the introspection string in bytes, including the NULL terminator.
  */
 size_t introspection_get_string_size(introspection_t *introspection);
@@ -132,10 +133,10 @@ size_t introspection_get_string_size(introspection_t *introspection);
  * https://docs.astarte-platform.org/astarte/latest/080-mqtt-v1-protocol.html#introspection
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[out] buffer result buffer correctly allocated of the size retrieved by calling
- * #introspection_get_string_len
- * @param[in] buffer_size Size of the buffer retrieved by calling #introspection_get_string_len
+ * #introspection_get_string_size
+ * @param[in] buffer_size Size of the buffer retrieved by calling #introspection_get_string_size
  */
 void introspection_fill_string(introspection_t *introspection, char *buffer, size_t buffer_size);
 
@@ -143,7 +144,7 @@ void introspection_fill_string(introspection_t *introspection, char *buffer, siz
  * @brief Returns the first node of the introspection that can be used to iterate the collection
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @return pointer to the first node that can be passed to #introspection_iter_next for iteration.
  * @retval NULL If no node on the introspection is found
  */
@@ -153,7 +154,7 @@ introspection_node_t *introspection_iter(introspection_t *introspection);
  * @brief Returns the next node of the introspection
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] current a pointer to the current introspection_node_t
  * @return pointer to the current node of the passed introspection.
  * @retval NULL If iteration is complete and there are no more nodes in this introspection
@@ -165,16 +166,14 @@ introspection_node_t *introspection_iter_next(
 /**
  * @brief Deallocates the introspection struct
  *
- * @details The struct must first get initialized using #introspection_new
+ * @details The struct must first get initialized using #introspection_init
  *
- * @param[in] introspection an owned introspection struct initialized using #introspection_new
+ * @param[in] introspection an owned introspection struct initialized using #introspection_init
  */
 void introspection_free(introspection_t introspection);
 
 #ifdef __cplusplus
 }
 #endif
-
-/** @} */
 
 #endif // INTROSPECTION_H

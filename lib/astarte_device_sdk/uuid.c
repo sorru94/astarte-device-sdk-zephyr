@@ -64,14 +64,20 @@ LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEVEL); // 
 #define UUID_CLOCK_SEQ_AND_RESERVED_MASK_1 (0x3FU)
 #define UUID_CLOCK_SEQ_AND_RESERVED_MASK_2 (0x80U)
 
-// Helper struct to make it easier to access UUID fields
+/** @brief Helper struct to make it easier to access UUID fields. */
 struct uuid
 {
+    /** @brief The low field of the timestamp. */
     uint32_t time_low;
+    /** @brief The middle field of the timestamp. */
     uint16_t time_mid;
+    /** @brief The high field of the timestamp multiplexed with the version number. */
     uint16_t time_hi_and_version;
+    /** @brief The high field of the clock sequence multiplexed with the variant. */
     uint8_t clock_seq_hi_res;
+    /** @brief The low field of the clock sequence. */
     uint8_t clock_seq_low;
+    /** @brief The spatially unique node identifier. */
     uint8_t node[UUID_LEN_NODE];
 };
 

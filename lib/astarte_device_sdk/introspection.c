@@ -58,7 +58,7 @@ static inline void node_free(introspection_node_t *alloc_node);
  * replaced with the new interface if it passes the check.
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @param[out] introspection_node Output pointer that if not NULL will be set to the
  * to the location of the old node found, or NULL if there was no previous node matching
@@ -77,7 +77,7 @@ static astarte_err_t check_interface_update(introspection_t *introspection,
  * @brief Allocates and append a new node to the introspection struct passed
  *
  * @param[in,out] introspection a pointer to an introspection struct initialized using
- * #introspection_new
+ * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
  * @retval ASTARTE_ERR_INTERFACE_INVALID_VERSION_ZERO the interface has both major and

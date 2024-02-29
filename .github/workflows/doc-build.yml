@@ -96,3 +96,15 @@ jobs:
       with:
         name: docs_html
         path: astarte-device-sdk-zephyr/doc/_build/doxygen/html
+
+    - name: Build extended documentation
+      working-directory: astarte-device-sdk-zephyr
+      shell: bash
+      run: |
+        if [[ "$GITHUB_REF" =~ "refs/tags/v" ]]; then
+          DOC_TAG="release"
+        else
+          DOC_TAG="development"
+        fi
+
+        DOC_TAG=${DOC_TAG} ASTARTE_DEVICE_SDK_BASE="$PWD" ASTARTE_DEVICE_SDK_EXTENDED_DOCS="yes" make -C doc doxygen

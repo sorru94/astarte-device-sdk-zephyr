@@ -40,7 +40,14 @@ endif()
 # Doxygen (standalone)
 
 set(DOXY_OUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen)
+
+if("${ASTARTE_DEVICE_SDK_EXTENDED_DOCS}" STREQUAL "yes")
+message(STATUS "Generating extended documentation.")
+set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/astarte-device-sdk.extended.doxyfile.in)
+else()
 set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/astarte-device-sdk.doxyfile.in)
+endif()
+
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/zephyr.doxyfile)
 set(ASTARTE_DEVICE_SDK_VERSION "${Astarte_Device_SDK_VERSION}")
 

@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/pairing.h>
+#include <astarte_device_sdk/type.h>
 
 #include "wifi.h"
 
@@ -194,15 +195,13 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event)
         && strcmp(event->path, "/boolean_endpoint") == 0
         && event->bson_element.type == BSON_TYPE_BOOLEAN) {
         bool answer = !bson_deserializer_element_to_bool(event->bson_element);
+        astarte_value_t astarte_answer = astarte_value_from_boolean(answer);
         LOG_INF("Sending answer %d.", answer); // NOLINT
 
-        bson_serializer_handle_t bson = bson_serializer_new();
-        bson_serializer_append_boolean(bson, "v", answer);
-        bson_serializer_append_end_of_document(bson);
-
         int qos = 0;
-        astarte_err_t res = publish_bson(event->device,
-            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint", bson, qos);
+        astarte_err_t res = astarte_device_stream_individual(event->device,
+            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint",
+            astarte_answer, NULL, qos);
         if (res != ASTARTE_OK) {
             LOG_INF("Failue sending answer %d.", answer); // NOLINT
         }

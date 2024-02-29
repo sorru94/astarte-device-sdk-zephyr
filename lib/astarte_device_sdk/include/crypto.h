@@ -17,7 +17,9 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/error.h"
 
+/** @brief Private key buffer size */
 #define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 4096
+/** @brief Certificate signing request buffer size */
 #define ASTARTE_CRYPTO_CSR_BUFFER_SIZE 4096
 
 #ifdef __cplusplus

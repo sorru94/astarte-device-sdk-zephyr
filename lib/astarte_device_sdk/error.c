@@ -13,9 +13,12 @@
         err, #err                                                                                  \
     }
 
+/** @brief Astarte error mesage struct. Matches a code to a string. */
 typedef struct
 {
+    /** @brief Code for the error. */
     astarte_err_t code;
+    /** @brief Text for the error. */
     const char *msg;
 } astarte_err_msg_t;
 

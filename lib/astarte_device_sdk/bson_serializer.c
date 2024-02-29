@@ -20,10 +20,14 @@ LOG_MODULE_REGISTER(bson_serializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL); 
 // field array length. 12 chars corresponding to 999999999999 elements.
 #define BSON_ARRAY_SIZE_STR_LEN 12
 
+/** @brief Contains all the serializer instance data. */
 struct bson_serializer_t
 {
+    /** @brief Max capacity for the byte array containing the serialized data. */
     size_t capacity;
+    /** @brief Size of the serialized data. */
     size_t size;
+    /** @brief Byte array containing the serialized data. */
     uint8_t *buf;
 };
 

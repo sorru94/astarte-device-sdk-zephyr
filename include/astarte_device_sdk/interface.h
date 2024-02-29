@@ -9,8 +9,9 @@
 
 /**
  * @file interface.h
- * @brief Astarte interface representation
- * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html.
+ * @brief [Astarte
+ * interface](https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html)
+ * representation.
  */
 
 /**
@@ -85,6 +86,12 @@ typedef struct
 extern "C" {
 #endif
 
+/**
+ * @brief Validate an Astarte interface.
+ *
+ * @param[in] interface Interface to validate.
+ * @return astarte_err_t ASTARTE_OK on success, otherwise an error is returned.
+ */
 astarte_err_t astarte_interface_validate(const astarte_interface_t *interface);
 
 #ifdef __cplusplus

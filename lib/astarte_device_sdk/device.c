@@ -63,19 +63,33 @@ static sec_tag_t sec_tag_list[] = {
  */
 struct astarte_device
 {
+    /** @brief Timeout for socket polls before connection to an MQTT broker. */
     int32_t mqtt_connection_timeout_ms;
+    /** @brief Timeout for socket polls on an already connected MQTT broker. */
     int32_t mqtt_connected_timeout_ms;
+    /** @brief MQTT broker hostname. */
     char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
+    /** @brief MQTT broker port. */
     char broker_port[ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1];
+    /** @brief Base topic for MQTT connection, will be in the format: REALM/DEVICE ID. */
     char base_topic[MAX_MQTT_BASE_TOPIC_SIZE];
+    /** @brief MQTT client handle. */
     struct mqtt_client mqtt_client;
+    /** @brief Last transmitted message ID. */
     uint16_t mqtt_message_id;
+    /** @brief Device introspection. */
     introspection_t introspection;
+    /** @brief Flag representing if the device is connected to the MQTT broker. */
     bool mqtt_is_connected;
+    /** @brief (optional) User callback for connection events. */
     astarte_device_connection_cbk_t connection_cbk;
+    /** @brief (optional) User callback for disconnection events. */
     astarte_device_disconnection_cbk_t disconnection_cbk;
+    /** @brief (optional) User callback for incoming data events. */
     astarte_device_data_cbk_t data_cbk;
+    /** @brief (optional) User callback for incoming property unset events. */
     astarte_device_unset_cbk_t unset_cbk;
+    /** @brief (optional) User data to pass to all the set callbacks. */
     void *cbk_user_data;
 };
 
@@ -141,7 +155,7 @@ static void send_introspection(astarte_device_handle_t device);
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
  * @param[in] data Data to publish.
- * @param[in] length Size of data to publish.
+ * @param[in] data_size Size of data to publish.
  * @param[in] qos Quality of service for MQTT publish.
  * @return ASTARTE_OK if publish has been successful, an error code otherwise.
  */

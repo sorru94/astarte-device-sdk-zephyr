@@ -17,6 +17,12 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/error.h"
 
+/** Buffer size for the TLS private key. */
+#define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 1024
+
+/** Buffer size for the TLS certificate signing request (CSR). */
+#define ASTARTE_CRYPTO_CSR_BUFFER_SIZE 1024
+
 #ifdef __cplusplus
 extern "C" {
 #endif

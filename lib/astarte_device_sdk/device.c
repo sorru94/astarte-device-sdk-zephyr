@@ -42,12 +42,16 @@ static sec_tag_t sec_tag_list[] = {
     CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
 };
 
-/* The base MQTT topic length should never match this size. */
-#define MAX_MQTT_BASE_TOPIC_SIZE 128
+/* Max allowed hostname characters are 253 */
+#define MAX_MQTT_BROKER_HOSTNAME_LEN 253
+/** @brief Max allowed port number is 65535 */
+#define MAX_MQTT_BROKER_PORT_LEN 5
 /* The total MQTT topic length should never match this size. */
 #define MAX_MQTT_TOPIC_SIZE 512
+/* The base MQTT topic length should never match this size. */
+#define MAX_MQTT_BASE_TOPIC_SIZE 128
 /* Size for the application message buffer, used to store incoming messages */
-#define APP_MSG_BUFFER_SIZE 4096U
+#define MAX_MQTT_MSG_SIZE 4096U
 
 /**
  * @brief Internal struct for an instance of an Astarte device.
@@ -63,15 +67,15 @@ struct astarte_device
     /** @brief Timeout for socket polls on an already connected MQTT broker. */
     int32_t mqtt_connected_timeout_ms;
     /** @brief Private key for the device in the PEM format. */
-    char privkey_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_PRIVKEY_BUFFER_SIZE];
+    char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
     /** @brief Device certificate in the PEM format. */
-    char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE + 1];
+    char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE];
     /** @brief Device's credential secret. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT broker hostname. */
-    char broker_hostname[ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
+    char broker_hostname[MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
     /** @brief MQTT broker port. */
-    char broker_port[ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1];
+    char broker_port[MAX_MQTT_BROKER_PORT_LEN + 1];
     /** @brief Base topic for MQTT connection, will be in the format: REALM/DEVICE ID. */
     char base_topic[MAX_MQTT_BASE_TOPIC_SIZE];
     /** @brief MQTT client handle. */
@@ -318,14 +322,14 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
         res = ASTARTE_ERR_HTTP_REQUEST;
         goto failure;
     }
-    strncpy(device->broker_hostname, broker_url_token, ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
+    strncpy(device->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
     broker_url_token = strtok(NULL, "/");
     if (!broker_url_token) {
         LOG_ERR("MQTT broker URL is malformed"); // NOLINT
         res = ASTARTE_ERR_HTTP_REQUEST;
         goto failure;
     }
-    strncpy(device->broker_port, broker_url_token, ASTARTE_MAX_MQTT_BROKER_PORT_LEN + 1);
+    strncpy(device->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
 
     LOG_DBG("Initializing introspection"); // NOLINT
     res = introspection_init(&device->introspection);
@@ -599,18 +603,18 @@ static ssize_t handle_published_message(
     int ret = 0U;
     size_t received = 0U;
     uint32_t message_size = pub->message.payload.len;
-    uint8_t msg_buffer[APP_MSG_BUFFER_SIZE];
-    const bool discarded = message_size > APP_MSG_BUFFER_SIZE;
+    uint8_t msg_buffer[MAX_MQTT_MSG_SIZE];
+    const bool discarded = message_size > MAX_MQTT_MSG_SIZE;
 
     // NOLINTNEXTLINE
     LOG_DBG("RECEIVED on topic \"%s\" [ id: %u qos: %u ] payload: %u / %u B",
         (const char *) pub->message.topic.topic.utf8, pub->message_id, pub->message.topic.qos,
-        message_size, APP_MSG_BUFFER_SIZE);
+        message_size, MAX_MQTT_MSG_SIZE);
 
     while (received < message_size) {
         uint8_t *pkt = discarded ? msg_buffer : &msg_buffer[received];
 
-        ret = mqtt_read_publish_payload_blocking(&device->mqtt_client, pkt, APP_MSG_BUFFER_SIZE);
+        ret = mqtt_read_publish_payload_blocking(&device->mqtt_client, pkt, MAX_MQTT_MSG_SIZE);
         if (ret < 0) {
             return ret;
         }

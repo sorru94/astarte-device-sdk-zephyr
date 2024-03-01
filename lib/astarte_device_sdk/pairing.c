@@ -55,7 +55,7 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 #define GET_BROKER_URL_RESPONSE_MAX_SIZE (50 + ASTARTE_PAIRING_MAX_BROKER_URL_LEN)
 
 // Payload will be a json like: {"data":{"csr":"<CSR>"}}
-#define GET_CLIENT_CRT_PAYLOAD_MAX_SIZE (25 + CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CSR_BUFFER_SIZE)
+#define GET_CLIENT_CRT_PAYLOAD_MAX_SIZE (25 + ASTARTE_CRYPTO_CSR_BUFFER_SIZE)
 // Correct response will be a json like: {"data":{"client_crt":"<CLIENT_CRT>"}}
 // The maximum size of the client certificate may vary depending on the server configuration.
 #define GET_CLIENT_CRT_RESPONSE_MAX_SIZE                                                           \
@@ -70,7 +70,15 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 // {"data":{"cause":"EXPIRED","details":null,"timestamp":"2024-02-27 14:15:56.480Z","valid":false}}
 #define VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE 128
 
-#define AUTH_HEADER_CRED_SECRET_SIZE 69 // Fixed string (24) + cred secret (44) + NULL (1)
+// Standard authorization header start string.
+#define AUTH_HEADER_BEARER_STR_START "Authorization: Bearer "
+// Standard authorization header end string.
+#define AUTH_HEADER_BEARER_STR_END "\r\n"
+// Authorization header fixed size when used with a credential secret.
+// Composed by: "Authorization: Bearer " (23) + <CRED_SECRET> (44) + "\r\n" (3) + null term (1)
+#define AUTH_HEADER_CRED_SECRET_SIZE                                                               \
+    (sizeof(AUTH_HEADER_BEARER_STR_START) + ASTARTE_PAIRING_CRED_SECR_LEN                          \
+        + sizeof(AUTH_HEADER_BEARER_STR_END) - 1)
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -169,8 +177,9 @@ astarte_err_t astarte_pairing_register_device(
 
     // Step 2: register the device and get the credential secret
     char url[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/agent/devices";
-    const char *header_fields[]
-        = { "Authorization: Bearer " CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT "\r\n", NULL };
+    char auth_header[] = { AUTH_HEADER_BEARER_STR_START CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT
+            AUTH_HEADER_BEARER_STR_END };
+    const char *header_fields[] = { auth_header, NULL };
     char payload[REGISTER_DEVICE_PAYLOAD_MAX_SIZE] = { 0 };
     astarte_err = encode_register_device_payload(
         CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, payload, REGISTER_DEVICE_PAYLOAD_MAX_SIZE);
@@ -204,11 +213,10 @@ astarte_err_t astarte_pairing_get_broker_url(
     }
 
     // Step 2: Get the MQTT broker URL
-    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { "Authorization: Bearer " };
-    size_t auth_header_space = AUTH_HEADER_CRED_SECRET_SIZE - 1 - strlen("Authorization: Bearer ");
-    strncat(auth_header, cred_secr, auth_header_space);
-    auth_header_space -= strlen(cred_secr);
-    strncat(auth_header, "\r\n", auth_header_space);
+    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { 0 };
+    // NOLINTNEXTLINE (cert-err33-c) Above checks ensure auth_header is large enough for this string
+    snprintf(auth_header, AUTH_HEADER_CRED_SECRET_SIZE,
+        AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     const char *header_fields[] = { auth_header, NULL };
 
     char url[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME
@@ -233,11 +241,7 @@ astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const c
         LOG_ERR("Incorrect length for credential secret."); // NOLINT
         return ASTARTE_ERR_INVALID_PARAM;
     }
-    if (privkey_pem_size < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_PRIVKEY_BUFFER_SIZE) {
-        LOG_ERR("Insufficient output buffer size for client private key."); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
-    }
-    if (crt_pem_size <= CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
+    if (crt_pem_size < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
         LOG_ERR("Insufficient output buffer size for client certificate."); // NOLINT
         return ASTARTE_ERR_INVALID_PARAM;
     }
@@ -249,7 +253,7 @@ astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const c
         return crypto_rc;
     }
 
-    unsigned char csr_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CSR_BUFFER_SIZE];
+    unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
     crypto_rc = astarte_crypto_create_csr(privkey_pem, csr_buf, sizeof(csr_buf));
     if (crypto_rc != ASTARTE_OK) {
         LOG_ERR("Failed in creating a CSR."); // NOLINT
@@ -260,11 +264,10 @@ astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const c
     char url[]
         = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME
           "/devices/" CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID "/protocols/astarte_mqtt_v1/credentials";
-    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { "Authorization: Bearer " };
-    size_t auth_header_space = AUTH_HEADER_CRED_SECRET_SIZE - 1 - strlen("Authorization: Bearer ");
-    strncat(auth_header, cred_secr, auth_header_space);
-    auth_header_space -= strlen(cred_secr);
-    strncat(auth_header, "\r\n", auth_header_space);
+    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { 0 };
+    // NOLINTNEXTLINE (cert-err33-c) Above checks ensure auth_header is large enough for this string
+    snprintf(auth_header, AUTH_HEADER_CRED_SECRET_SIZE,
+        AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     const char *header_fields[] = { auth_header, NULL };
     char payload[GET_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
     astarte_err
@@ -303,15 +306,20 @@ astarte_err_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *cred_secr, const char *crt_pem)
 {
     astarte_err_t astarte_err = ASTARTE_OK;
-    // Step 1: register the device and get the credential secret
+    // Step 1: check the input parameters
+    if (strlen(cred_secr) != ASTARTE_PAIRING_CRED_SECR_LEN) {
+        LOG_ERR("Incorrect length for credential secret."); // NOLINT
+        return ASTARTE_ERR_INVALID_PARAM;
+    }
+
+    // Step 2: register the device and get the credential secret
     char url[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME
                  "/devices/" CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID
                  "/protocols/astarte_mqtt_v1/credentials/verify";
-    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { "Authorization: Bearer " };
-    size_t auth_header_space = AUTH_HEADER_CRED_SECRET_SIZE - 1 - strlen("Authorization: Bearer ");
-    strncat(auth_header, cred_secr, auth_header_space);
-    auth_header_space -= strlen(cred_secr);
-    strncat(auth_header, "\r\n", auth_header_space);
+    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { 0 };
+    // NOLINTNEXTLINE (cert-err33-c) Above checks ensure auth_header is large enough for this string
+    snprintf(auth_header, AUTH_HEADER_CRED_SECRET_SIZE,
+        AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     const char *header_fields[] = { auth_header, NULL };
     char payload[VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
     astarte_err = encode_verify_client_certificate_payload(
@@ -326,7 +334,7 @@ astarte_err_t astarte_pairing_verify_client_certificate(
         return astarte_err;
     }
 
-    // Step 2: process the result
+    // Step 3: process the result
     return parse_verify_client_certificate_response(resp_buf);
 }
 
@@ -544,14 +552,14 @@ static astarte_err_t parse_get_client_certificate_response(char *resp_buf, char 
         return ASTARTE_ERR_JSON;
     }
 
-    // Copy the received credential secret in the output buffer
+    // Copy the received client certificate in the output buffer
     if (strlen(parsed_json.data.client_crt)
-        > CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
+        >= CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
         LOG_ERR("Received client certificate is too long."); // NOLINT
         return ASTARTE_ERR_INVALID_PARAM;
     }
     strncpy(out_deb, parsed_json.data.client_crt,
-        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE + 1);
+        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE);
     return ASTARTE_OK;
 }
 

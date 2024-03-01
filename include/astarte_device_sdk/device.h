@@ -28,11 +28,6 @@
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/type.h"
 
-/** @brief Max allowed hostname characters are 253 */
-#define ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN 253
-/** @brief Max allowed port number is 65535 */
-#define ASTARTE_MAX_MQTT_BROKER_PORT_LEN 5
-
 /**
  * @brief Handle for an instance of an Astarte device.
  *

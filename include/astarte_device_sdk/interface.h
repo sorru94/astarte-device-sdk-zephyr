@@ -20,8 +20,6 @@
  * @{
  */
 
-#include <inttypes.h>
-
 #include "astarte_device_sdk/error.h"
 
 /**

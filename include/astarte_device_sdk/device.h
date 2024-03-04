@@ -28,11 +28,6 @@
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/type.h"
 
-/** @brief Max allowed hostname characters are 253 */
-#define ASTARTE_MAX_MQTT_BROKER_HOSTNAME_LEN 253
-/** @brief Max allowed port number is 65535 */
-#define ASTARTE_MAX_MQTT_BROKER_PORT_LEN 5
-
 /**
  * @brief Handle for an instance of an Astarte device.
  *
@@ -167,6 +162,16 @@ extern "C" {
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
 astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
+
+/**
+ * @brief Disconnect the Astarte device instance.
+ *
+ * @note It will be possible to re-connect the device after disconnection.
+ *
+ * @param[in] handle Device instance to be disconnected.
+ * @return ASTARTE_OK if successful, otherwise an error code.
+ */
+astarte_err_t astarte_device_disconnect(astarte_device_handle_t handle);
 
 /**
  * @brief Destroy the Astarte device instance.

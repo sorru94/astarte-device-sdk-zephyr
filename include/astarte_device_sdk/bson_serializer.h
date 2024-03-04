@@ -9,10 +9,6 @@
 
 #include "astarte_device_sdk/error.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 /**
  * @file bson_serializer.h
  * @brief Astarte BSON serializer functions.

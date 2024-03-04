@@ -7,16 +7,16 @@
 #include "http.h"
 
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/http/status.h>
 #include <zephyr/net/socket.h>
 
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL); // NOLINT
-
 #if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
 #include <zephyr/net/tls_credentials.h>
 #endif
+
+LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL); // NOLINT
 
 /************************************************
  *       Checks over configuration values       *
@@ -32,8 +32,7 @@ BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME) != 1, "Missing hostname 
  *        Defines, constants and typedef        *
  ***********************************************/
 
-#define HTTP_RECV_BUF_SIZE 4096
-static uint8_t http_recv_buf[HTTP_RECV_BUF_SIZE];
+static uint8_t http_recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE];
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -129,7 +128,7 @@ astarte_err_t astarte_http_post(const char *url, const char **header_fields, con
     // Find the two consecutive CRLF (string "\r\n\r\n") indicating the end of the headers section
     uint8_t *http_recv_body = NULL;
     const char two_crlf[] = "\r\n\r\n";
-    for (size_t i = 0; i < HTTP_RECV_BUF_SIZE - 4; i++) {
+    for (size_t i = 0; i < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE - 4; i++) {
         if (memcmp(http_recv_buf + i, two_crlf, 4) == 0) {
             http_recv_body = http_recv_buf + i + 4;
             break;
@@ -193,7 +192,7 @@ astarte_err_t astarte_http_get(const char *url, const char **header_fields, int3
     // Find the two consecutive CRLF (string "\r\n\r\n") indicating the end of the headers section
     uint8_t *http_recv_body = NULL;
     const char two_crlf[] = "\r\n\r\n";
-    for (size_t i = 0; i < HTTP_RECV_BUF_SIZE - 4; i++) {
+    for (size_t i = 0; i < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE - 4; i++) {
         if (memcmp(http_recv_buf + i, two_crlf, 4) == 0) {
             http_recv_body = http_recv_buf + i + 4;
             break;

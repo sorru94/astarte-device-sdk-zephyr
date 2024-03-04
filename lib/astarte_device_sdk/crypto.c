@@ -6,6 +6,7 @@
 
 #include "crypto.h"
 
+#include <zephyr/logging/log.h>
 #include <zephyr/net/socket.h>
 
 #include <mbedtls/ctr_drbg.h>
@@ -16,7 +17,6 @@
 #include <mbedtls/x509_crt.h>
 #include <mbedtls/x509_csr.h>
 
-#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL); // NOLINT
 
 /************************************************
@@ -42,6 +42,10 @@ LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL);
 astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size)
 {
     astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    if (privkey_pem_size < ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE) {
+        LOG_ERR("Insufficient output buffer size for client private key."); // NOLINT
+        return ASTARTE_ERR_INVALID_PARAM;
+    }
 
     mbedtls_pk_context key;
     mbedtls_entropy_context entropy;
@@ -100,6 +104,10 @@ astarte_err_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size)
 {
     astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    if (csr_pem_size < ASTARTE_CRYPTO_CSR_BUFFER_SIZE) {
+        LOG_ERR("Insufficient output buffer size for certificate signing request."); // NOLINT
+        return ASTARTE_ERR_INVALID_PARAM;
+    }
 
     mbedtls_pk_context key;
     mbedtls_x509write_csr req;
@@ -164,7 +172,7 @@ exit:
     return exit_code;
 }
 
-astarte_err_t astarte_crypto_get_certificate_common_name(
+astarte_err_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size)
 {
     astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
@@ -195,6 +203,7 @@ astarte_err_t astarte_crypto_get_certificate_common_name(
         exit_code = ASTARTE_ERR;
         goto exit;
     }
+
     exit_code = ASTARTE_OK;
 
 exit:

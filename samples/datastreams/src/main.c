@@ -40,8 +40,11 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
  * Constants and defines
  ***********************************************/
 
+#define HTTP_TIMEOUT_MS (3 * MSEC_PER_SEC)
+#define MQTT_FIRST_POLL_TIMEOUT_MS (3 * MSEC_PER_SEC)
 #define MQTT_POLL_TIMEOUT_MS 200
-#define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
+
+#define DEVICE_OPERATIONAL_TIME_MS (15 * SEC_PER_MIN * MSEC_PER_SEC)
 
 const static astarte_interface_t device_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
@@ -104,15 +107,14 @@ int main(void)
         ca_certificate_root, sizeof(ca_certificate_root));
 #endif
 
-    int32_t timeout_ms = 3 * MSEC_PER_SEC;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
         = { &device_datastream_interface, &server_datastream_interface };
 
     astarte_device_config_t device_config;
-    device_config.http_timeout_ms = timeout_ms;
-    device_config.mqtt_connection_timeout_ms = timeout_ms;
+    device_config.http_timeout_ms = HTTP_TIMEOUT_MS;
+    device_config.mqtt_connection_timeout_ms = MQTT_FIRST_POLL_TIMEOUT_MS;
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = astarte_connection_events_handler;
     device_config.disconnection_cbk = astarte_disconnection_events_handler;
@@ -159,7 +161,45 @@ int main(void)
         }
     }
 
-    LOG_INF("End of loop, disconnection imminent %s", CONFIG_BOARD); // NOLINT
+    LOG_INF("End of loop, disconnection imminent."); // NOLINT
+
+    astarte_err = astarte_device_disconnect(device);
+    if (astarte_err != ASTARTE_OK) {
+        LOG_ERR("Failed disconnecting the device."); // NOLINT
+        return -1;
+    }
+
+    k_sleep(K_MSEC(MSEC_PER_SEC));
+
+    LOG_INF("Start of second connection."); // NOLINT
+
+    astarte_err = astarte_device_connect(device);
+    if (astarte_err != ASTARTE_OK) {
+        return -1;
+    }
+
+    disconnect_timepoint = sys_timepoint_calc(K_MSEC(DEVICE_OPERATIONAL_TIME_MS));
+    count = 0;
+    while (1) {
+        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
+
+        astarte_err = astarte_device_poll(device);
+        if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+            return -1;
+        }
+
+        if (++count % (CONFIG_SLEEP_MS / MQTT_POLL_TIMEOUT_MS) == 0) {
+            LOG_INF("Hello world! %s", CONFIG_BOARD); // NOLINT
+            count = 0;
+        }
+        k_sleep(sys_timepoint_timeout(timepoint));
+
+        if (K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
+            break;
+        }
+    }
+
+    LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
     astarte_err = astarte_device_destroy(device);
     if (astarte_err != ASTARTE_OK) {

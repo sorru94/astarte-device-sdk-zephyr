@@ -21,10 +21,6 @@
 
 #include "astarte_device_sdk/error.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 /** @brief Bson document object */
 typedef struct
 {

@@ -6,16 +6,12 @@
 
 #include "astarte_device_sdk/uuid.h"
 
+#include <ctype.h>
+
 #include <zephyr/logging/log.h>
 #include <zephyr/posix/arpa/inet.h>
 #include <zephyr/random/random.h>
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <inttypes.h>
 #include <mbedtls/md.h>
 
 #define UUID_STR_LEN 36

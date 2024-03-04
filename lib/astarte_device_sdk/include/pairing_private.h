@@ -28,11 +28,6 @@
  */
 #define ASTARTE_PAIRING_MAX_BROKER_URL_LEN 268
 
-/** @brief Maximum supported size for a client certificate. */
-// TODO make this an SDK configuration parameter, so users can select an appropriate value
-// depending on their server configuration.
-#define ASTARTE_PAIRING_MAX_CLIENT_CRT_LEN 4069
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -64,6 +59,19 @@ astarte_err_t astarte_pairing_get_broker_url(
  */
 astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *cred_secr,
     unsigned char *privkey_pem, size_t privkey_pem_size, char *crt_pem, size_t crt_pem_size);
+
+/**
+ * @brief Fetch the client x509 certificate from Astarte.
+ *
+ * @warning This is often a very memory intensive operation, more than 20kB of stack are required.
+ *
+ * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
+ * @param[in] cred_secr Credential secret to use as authorization token.
+ * @param[in] crt_pem Input buffer containing the PEM certificate to verify.
+ * @return ASTARTE_OK if successful, otherwise an error code.
+ */
+astarte_err_t astarte_pairing_verify_client_certificate(
+    int32_t timeout_ms, const char *cred_secr, const char *crt_pem);
 
 #ifdef __cplusplus
 }

@@ -95,7 +95,7 @@ int main(void)
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
-#if !defined(CONFIG_BOARD_NATIVE_SIM)
+#if defined(CONFIG_WIFI)
     LOG_INF("Initializing WiFi driver."); // NOLINT
     wifi_init();
 #endif

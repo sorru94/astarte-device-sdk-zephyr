@@ -4,7 +4,7 @@
 
 # create source files list
 FILE(GLOB app_common_sources ${CMAKE_CURRENT_LIST_DIR}/src/*.c)
-if(CONFIG_BOARD_NATIVE_SIM)
+if(NOT CONFIG_WIFI)
     LIST(REMOVE_ITEM app_common_sources ${CMAKE_CURRENT_LIST_DIR}/src/wifi.c)
 endif()
 

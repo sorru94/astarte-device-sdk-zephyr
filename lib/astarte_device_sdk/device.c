@@ -673,6 +673,7 @@ static void on_incoming(astarte_device_handle_t device, const char *topic, size_
         const char *control_topic = topic + control_prefix_len;
         LOG_DBG("Received control message on control topic %s", control_topic); // NOLINT
         // TODO correctly process control messages
+        (void) control_topic; // Remove when this variable will be used
         // on_control_message(device, control_topic, data, data_len);
         return;
     }

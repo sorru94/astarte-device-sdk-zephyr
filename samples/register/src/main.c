@@ -25,7 +25,11 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include <astarte_device_sdk/pairing.h>
 
 #include "nvs.h"
+#if defined(CONFIG_WIFI)
 #include "wifi.h"
+#else
+#include "eth.h"
+#endif
 
 /************************************************
  * Constants and defines
@@ -86,6 +90,11 @@ int main(void)
 #if defined(CONFIG_WIFI)
     LOG_INF("Initializing WiFi driver."); // NOLINT
     wifi_init();
+#else
+    if (eth_connect() != 0) {
+        LOG_ERR("Connectivity intialization failed!"); // NOLINT
+        return -1;
+    }
 #endif
 
     // Initialize NVS driver

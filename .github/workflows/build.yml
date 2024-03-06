@@ -31,6 +31,7 @@ jobs:
         sample:
         - "datastreams"
         - "register"
+        - "aggregates"
     runs-on: ubuntu-latest
     container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     env:

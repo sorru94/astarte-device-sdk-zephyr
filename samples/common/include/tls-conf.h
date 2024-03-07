@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ESP_WROVER_KIT_TLS_CONF_H
-#define ESP_WROVER_KIT_TLS_CONF_H
+#ifndef TLS_CONF_H
+#define TLS_CONF_H
 
 /**
  * \def MBEDTLS_PEM_PARSE_C
@@ -152,4 +152,4 @@
  */
 #define MBEDTLS_X509_CSR_WRITE_C
 
-#endif /* ESP_WROVER_KIT_TLS_CONF_H */
+#endif /* TLS_CONF_H */

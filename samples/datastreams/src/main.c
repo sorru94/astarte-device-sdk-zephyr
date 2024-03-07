@@ -27,7 +27,11 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include <astarte_device_sdk/pairing.h>
 #include <astarte_device_sdk/type.h>
 
+#if defined(CONFIG_WIFI)
 #include "wifi.h"
+#else
+#include "eth.h"
+#endif
 
 /************************************************
  *       Checks over configuration values       *
@@ -95,9 +99,14 @@ int main(void)
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
-#if !defined(CONFIG_BOARD_NATIVE_SIM)
+#if defined(CONFIG_WIFI)
     LOG_INF("Initializing WiFi driver."); // NOLINT
     wifi_init();
+#else
+    if (eth_connect() != 0) {
+        LOG_ERR("Connectivity intialization failed!"); // NOLINT
+        return -1;
+    }
 #endif
 
     k_sleep(K_SECONDS(5)); // sleep for 5 seconds

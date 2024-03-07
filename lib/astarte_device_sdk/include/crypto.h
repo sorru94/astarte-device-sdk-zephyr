@@ -34,7 +34,7 @@ extern "C" {
  * @param[in] privkey_pem_size Size of preallocated private key buffer.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size);
+astarte_error_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size);
 
 /**
  * @brief Create a CSR (certificate signing request).
@@ -44,7 +44,7 @@ astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privk
  * @param[in] csr_pem_size Size of preallocated CSR buffer.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_crypto_create_csr(
+astarte_error_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size);
 
 /**
@@ -55,7 +55,7 @@ astarte_err_t astarte_crypto_create_csr(
  * @param[in] cert_cn_size Size of preallocated common name buffer
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_crypto_get_certificate_info(
+astarte_error_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size);
 
 #ifdef __cplusplus

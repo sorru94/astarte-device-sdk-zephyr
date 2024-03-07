@@ -30,7 +30,7 @@ typedef struct
     const void *list;
     /** @brief Size of the list in bytes */
     uint32_t list_size;
-} bson_document_t;
+} astarte_bson_document_t;
 
 /** @brief Bson element object */
 typedef struct
@@ -43,7 +43,7 @@ typedef struct
     size_t name_len;
     /** @brief Pointer to the element content */
     const void *value;
-} bson_element_t;
+} astarte_bson_element_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,7 +59,7 @@ extern "C" {
  * @param[in] buffer_size Size of the allocated buffer containing the document.
  * @return True when BSON file is valid, false otherwise.
  */
-bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size);
+bool astarte_bson_deserializer_check_validity(const void *buffer, size_t buffer_size);
 
 /**
  * @brief Initialize a document type from a BSON data buffer.
@@ -67,16 +67,17 @@ bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size);
  * @param[in] buffer Buffer containing the BSON data.
  * @return Initialized document struct.
  */
-bson_document_t bson_deserializer_init_doc(const void *buffer);
+astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer);
 
 /**
  * @brief Get the first element in a document's list.
  *
  * @param[in] document Document from which to extract the element.
  * @param[out] element Used to store the extracted element.
- * @return ASTARTE_OK if successful, ASTARTE_ERR_NOT_FOUND if the document is empty.
+ * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if the document is empty.
  */
-astarte_err_t bson_deserializer_first_element(bson_document_t document, bson_element_t *element);
+astarte_error_t astarte_bson_deserializer_first_element(
+    astarte_bson_document_t document, astarte_bson_element_t *element);
 
 /**
  * @brief Get the next element in a list.
@@ -84,10 +85,10 @@ astarte_err_t bson_deserializer_first_element(bson_document_t document, bson_ele
  * @param[in] document Document containing the list.
  * @param[in] curr_element Pointer to the current element.
  * @param[out] next_element Used to store the extracted element.
- * @return ASTARTE_OK if successful, ASTARTE_ERR_NOT_FOUND if no next element exists.
+ * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if no next element exists.
  */
-astarte_err_t bson_deserializer_next_element(
-    bson_document_t document, bson_element_t curr_element, bson_element_t *next_element);
+astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
+    astarte_bson_element_t curr_element, astarte_bson_element_t *next_element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -95,7 +96,7 @@ astarte_err_t bson_deserializer_next_element(
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-double bson_deserializer_element_to_double(bson_element_t element);
+double astarte_bson_deserializer_element_to_double(astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -104,7 +105,8 @@ double bson_deserializer_element_to_double(bson_element_t element);
  * @param[out] len Returned string length. Optional, pass NULL if not used.
  * @return Extracted value.
  */
-const char *bson_deserializer_element_to_string(bson_element_t element, uint32_t *len);
+const char *astarte_bson_deserializer_element_to_string(
+    astarte_bson_element_t element, uint32_t *len);
 
 /**
  * @brief Extract the value from the passed element.
@@ -112,7 +114,8 @@ const char *bson_deserializer_element_to_string(bson_element_t element, uint32_t
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-bson_document_t bson_deserializer_element_to_document(bson_element_t element);
+astarte_bson_document_t astarte_bson_deserializer_element_to_document(
+    astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -122,7 +125,7 @@ bson_document_t bson_deserializer_element_to_document(bson_element_t element);
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-bson_document_t bson_deserializer_element_to_array(bson_element_t element);
+astarte_bson_document_t astarte_bson_deserializer_element_to_array(astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -131,7 +134,8 @@ bson_document_t bson_deserializer_element_to_array(bson_element_t element);
  * @param[out] len Returned bytes array length. Optional, pass NULL if not used.
  * @return Extracted value.
  */
-const uint8_t *bson_deserializer_element_to_binary(bson_element_t element, uint32_t *len);
+const uint8_t *astarte_bson_deserializer_element_to_binary(
+    astarte_bson_element_t element, uint32_t *len);
 
 /**
  * @brief Extract the value from the passed element.
@@ -141,7 +145,7 @@ const uint8_t *bson_deserializer_element_to_binary(bson_element_t element, uint3
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-bool bson_deserializer_element_to_bool(bson_element_t element);
+bool astarte_bson_deserializer_element_to_bool(astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -151,7 +155,7 @@ bool bson_deserializer_element_to_bool(bson_element_t element);
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-int64_t bson_deserializer_element_to_datetime(bson_element_t element);
+int64_t astarte_bson_deserializer_element_to_datetime(astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -159,7 +163,7 @@ int64_t bson_deserializer_element_to_datetime(bson_element_t element);
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-int32_t bson_deserializer_element_to_int32(bson_element_t element);
+int32_t astarte_bson_deserializer_element_to_int32(astarte_bson_element_t element);
 
 /**
  * @brief Extract the value from the passed element.
@@ -167,7 +171,7 @@ int32_t bson_deserializer_element_to_int32(bson_element_t element);
  * @param[in] element Element to extract the value from.
  * @return Extracted value.
  */
-int64_t bson_deserializer_element_to_int64(bson_element_t element);
+int64_t astarte_bson_deserializer_element_to_int64(astarte_bson_element_t element);
 
 /**
  * @brief Fetch the element with name corresponding to the specified key from the document.
@@ -176,10 +180,10 @@ int64_t bson_deserializer_element_to_int64(bson_element_t element);
  * @param[in] key Element name to use as key for the lookup.
  * @param[out] element Used to return the found element, should be a pointer to an uninitialized
  * element.
- * @return ASTARTE_OK if successful, ASTARTE_ERR_NOT_FOUND if the element does not exist.
+ * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if the element does not exist.
  */
-astarte_err_t bson_deserializer_element_lookup(
-    bson_document_t document, const char *key, bson_element_t *element);
+astarte_error_t astarte_bson_deserializer_element_lookup(
+    astarte_bson_document_t document, const char *key, astarte_bson_element_t *element);
 
 #ifdef __cplusplus
 }

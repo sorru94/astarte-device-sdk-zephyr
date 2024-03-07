@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ASTARTE_DEVICE_SDK_ASTARTE_H
+#define ASTARTE_DEVICE_SDK_ASTARTE_H
+
 /**
  * @file astarte.h
  * @brief Astarte types and defines.
  */
-
-#ifndef ASTARTE_DEVICE_SDK_ASTARTE_H
-#define ASTARTE_DEVICE_SDK_ASTARTE_H
 
 #include <stdbool.h>
 #include <stddef.h>

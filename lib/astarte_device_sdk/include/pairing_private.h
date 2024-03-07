@@ -41,7 +41,7 @@ extern "C" {
  * @param[in] out_url_size Size of the output buffer for the URL.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_pairing_get_broker_url(
+astarte_error_t astarte_pairing_get_broker_url(
     int32_t timeout_ms, const char *cred_secr, char *out_url, size_t out_url_size);
 
 /**
@@ -57,7 +57,7 @@ astarte_err_t astarte_pairing_get_broker_url(
  * @param[in] crt_pem_size Size of the output buffer for the PEM certificate.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *cred_secr,
+astarte_error_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *cred_secr,
     unsigned char *privkey_pem, size_t privkey_pem_size, char *crt_pem, size_t crt_pem_size);
 
 /**
@@ -70,7 +70,7 @@ astarte_err_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const c
  * @param[in] crt_pem Input buffer containing the PEM certificate to verify.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_pairing_verify_client_certificate(
+astarte_error_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *cred_secr, const char *crt_pem);
 
 #ifdef __cplusplus

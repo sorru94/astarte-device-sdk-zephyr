@@ -38,7 +38,7 @@ extern "C" {
  * @param[in] out_cred_secr_size Size of the output buffer for the credential secret.
  * @return ASTARTE_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_pairing_register_device(
+astarte_error_t astarte_pairing_register_device(
     int32_t timeout_ms, char *out_cred_secr, size_t out_cred_secr_size);
 
 #ifdef __cplusplus

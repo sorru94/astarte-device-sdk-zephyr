@@ -23,24 +23,24 @@ const static astarte_interface_t test_interface_a = {
     .name = "test.interface.a",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_PROPERTIES,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
 };
 
 const static astarte_interface_t test_interface_b = {
     .name = "test.interface.b",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_DEVICE,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 const static astarte_interface_t test_interface_c = {
     .name = "test.interface.c",
     .major_version = 1,
     .minor_version = 0,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 static char *get_introspection_string(introspection_t *introspection)
@@ -52,7 +52,7 @@ static char *get_introspection_string(introspection_t *introspection)
 }
 
 static void check_add_interface(introspection_t *introspection,
-    const astarte_interface_t *interface, astarte_err_t expected_res)
+    const astarte_interface_t *interface, astarte_error_t expected_res)
 {
     LOG_INF("Adding interface '%s'", interface->name); // NOLINT
 
@@ -69,8 +69,8 @@ static void check_add_interface_ok(
 // since ordering of the interfaces is not guardanteed we first compare the length
 static void check_introspection(char *expected, char *got)
 {
-    size_t expected_len = strnlen(expected, INTERFACE_NAME_MAX_SIZE);
-    size_t got_len = strnlen(got, INTERFACE_NAME_MAX_SIZE);
+    size_t expected_len = strnlen(expected, ASTARTE_INTERFACE_NAME_MAX_SIZE);
+    size_t got_len = strnlen(got, ASTARTE_INTERFACE_NAME_MAX_SIZE);
 
     zassert_equal(got_len, expected_len,
         "The introspection len does not match the expected one\nExpected: %s\nGot: %s",
@@ -110,7 +110,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_add) // NOLINT
 const static char expected_introspection_ab[] = "test.interface.a:0:1;test.interface.b:0:1";
 
 static void check_remove_interface(
-    introspection_t *introspection, char *interface_name, astarte_err_t expected_res)
+    introspection_t *introspection, char *interface_name, astarte_error_t expected_res)
 {
     LOG_INF("Removing interface '%s'", interface_name); // NOLINT
 
@@ -173,7 +173,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_add_twice) // NOLINT
 
     check_introspection((char *) expected_introspection_all, introspection_buf);
 
-    check_add_interface(&introspection, &test_interface_a, ASTARTE_ERR_INTERFACE_ALREADY_PRESENT);
+    check_add_interface(&introspection, &test_interface_a, ASTARTE_ERROR_INTERFACE_ALREADY_PRESENT);
 
     char *introspection_buf_abc = get_introspection_string(&introspection);
     LOG_INF("Introspection string '%s'", introspection_buf); // NOLINT
@@ -206,7 +206,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_remove_twice) // NOLI
     check_introspection("", introspection_buf_empty);
 
     check_remove_interface(
-        &introspection, (char *) test_interface_a.name, ASTARTE_ERR_INTERFACE_NOT_FOUND);
+        &introspection, (char *) test_interface_a.name, ASTARTE_ERROR_INTERFACE_NOT_FOUND);
 
     char *introspection_buf_empty_2 = get_introspection_string(&introspection);
     LOG_INF("Introspection string '%s'", introspection_buf_empty_2); // NOLINT
@@ -257,7 +257,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_iter) // NOLINT
 }
 
 static void check_update_interface(introspection_t *introspection,
-    const astarte_interface_t *interface, astarte_err_t expected_res)
+    const astarte_interface_t *interface, astarte_error_t expected_res)
 {
     LOG_INF("Updating interface '%s'", interface->name); // NOLINT
 
@@ -275,8 +275,8 @@ const astarte_interface_t test_interface_a_v2_valid = {
     .name = "test.interface.a",
     .major_version = 0,
     .minor_version = 2,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_PROPERTIES,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
 };
 
 ZTEST(astarte_device_sdk_introspection, test_introspection_update_ok) // NOLINT
@@ -309,7 +309,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_update_invalid_versio
     check_add_interface_ok(&introspection, &test_interface_c);
 
     LOG_INF("Updating the interface '%s' with the same struct", test_interface_a.name); // NOLINT
-    check_update_interface(&introspection, &test_interface_a, ASTARTE_ERR_INTERFACE_CONFLICTING);
+    check_update_interface(&introspection, &test_interface_a, ASTARTE_ERROR_INTERFACE_CONFLICTING);
 
     LOG_INF("Freeing introspection"); // NOLINT
     introspection_free(introspection);

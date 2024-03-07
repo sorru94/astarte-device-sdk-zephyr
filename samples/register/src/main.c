@@ -42,16 +42,16 @@ const static astarte_interface_t device_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_DEVICE,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 const static astarte_interface_t server_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.ServerDatastream",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 /************************************************
@@ -83,7 +83,7 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event);
 
 int main(void)
 {
-    astarte_err_t astarte_err = ASTARTE_OK;
+    astarte_error_t astarte_err = ASTARTE_OK;
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
@@ -170,7 +170,7 @@ int main(void)
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
         astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        if ((astarte_err != ASTARTE_ERROR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
             return -1;
         }
 

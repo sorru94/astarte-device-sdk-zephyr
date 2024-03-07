@@ -95,7 +95,7 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event);
 
 int main(void)
 {
-    astarte_error_t astarte_err = ASTARTE_OK;
+    astarte_result_t res = ASTARTE_RESULT_OK;
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
@@ -133,18 +133,18 @@ int main(void)
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
-    astarte_err = astarte_device_new(&device_config, &device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_new(&device_config, &device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_poll(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_poll(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("First poll should not timeout as we should receive a connection ack."); // NOLINT
         return -1;
     }
@@ -154,8 +154,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERROR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -172,8 +172,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
-    astarte_err = astarte_device_disconnect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_disconnect(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed disconnecting the device."); // NOLINT
         return -1;
     }
@@ -182,8 +182,8 @@ int main(void)
 
     LOG_INF("Start of second connection."); // NOLINT
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
@@ -192,8 +192,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERROR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -210,8 +210,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
-    astarte_err = astarte_device_destroy(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed destroying the device."); // NOLINT
         return -1;
     }
@@ -248,10 +248,10 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event)
         LOG_INF("Sending answer %d.", answer); // NOLINT
 
         int qos = 0;
-        astarte_error_t res = astarte_device_stream_individual(event->device,
+        astarte_result_t res = astarte_device_stream_individual(event->device,
             "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint",
             astarte_answer, NULL, qos);
-        if (res != ASTARTE_OK) {
+        if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Failue sending answer %d.", answer); // NOLINT
         }
     }

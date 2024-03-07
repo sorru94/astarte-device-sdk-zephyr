@@ -4,16 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ASTARTE_DEVICE_SDK_ERROR_H
-#define ASTARTE_DEVICE_SDK_ERROR_H
+#ifndef ASTARTE_DEVICE_SDK_RESULT_H
+#define ASTARTE_DEVICE_SDK_RESULT_H
 
 /**
- * @file error.h
- * @brief Astarte error types.
+ * @file result.h
+ * @brief Astarte result types.
  */
 
 /**
- * @defgroup errors Errors
+ * @defgroup results Results
  * @ingroup astarte_device_sdk
  * @{
  */
@@ -23,64 +23,65 @@
 /**
  * @brief Astarte Device SDK return codes.
  *
- * @details Astarte Device SDK return codes. ASTARTE_OK is always returned when no errors occurred.
+ * @details Astarte Device SDK return codes. ASTARTE_RESULT_OK is always returned when no errors
+ * occurred.
  */
 typedef enum
 {
     /** @brief No errors. */
-    ASTARTE_OK = 0,
+    ASTARTE_RESULT_OK = 0,
     /** @brief A generic error occurred. This is usually an internal error in the SDK. */
-    ASTARTE_ERROR = 1,
+    ASTARTE_RESULT_INTERNAL_ERROR = 1,
     /** @brief The operation caused an out of memory error */
-    ASTARTE_ERROR_OUT_OF_MEMORY = 2,
+    ASTARTE_RESULT_OUT_OF_MEMORY = 2,
     /** @brief Invalid configuration for the required operation. */
-    ASTARTE_ERROR_CONFIGURATION = 3,
+    ASTARTE_RESULT_INVALID_CONFIGURATION = 3,
     /** @brief A function has been called with incorrect parameters. */
-    ASTARTE_ERROR_INVALID_PARAM = 4,
+    ASTARTE_RESULT_INVALID_PARAM = 4,
     /** @brief Error during TCP socket creation. */
-    ASTARTE_ERROR_SOCKET = 5,
+    ASTARTE_RESULT_SOCKET_ERROR = 5,
     /** @brief An HTTP request could not be processed. */
-    ASTARTE_ERROR_HTTP_REQUEST = 6,
+    ASTARTE_RESULT_HTTP_REQUEST_ERROR = 6,
     /** @brief Attempting to parse/encode a malformed JSON document. */
-    ASTARTE_ERROR_JSON = 7,
+    ASTARTE_RESULT_JSON_ERROR = 7,
     /** @brief Internal error from the MBEDTLS library. */
-    ASTARTE_ERROR_MBEDTLS = 8,
+    ASTARTE_RESULT_MBEDTLS_ERROR = 8,
     /** @brief The resource was not found. */
-    ASTARTE_ERROR_NOT_FOUND = 9,
+    ASTARTE_RESULT_NOT_FOUND = 9,
     /** @brief Interface is already present in the introspection */
-    ASTARTE_ERROR_INTERFACE_ALREADY_PRESENT = 10,
+    ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT = 10,
     /** @brief Interface not found in the introspection */
-    ASTARTE_ERROR_INTERFACE_NOT_FOUND = 11,
+    ASTARTE_RESULT_INTERFACE_NOT_FOUND = 11,
     /** @brief Trying to add an interface with both major an minor set to 0 */
-    ASTARTE_ERROR_INTERFACE_INVALID_VERSION_ZERO = 12,
+    ASTARTE_RESULT_INTERFACE_INVALID_VERSION = 12,
     /** @brief Trying to add an interface that conflicts with the previous one */
-    ASTARTE_ERROR_INTERFACE_CONFLICTING = 13,
+    ASTARTE_RESULT_INTERFACE_CONFLICTING = 13,
     /** @brief Error from the TLS credential zephyr module. */
-    ASTARTE_ERROR_TLS = 14,
+    ASTARTE_RESULT_TLS_ERROR = 14,
     /** @brief Internal error from the MQTT library. */
-    ASTARTE_ERROR_MQTT = 15,
+    ASTARTE_RESULT_MQTT_ERROR = 15,
     /** @brief Operation timed out. */
-    ASTARTE_ERROR_TIMEOUT = 16,
+    ASTARTE_RESULT_TIMEOUT = 16,
     /** @brief BSON serialization error. */
-    ASTARTE_ERROR_BSON_SERIALIZER = 17,
+    ASTARTE_RESULT_BSON_SERIALIZER_ERROR = 17,
     /** @brief Astarte marked the device client certificate as invalid. */
-    ASTARTE_ERROR_CLIENT_CERT_INVALID = 18
-} astarte_error_t;
+    ASTARTE_RESULT_CLIENT_CERT_INVALID = 18
+} astarte_result_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Returns string for astarte_error_t error codes.
+ * @brief Returns string for result codes.
  *
- * @details This function finds the error code in a pre-generated lookup-table and returns its
+ * @details This function finds the result code in a pre-generated lookup-table and returns its
  * string representation.
  *
- * @param[in] code Error code
- * @return String error message
+ * @param[in] code Result code
+ * @return String result message
  */
-const char *astarte_error_to_name(astarte_error_t code);
+const char *astarte_result_to_name(astarte_result_t code);
 
 #ifdef __cplusplus
 }
@@ -90,4 +91,4 @@ const char *astarte_error_to_name(astarte_error_t code);
  * @}
  */
 
-#endif // ASTARTE_DEVICE_SDK_ERROR_H
+#endif // ASTARTE_DEVICE_SDK_RESULT_H

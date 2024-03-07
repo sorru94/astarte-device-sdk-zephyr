@@ -20,8 +20,8 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/bson_serializer.h"
-#include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/mapping.h"
+#include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/util.h"
 
 /** @brief Container for a binary blob type */
@@ -121,9 +121,9 @@ typedef struct
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] key BSON key name, which is a C string.
  * @param[in] value the #astarte_value_t to serialize to the bson.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_error_t astarte_value_serialize(
+astarte_result_t astarte_value_serialize(
     astarte_bson_serializer_handle_t bson, char *key, astarte_value_t value);
 
 /**

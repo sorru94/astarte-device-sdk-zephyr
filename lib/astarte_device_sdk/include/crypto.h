@@ -15,7 +15,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /** Buffer size for the TLS private key. */
 #define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 1024
@@ -32,9 +32,9 @@ extern "C" {
  *
  * @param[out] privkey_pem Buffer where to store the computed private key, in the PEM format.
  * @param[in] privkey_pem_size Size of preallocated private key buffer.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_error_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size);
+astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size);
 
 /**
  * @brief Create a CSR (certificate signing request).
@@ -42,9 +42,9 @@ astarte_error_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t pri
  * @param[in] privkey_pem Private key to use for CSR generation, in PEM format.
  * @param[out] csr_pem Buffer where to store the computed CSR, in the PEM format.
  * @param[in] csr_pem_size Size of preallocated CSR buffer.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_error_t astarte_crypto_create_csr(
+astarte_result_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size);
 
 /**
@@ -53,9 +53,9 @@ astarte_error_t astarte_crypto_create_csr(
  * @param[in] cert_pem Certificate in the PEM format.
  * @param[out] cert_cn Resulting common name.
  * @param[in] cert_cn_size Size of preallocated common name buffer
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_error_t astarte_crypto_get_certificate_info(
+astarte_result_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size);
 
 #ifdef __cplusplus

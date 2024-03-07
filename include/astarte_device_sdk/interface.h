@@ -20,7 +20,7 @@
  * @{
  */
 
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /**
  * @brief interface ownership
@@ -89,9 +89,9 @@ extern "C" {
  * @brief Validate an Astarte interface.
  *
  * @param[in] interface Interface to validate.
- * @return astarte_error_t ASTARTE_OK on success, otherwise an error is returned.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
  */
-astarte_error_t astarte_interface_validate(const astarte_interface_t *interface);
+astarte_result_t astarte_interface_validate(const astarte_interface_t *interface);
 
 #ifdef __cplusplus
 }

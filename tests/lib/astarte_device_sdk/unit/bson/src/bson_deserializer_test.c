@@ -90,8 +90,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_empty_bson_document)
     zassert_equal(5, doc.size, "doc.size != from 5");
 
     astarte_bson_element_t element;
-    zassert_equal(ASTARTE_ERROR_NOT_FOUND, astarte_bson_deserializer_first_element(doc, &element),
-        "astarte err returned != from ASTARTE_ERROR_NOT_FOUND");
+    zassert_equal(ASTARTE_RESULT_NOT_FOUND, astarte_bson_deserializer_first_element(doc, &element),
+        "astarte err returned != from ASTARTE_RESULT_NOT_FOUND");
 }
 
 ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
@@ -100,7 +100,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(319, doc.size);
 
     astarte_bson_element_t element_d;
-    zassert_equal(ASTARTE_OK, astarte_bson_deserializer_first_element(doc, &element_d));
+    zassert_equal(ASTARTE_RESULT_OK, astarte_bson_deserializer_first_element(doc, &element_d));
 
     zassert_equal(ASTARTE_BSON_TYPE_DOUBLE, element_d.type);
     zassert_mem_equal("element double", element_d.name, sizeof("element double"));
@@ -108,7 +108,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_within(0.01, 42.3, value_d);
 
     astarte_bson_element_t element_s;
-    zassert_equal(ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_d, &element_s));
+    zassert_equal(
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_next_element(doc, element_d, &element_s));
 
     zassert_equal(ASTARTE_BSON_TYPE_STRING, element_s.type);
     zassert_mem_equal("element string", element_s.name, sizeof("element string"));
@@ -117,7 +118,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_mem_equal("hello world", value_s, sizeof("hello world"));
 
     astarte_bson_element_t element_doc;
-    zassert_equal(ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_s, &element_doc));
+    zassert_equal(
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_next_element(doc, element_s, &element_doc));
 
     zassert_equal(ASTARTE_BSON_TYPE_DOCUMENT, element_doc.type);
     zassert_mem_equal("element document", element_doc.name, sizeof("element document"));
@@ -127,7 +129,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
 
     astarte_bson_element_t subelement_int32;
     zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_first_element(subdocument, &subelement_int32));
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_first_element(subdocument, &subelement_int32));
 
     zassert_equal(ASTARTE_BSON_TYPE_INT32, subelement_int32.type);
     zassert_mem_equal("subelement int32", subelement_int32.name, sizeof("subelement int32"));
@@ -135,7 +137,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(10, subvalue_int32);
 
     astarte_bson_element_t subelement_bool;
-    zassert_equal(ASTARTE_OK,
+    zassert_equal(ASTARTE_RESULT_OK,
         astarte_bson_deserializer_next_element(subdocument, subelement_int32, &subelement_bool));
 
     zassert_equal(ASTARTE_BSON_TYPE_BOOLEAN, subelement_bool.type);
@@ -145,7 +147,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
 
     astarte_bson_element_t element_arr;
     zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_doc, &element_arr));
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_next_element(doc, element_doc, &element_arr));
 
     zassert_equal(ASTARTE_BSON_TYPE_ARRAY, element_arr.type);
     zassert_mem_equal("element array", element_arr.name, sizeof("element array"));
@@ -154,7 +156,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
 
     astarte_bson_element_t subelement_arr_1;
     zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_first_element(subdoc_arr, &subelement_arr_1));
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_first_element(subdoc_arr, &subelement_arr_1));
 
     zassert_equal(ASTARTE_BSON_TYPE_INT32, subelement_arr_1.type);
     zassert_mem_equal("0", subelement_arr_1.name, 1);
@@ -162,7 +164,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(10, subvalue_arr_1);
 
     astarte_bson_element_t subelement_arr_2;
-    zassert_equal(ASTARTE_OK,
+    zassert_equal(ASTARTE_RESULT_OK,
         astarte_bson_deserializer_next_element(subdoc_arr, subelement_arr_1, &subelement_arr_2));
 
     zassert_equal(ASTARTE_BSON_TYPE_DOUBLE, subelement_arr_2.type);
@@ -172,7 +174,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
 
     astarte_bson_element_t element_bin;
     zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_arr, &element_bin));
+        ASTARTE_RESULT_OK, astarte_bson_deserializer_next_element(doc, element_arr, &element_bin));
 
     zassert_equal(ASTARTE_BSON_TYPE_BINARY, element_bin.type);
     zassert_mem_equal("element binary", element_bin.name, sizeof("element binary"));
@@ -183,8 +185,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_mem_equal(expected_value_bin, value_bin, size);
 
     astarte_bson_element_t element_bool_false;
-    zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_bin, &element_bool_false));
+    zassert_equal(ASTARTE_RESULT_OK,
+        astarte_bson_deserializer_next_element(doc, element_bin, &element_bool_false));
 
     zassert_equal(ASTARTE_BSON_TYPE_BOOLEAN, element_bool_false.type);
     zassert_mem_equal("element bool false", element_bool_false.name, sizeof("element bool false"));
@@ -192,7 +194,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_false(value_bool);
 
     astarte_bson_element_t element_bool_true;
-    zassert_equal(ASTARTE_OK,
+    zassert_equal(ASTARTE_RESULT_OK,
         astarte_bson_deserializer_next_element(doc, element_bool_false, &element_bool_true));
 
     zassert_equal(ASTARTE_BSON_TYPE_BOOLEAN, element_bool_true.type);
@@ -201,8 +203,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_true(value_bool);
 
     astarte_bson_element_t element_utc;
-    zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_bool_true, &element_utc));
+    zassert_equal(ASTARTE_RESULT_OK,
+        astarte_bson_deserializer_next_element(doc, element_bool_true, &element_utc));
 
     zassert_equal(ASTARTE_BSON_TYPE_DATETIME, element_utc.type);
     zassert_mem_equal("element UTC datetime", element_utc.name, sizeof("element UTC datetime"));
@@ -210,8 +212,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(1686304399422, value_utc);
 
     astarte_bson_element_t element_int32;
-    zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_utc, &element_int32));
+    zassert_equal(ASTARTE_RESULT_OK,
+        astarte_bson_deserializer_next_element(doc, element_utc, &element_int32));
 
     zassert_equal(ASTARTE_BSON_TYPE_INT32, element_int32.type);
     zassert_mem_equal("element int32", element_int32.name, sizeof("element int32"));
@@ -219,8 +221,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(10, value_int32);
 
     astarte_bson_element_t element_int64;
-    zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_next_element(doc, element_int32, &element_int64));
+    zassert_equal(ASTARTE_RESULT_OK,
+        astarte_bson_deserializer_next_element(doc, element_int32, &element_int64));
 
     zassert_equal(ASTARTE_BSON_TYPE_INT64, element_int64.type);
     zassert_mem_equal("element int64", element_int64.name, sizeof("element int64"));
@@ -228,7 +230,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_complete_bson_document)
     zassert_equal(17179869184, value_int64);
 
     astarte_bson_element_t element_non_existant;
-    zassert_equal(ASTARTE_ERROR_NOT_FOUND,
+    zassert_equal(ASTARTE_RESULT_NOT_FOUND,
         astarte_bson_deserializer_next_element(doc, element_int64, &element_non_existant));
 }
 
@@ -239,7 +241,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_bson_document_lookup)
 
     // Lookup for the first element
     astarte_bson_element_t element_double;
-    zassert_equal(ASTARTE_OK,
+    zassert_equal(ASTARTE_RESULT_OK,
         astarte_bson_deserializer_element_lookup(doc, "element double", &element_double));
 
     zassert_equal(ASTARTE_BSON_TYPE_DOUBLE, element_double.type);
@@ -249,7 +251,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_bson_document_lookup)
 
     // Lookup for an element in the middle
     astarte_bson_element_t element_bool;
-    zassert_equal(ASTARTE_OK,
+    zassert_equal(ASTARTE_RESULT_OK,
         astarte_bson_deserializer_element_lookup(doc, "element bool true", &element_bool));
 
     zassert_equal(ASTARTE_BSON_TYPE_BOOLEAN, element_bool.type);
@@ -259,8 +261,8 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_bson_document_lookup)
 
     // Lookup for the last element
     astarte_bson_element_t element_int64;
-    zassert_equal(
-        ASTARTE_OK, astarte_bson_deserializer_element_lookup(doc, "element int64", &element_int64));
+    zassert_equal(ASTARTE_RESULT_OK,
+        astarte_bson_deserializer_element_lookup(doc, "element int64", &element_int64));
 
     zassert_equal(ASTARTE_BSON_TYPE_INT64, element_int64.type);
     zassert_mem_equal("element int64", element_int64.name, sizeof("element int64"));
@@ -269,10 +271,10 @@ ZTEST(astarte_device_sdk_bson, test_bson_deserializer_bson_document_lookup)
 
     // Lookup non existing element
     astarte_bson_element_t element_foo;
-    zassert_equal(ASTARTE_ERROR_NOT_FOUND,
+    zassert_equal(ASTARTE_RESULT_NOT_FOUND,
         astarte_bson_deserializer_element_lookup(doc, "foo", &element_foo));
 
     // Lookup long key that starts with valid key
-    zassert_equal(ASTARTE_ERROR_NOT_FOUND,
+    zassert_equal(ASTARTE_RESULT_NOT_FOUND,
         astarte_bson_deserializer_element_lookup(doc, "element string foo", &element_foo));
 }

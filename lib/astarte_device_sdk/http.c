@@ -81,13 +81,13 @@ static void dump_addrinfo(const struct addrinfo *input_addinfo);
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_error_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
+astarte_result_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
     int32_t timeout_ms, uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
     int sock = create_and_connect_socket();
     if (sock < 0) {
-        return ASTARTE_ERROR_SOCKET;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     struct http_request req;
@@ -118,7 +118,7 @@ astarte_error_t astarte_http_post(const char *url, const char **header_fields, c
         ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
         ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
         zsock_close(sock);
-        return ASTARTE_ERROR_HTTP_REQUEST;
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
 
     // Close the used socket
@@ -138,22 +138,22 @@ astarte_error_t astarte_http_post(const char *url, const char **header_fields, c
     if (resp_buf_size <= strlen(http_recv_body)) {
         ASTARTE_LOG_ERR("Insufficient output buffer for HTTP post function.");
         ASTARTE_LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1);
-        return ASTARTE_ERROR_INVALID_PARAM;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Copy the received data to the response buffer
     memcpy(resp_buf, http_recv_body, strlen(http_recv_body) + 1);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_error_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
+astarte_result_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
     uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
     int sock = create_and_connect_socket();
     if (sock < 0) {
-        return ASTARTE_ERROR_SOCKET;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     struct http_request req;
@@ -182,7 +182,7 @@ astarte_error_t astarte_http_get(const char *url, const char **header_fields, in
         ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
         ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
         zsock_close(sock);
-        return ASTARTE_ERROR_HTTP_REQUEST;
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
 
     // Close the socket
@@ -202,13 +202,13 @@ astarte_error_t astarte_http_get(const char *url, const char **header_fields, in
     if (resp_buf_size <= strlen(http_recv_body)) {
         ASTARTE_LOG_ERR("Insufficient output buffer for HTTP post function.");
         ASTARTE_LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1);
-        return ASTARTE_ERROR_INVALID_PARAM;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Copy the received data to the response buffer
     memcpy(resp_buf, http_recv_body, strlen(http_recv_body) + 1);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 /************************************************

@@ -15,7 +15,7 @@
  * @{
  */
 
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /**
  * @brief Typedefined serializer handle.
@@ -65,9 +65,9 @@ const void *astarte_bson_serializer_get_document(astarte_bson_serializer_handle_
  * @param[in] out_buf_size destination buffer size.
  * @param[out] out_doc_size BSON document size (that is <= out_buf_size).
  * Optional, pass NULL if not used.
- * @return astarte_error_t ASTARTE_OK on success, otherwise an error is returned.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
  */
-astarte_error_t astarte_bson_serializer_serialize_document(
+astarte_result_t astarte_bson_serializer_serialize_document(
     astarte_bson_serializer_handle_t bson, void *out_buf, int out_buf_size, int *out_doc_size);
 
 /**
@@ -184,9 +184,9 @@ void astarte_bson_serializer_append_document(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] arr an array of doubles.
  * @param[in] count the number of items stored in double_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_double_array(
+astarte_result_t astarte_bson_serializer_append_double_array(
     astarte_bson_serializer_handle_t bson, const char *name, const double *arr, int count);
 
 /**
@@ -197,9 +197,9 @@ astarte_error_t astarte_bson_serializer_append_double_array(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] arr an array of signed 32 bit integers.
  * @param[in] count the number of items stored in int32_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_int32_array(
+astarte_result_t astarte_bson_serializer_append_int32_array(
     astarte_bson_serializer_handle_t bson, const char *name, const int32_t *arr, int count);
 
 /**
@@ -210,9 +210,9 @@ astarte_error_t astarte_bson_serializer_append_int32_array(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] arr an array of signed 64 bit integers.
  * @param[in] count the number of items stored in int64_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_int64_array(
+astarte_result_t astarte_bson_serializer_append_int64_array(
     astarte_bson_serializer_handle_t bson, const char *name, const int64_t *arr, int count);
 
 /**
@@ -223,9 +223,9 @@ astarte_error_t astarte_bson_serializer_append_int64_array(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] arr an array of 0 terminated UTF-8 strings.
  * @param[in] count the number of items stored in string_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_string_array(
+astarte_result_t astarte_bson_serializer_append_string_array(
     astarte_bson_serializer_handle_t bson, const char *name, const char *const *arr, int count);
 
 /**
@@ -237,9 +237,9 @@ astarte_error_t astarte_bson_serializer_append_string_array(
  * @param[in] arr an array of binary blobs (void *).
  * @param[in] sizes an array with the sizes of each binary in binary_array parameter.
  * @param[in] count the number of items stored in binary_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
+astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
     const char *name, const void *const *arr, const int *sizes, int count);
 
 /**
@@ -251,9 +251,9 @@ astarte_error_t astarte_bson_serializer_append_binary_array(astarte_bson_seriali
  * @param[in] arr an array of 64 bits unsigned integer storing date time in
  * milliseconds since epoch.
  * @param[in] count the number of items stored in epoch_millis_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_datetime_array(
+astarte_result_t astarte_bson_serializer_append_datetime_array(
     astarte_bson_serializer_handle_t bson, const char *name, const int64_t *arr, int count);
 
 /**
@@ -264,9 +264,9 @@ astarte_error_t astarte_bson_serializer_append_datetime_array(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] arr an array of stdbool booleans.
  * @param[in] count the number of items stored in boolean_array.
- * @return ASTARTE_ERROR upon serialization failure. ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_error_t astarte_bson_serializer_append_boolean_array(
+astarte_result_t astarte_bson_serializer_append_boolean_array(
     astarte_bson_serializer_handle_t bson, const char *name, const bool *arr, int count);
 
 #ifdef __cplusplus

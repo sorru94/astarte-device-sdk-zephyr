@@ -10,8 +10,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>
 
-#include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
+#include "astarte_device_sdk/result.h"
 
 #include "introspection.h"
 
@@ -52,7 +52,7 @@ static char *get_introspection_string(introspection_t *introspection)
 }
 
 static void check_add_interface(introspection_t *introspection,
-    const astarte_interface_t *interface, astarte_error_t expected_res)
+    const astarte_interface_t *interface, astarte_result_t expected_res)
 {
     LOG_INF("Adding interface '%s'", interface->name); // NOLINT
 
@@ -63,7 +63,7 @@ static void check_add_interface(introspection_t *introspection,
 static void check_add_interface_ok(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
-    check_add_interface(introspection, interface, ASTARTE_OK);
+    check_add_interface(introspection, interface, ASTARTE_RESULT_OK);
 }
 
 // since ordering of the interfaces is not guardanteed we first compare the length
@@ -110,7 +110,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_add) // NOLINT
 const static char expected_introspection_ab[] = "test.interface.a:0:1;test.interface.b:0:1";
 
 static void check_remove_interface(
-    introspection_t *introspection, char *interface_name, astarte_error_t expected_res)
+    introspection_t *introspection, char *interface_name, astarte_result_t expected_res)
 {
     LOG_INF("Removing interface '%s'", interface_name); // NOLINT
 
@@ -120,7 +120,7 @@ static void check_remove_interface(
 
 static void check_remove_interface_ok(introspection_t *introspection, char *interface_name)
 {
-    check_remove_interface(introspection, interface_name, ASTARTE_OK);
+    check_remove_interface(introspection, interface_name, ASTARTE_RESULT_OK);
 }
 
 ZTEST(astarte_device_sdk_introspection, test_introspection_add_remove) // NOLINT
@@ -173,7 +173,8 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_add_twice) // NOLINT
 
     check_introspection((char *) expected_introspection_all, introspection_buf);
 
-    check_add_interface(&introspection, &test_interface_a, ASTARTE_ERROR_INTERFACE_ALREADY_PRESENT);
+    check_add_interface(
+        &introspection, &test_interface_a, ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT);
 
     char *introspection_buf_abc = get_introspection_string(&introspection);
     LOG_INF("Introspection string '%s'", introspection_buf); // NOLINT
@@ -206,7 +207,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_remove_twice) // NOLI
     check_introspection("", introspection_buf_empty);
 
     check_remove_interface(
-        &introspection, (char *) test_interface_a.name, ASTARTE_ERROR_INTERFACE_NOT_FOUND);
+        &introspection, (char *) test_interface_a.name, ASTARTE_RESULT_INTERFACE_NOT_FOUND);
 
     char *introspection_buf_empty_2 = get_introspection_string(&introspection);
     LOG_INF("Introspection string '%s'", introspection_buf_empty_2); // NOLINT
@@ -257,7 +258,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_iter) // NOLINT
 }
 
 static void check_update_interface(introspection_t *introspection,
-    const astarte_interface_t *interface, astarte_error_t expected_res)
+    const astarte_interface_t *interface, astarte_result_t expected_res)
 {
     LOG_INF("Updating interface '%s'", interface->name); // NOLINT
 
@@ -268,7 +269,7 @@ static void check_update_interface(introspection_t *introspection,
 static void check_update_interface_ok(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
-    check_update_interface(introspection, interface, ASTARTE_OK);
+    check_update_interface(introspection, interface, ASTARTE_RESULT_OK);
 }
 
 const astarte_interface_t test_interface_a_v2_valid = {
@@ -309,7 +310,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_update_invalid_versio
     check_add_interface_ok(&introspection, &test_interface_c);
 
     LOG_INF("Updating the interface '%s' with the same struct", test_interface_a.name); // NOLINT
-    check_update_interface(&introspection, &test_interface_a, ASTARTE_ERROR_INTERFACE_CONFLICTING);
+    check_update_interface(&introspection, &test_interface_a, ASTARTE_RESULT_INTERFACE_CONFLICTING);
 
     LOG_INF("Freeing introspection"); // NOLINT
     introspection_free(introspection);

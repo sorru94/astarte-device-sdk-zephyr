@@ -71,7 +71,7 @@ static void double_to_bytes(double input, uint8_t out[static sizeof(double)])
     }
 }
 
-static astarte_error_t byte_array_init(
+static astarte_result_t byte_array_init(
     astarte_bson_serializer_handle_t bson_serializer_handle, void *bytes, size_t size)
 {
     bson_serializer_handle->capacity = size;
@@ -80,11 +80,11 @@ static astarte_error_t byte_array_init(
 
     if (!bson_serializer_handle->buf) {
         ASTARTE_LOG_ERR("Cannot allocate memory for BSON payload (size: %zu)!", size);
-        return ASTARTE_ERROR_OUT_OF_MEMORY;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     memcpy(bson_serializer_handle->buf, bytes, size);
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 static void byte_array_destroy(astarte_bson_serializer_handle_t bson_serializer_handle)
@@ -147,7 +147,7 @@ astarte_bson_serializer_handle_t astarte_bson_serializer_new(void)
         return NULL;
     }
 
-    if (byte_array_init(bson, "\0\0\0\0", 4) != ASTARTE_OK) {
+    if (byte_array_init(bson, "\0\0\0\0", 4) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Unable to initialize byte_array");
         free(bson);
         return NULL;
@@ -169,7 +169,7 @@ const void *astarte_bson_serializer_get_document(astarte_bson_serializer_handle_
     return bson->buf;
 }
 
-astarte_error_t astarte_bson_serializer_serialize_document(
+astarte_result_t astarte_bson_serializer_serialize_document(
     astarte_bson_serializer_handle_t bson, void *out_buf, int out_buf_size, int *out_doc_size)
 {
     size_t doc_size = bson->size;
@@ -178,12 +178,12 @@ astarte_error_t astarte_bson_serializer_serialize_document(
     }
 
     if (out_buf_size < bson->size) {
-        return ASTARTE_ERROR;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     memcpy(out_buf, bson->buf, doc_size);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 size_t astarte_bson_serializer_document_size(astarte_bson_serializer_handle_t bson)
@@ -294,16 +294,16 @@ void astarte_bson_serializer_append_document(
 }
 
 #define IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(TYPE, TYPE_NAME)                       \
-    astarte_error_t astarte_bson_serializer_append_##TYPE_NAME##_array(                            \
+    astarte_result_t astarte_bson_serializer_append_##TYPE_NAME##_array(                           \
         astarte_bson_serializer_handle_t bson, const char *name, TYPE arr, int count)              \
     {                                                                                              \
-        astarte_error_t result = ASTARTE_OK;                                                       \
+        astarte_result_t result = ASTARTE_RESULT_OK;                                               \
         astarte_bson_serializer_handle_t array_ser = astarte_bson_serializer_new();                \
         for (int i = 0; i < count; i++) {                                                          \
             char key[BSON_ARRAY_SIZE_STR_LEN] = { 0 };                                             \
             int ret = snprintf(key, BSON_ARRAY_SIZE_STR_LEN, "%i", i);                             \
             if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {                                   \
-                result = ASTARTE_ERROR;                                                            \
+                result = ASTARTE_RESULT_INTERNAL_ERROR;                                            \
             }                                                                                      \
             astarte_bson_serializer_append_##TYPE_NAME(array_ser, key, arr[i]);                    \
         }                                                                                          \
@@ -329,16 +329,16 @@ IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const char *const *, string)
 IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const int64_t *, datetime)
 IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const bool *, boolean)
 
-astarte_error_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
+astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
     const char *name, const void *const *arr, const int *sizes, int count)
 {
-    astarte_error_t result = ASTARTE_OK;
+    astarte_result_t result = ASTARTE_RESULT_OK;
     astarte_bson_serializer_handle_t array_ser = astarte_bson_serializer_new();
     for (int i = 0; i < count; i++) {
         char key[BSON_ARRAY_SIZE_STR_LEN] = { 0 };
         int ret = snprintf(key, BSON_ARRAY_SIZE_STR_LEN, "%i", i);
         if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {
-            result = ASTARTE_ERROR;
+            result = ASTARTE_RESULT_INTERNAL_ERROR;
         }
         astarte_bson_serializer_append_binary(array_ser, key, arr[i], sizes[i]);
     }

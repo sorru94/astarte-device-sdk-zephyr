@@ -118,12 +118,12 @@ astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer)
     return document;
 }
 
-astarte_error_t astarte_bson_deserializer_first_element(
+astarte_result_t astarte_bson_deserializer_first_element(
     astarte_bson_document_t document, astarte_bson_element_t *element)
 {
     // Document should not be empty
     if (document.size <= sizeof(document.size) + NULL_TERM_SIZE) {
-        return ASTARTE_ERROR_NOT_FOUND;
+        return ASTARTE_RESULT_NOT_FOUND;
     }
 
     element->type = *(uint8_t *) document.list;
@@ -137,10 +137,10 @@ astarte_error_t astarte_bson_deserializer_first_element(
 
     element->value
         = (uint8_t *) document.list + sizeof(element->type) + element->name_len + NULL_TERM_SIZE;
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
+astarte_result_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
     astarte_bson_element_t curr_element, astarte_bson_element_t *next_element)
 {
     // Get the size of the current element
@@ -175,7 +175,7 @@ astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t d
         }
         default: {
             ASTARTE_LOG_WRN("unrecognized BSON type: %i", (int) curr_element.type);
-            return ASTARTE_ERROR;
+            return ASTARTE_RESULT_INTERNAL_ERROR;
         }
     }
 
@@ -184,7 +184,7 @@ astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t d
     // Check if we are not looking past the end of the document
     const void *end_of_document = (uint8_t *) document.list + document.list_size;
     if (next_element_start >= end_of_document) {
-        return ASTARTE_ERROR_NOT_FOUND;
+        return ASTARTE_RESULT_NOT_FOUND;
     }
 
     next_element->type = *(uint8_t *) next_element_start;
@@ -201,23 +201,23 @@ astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t d
 
     next_element->value = (uint8_t *) next_element_start + sizeof(next_element->type)
         + next_element->name_len + NULL_TERM_SIZE;
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_error_t astarte_bson_deserializer_element_lookup(
+astarte_result_t astarte_bson_deserializer_element_lookup(
     astarte_bson_document_t document, const char *key, astarte_bson_element_t *element)
 {
     astarte_bson_element_t candidate_element;
-    astarte_error_t err = astarte_bson_deserializer_first_element(document, &candidate_element);
-    if (err != ASTARTE_OK) {
-        return err;
+    astarte_result_t ret = astarte_bson_deserializer_first_element(document, &candidate_element);
+    if (ret != ASTARTE_RESULT_OK) {
+        return ret;
     }
 
     while (strncmp(key, candidate_element.name, candidate_element.name_len + NULL_TERM_SIZE) != 0) {
-        err = astarte_bson_deserializer_next_element(
+        ret = astarte_bson_deserializer_next_element(
             document, candidate_element, &candidate_element);
-        if (err != ASTARTE_OK) {
-            return err;
+        if (ret != ASTARTE_RESULT_OK) {
+            return ret;
         }
     }
 
@@ -227,7 +227,7 @@ astarte_error_t astarte_bson_deserializer_element_lookup(
     element->name_len = candidate_element.name_len;
     element->value = candidate_element.value;
 
-    return err;
+    return ret;
 }
 
 double astarte_bson_deserializer_element_to_double(astarte_bson_element_t element)

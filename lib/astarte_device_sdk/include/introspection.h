@@ -15,8 +15,8 @@
 
 #include <zephyr/sys/dlist.h>
 
-#include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
+#include "astarte_device_sdk/result.h"
 
 /** @brief Introspection struct. */
 typedef struct
@@ -46,11 +46,11 @@ extern "C" {
  *
  * @param[out] introspection a pointer to an uninitialized introspection struct
  * @return result code of the operation
- * @retval ASTARTE_ERROR_INVALID_PARAM invalid pointer passed as argument
- * @retval ASTARTE_ERROR_OUT_OF_MEMORY couldn't allocate the memory for the inner data
- * @retval ASTARTE_OK initialization completed successfully
+ * @retval ASTARTE_RESULT_INVALID_PARAM invalid pointer passed as argument
+ * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the inner data
+ * @retval ASTARTE_RESULT_OK initialization completed successfully
  */
-astarte_error_t introspection_init(introspection_t *introspection);
+astarte_result_t introspection_init(introspection_t *introspection);
 
 /**
  * @brief Adds an interface to the introspection list
@@ -62,11 +62,11 @@ astarte_error_t introspection_init(introspection_t *introspection);
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
- * @retval ASTARTE_ERROR_INTERFACE_ALREADY_PRESENT the interface was already present
- * @retval ASTARTE_ERROR_OUT_OF_MEMORY couldn't allocate the memory for the new node
- * @retval ASTARTE_OK insertion completed successfully
+ * @retval ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT the interface was already present
+ * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the new node
+ * @retval ASTARTE_RESULT_OK insertion completed successfully
  */
-astarte_error_t introspection_add(
+astarte_result_t introspection_add(
     introspection_t *introspection, const astarte_interface_t *interface);
 
 /**
@@ -80,11 +80,11 @@ astarte_error_t introspection_add(
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
- * @retval ASTARTE_ERROR_INTERFACE_ALREADY_PRESENT the interface was already present
- * @retval ASTARTE_ERROR_OUT_OF_MEMORY couldn't allocate the memory for the new node
- * @retval ASTARTE_OK insertion completed successfully
+ * @retval ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT the interface was already present
+ * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the new node
+ * @retval ASTARTE_RESULT_OK insertion completed successfully
  */
-astarte_error_t introspection_update(
+astarte_result_t introspection_update(
     introspection_t *introspection, const astarte_interface_t *interface);
 
 /**
@@ -107,10 +107,10 @@ const astarte_interface_t *introspection_get(introspection_t *introspection, cha
  * #introspection_init
  * @param[in] interface_name the name of one of the interfaces contained in the introspection list
  * @return result code of the operation:
- * @retval ASTARTE_ERROR_INTERFACE_NOT_FOUND no interface matching the name was found
- * @retval ASTARTE_OK interface removed successfully
+ * @retval ASTARTE_RESULT_INTERFACE_NOT_FOUND no interface matching the name was found
+ * @retval ASTARTE_RESULT_OK interface removed successfully
  */
-astarte_error_t introspection_remove(introspection_t *introspection, char *interface_name);
+astarte_result_t introspection_remove(introspection_t *introspection, char *interface_name);
 
 /**
  * @brief Computes the introspection string length

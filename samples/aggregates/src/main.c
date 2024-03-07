@@ -111,7 +111,7 @@ static uint8_t parse_received_bson(
 
 int main(void)
 {
-    astarte_error_t astarte_err = ASTARTE_OK;
+    astarte_result_t res = ASTARTE_RESULT_OK;
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
@@ -150,18 +150,18 @@ int main(void)
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
-    astarte_err = astarte_device_new(&device_config, &device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_new(&device_config, &device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_poll(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_poll(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("First poll should not timeout as we should receive a connection ack."); // NOLINT
         return -1;
     }
@@ -171,8 +171,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERROR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -189,8 +189,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent %s", CONFIG_BOARD); // NOLINT
 
-    astarte_err = astarte_device_destroy(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed destroying the device."); // NOLINT
         return -1;
     }
@@ -262,7 +262,7 @@ static void data_events_handler(astarte_device_data_event_t *event)
     // const void *doc = bson_serializer_get_document(aggregate_bson, NULL);
     // err_t res = device_stream_aggregate(
     //     event->device, device_aggregate_interface.name, "/24", doc, 0);
-    // if (res != ASTARTE_OK) {
+    // if (res != ASTARTE_RESULT_OK) {
     //     LOG_ERR("Error streaming the aggregate");
     // }
 
@@ -286,7 +286,7 @@ static uint8_t parse_received_bson(
     astarte_bson_element_t elem_longinteger_endpoint;
     if ((astarte_bson_deserializer_element_lookup(
              doc, "longinteger_endpoint", &elem_longinteger_endpoint)
-            != ASTARTE_OK)
+            != ASTARTE_RESULT_OK)
         || (elem_longinteger_endpoint.type != ASTARTE_BSON_TYPE_INT64)) {
         return 1U;
     }
@@ -294,7 +294,7 @@ static uint8_t parse_received_bson(
 
     astarte_bson_element_t elem_boolean_array;
     if ((astarte_bson_deserializer_element_lookup(doc, "booleanarray_endpoint", &elem_boolean_array)
-            != ASTARTE_OK)
+            != ASTARTE_RESULT_OK)
         || (elem_boolean_array.type != ASTARTE_BSON_TYPE_ARRAY)) {
         return 1U;
     }
@@ -306,14 +306,15 @@ static uint8_t parse_received_bson(
     }
 
     astarte_bson_element_t elem_boolean;
-    if ((astarte_bson_deserializer_first_element(arr, &elem_boolean) != ASTARTE_OK)
+    if ((astarte_bson_deserializer_first_element(arr, &elem_boolean) != ASTARTE_RESULT_OK)
         || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
         return 1U;
     }
     rx_data->booleans[0] = astarte_bson_deserializer_element_to_bool(elem_boolean);
 
     for (size_t i = 1; i < 4; i++) {
-        if ((astarte_bson_deserializer_next_element(arr, elem_boolean, &elem_boolean) != ASTARTE_OK)
+        if ((astarte_bson_deserializer_next_element(arr, elem_boolean, &elem_boolean)
+                != ASTARTE_RESULT_OK)
             || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
             return 1U;
         }

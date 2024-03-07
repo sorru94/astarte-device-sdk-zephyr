@@ -19,7 +19,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /** Number of characters in the string representation of a Base64 encoded credential secret. */
 #define ASTARTE_PAIRING_CRED_SECR_LEN 44
@@ -36,9 +36,9 @@ extern "C" {
  * @param[in] timeout_ms Timeout to use for the registration, in ms.
  * @param[out] out_cred_secr Returned credential secret.
  * @param[in] out_cred_secr_size Size of the output buffer for the credential secret.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_error_t astarte_pairing_register_device(
+astarte_result_t astarte_pairing_register_device(
     int32_t timeout_ms, char *out_cred_secr, size_t out_cred_secr_size);
 
 #ifdef __cplusplus

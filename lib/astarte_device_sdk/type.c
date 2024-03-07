@@ -7,12 +7,12 @@
 #include "astarte_device_sdk/value.h"
 
 #include "astarte_device_sdk/bson_serializer.h"
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
-astarte_error_t astarte_value_serialize(
+astarte_result_t astarte_value_serialize(
     astarte_bson_serializer_handle_t bson, char *key, astarte_value_t value)
 {
-    astarte_error_t ret = ASTARTE_OK;
+    astarte_result_t res = ASTARTE_RESULT_OK;
 
     switch (value.tag) {
         case ASTARTE_MAPPING_TYPE_INTEGER:
@@ -40,52 +40,52 @@ astarte_error_t astarte_value_serialize(
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY: {
             astarte_value_integerarray_t int32_array = value.value.integer_array;
-            ret = astarte_bson_serializer_append_int32_array(
+            res = astarte_bson_serializer_append_int32_array(
                 bson, key, int32_array.buf, (int) int32_array.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY: {
             astarte_value_longintegerarray_t int64_array = value.value.longinteger_array;
-            ret = astarte_bson_serializer_append_int64_array(
+            res = astarte_bson_serializer_append_int64_array(
                 bson, key, int64_array.buf, (int) int64_array.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY: {
             astarte_value_doublearray_t double_array = value.value.double_array;
-            ret = astarte_bson_serializer_append_double_array(
+            res = astarte_bson_serializer_append_double_array(
                 bson, key, double_array.buf, (int) double_array.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_STRINGARRAY: {
             astarte_value_stringarray_t string_array = value.value.string_array;
-            ret = astarte_bson_serializer_append_string_array(
+            res = astarte_bson_serializer_append_string_array(
                 bson, key, string_array.buf, (int) string_array.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY: {
             astarte_value_binaryblobarray_t binary_arrays = value.value.binaryblob_array;
-            ret = astarte_bson_serializer_append_binary_array(
+            res = astarte_bson_serializer_append_binary_array(
                 bson, key, binary_arrays.blobs, binary_arrays.sizes, (int) binary_arrays.count);
             break;
         }
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY: {
             astarte_value_booleanarray_t bool_array = value.value.boolean_array;
-            ret = astarte_bson_serializer_append_boolean_array(
+            res = astarte_bson_serializer_append_boolean_array(
                 bson, key, bool_array.buf, (int) bool_array.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY: {
             astarte_value_longintegerarray_t dt_array = value.value.datetime_array;
-            ret = astarte_bson_serializer_append_datetime_array(
+            res = astarte_bson_serializer_append_datetime_array(
                 bson, key, dt_array.buf, (int) dt_array.len);
             break;
         }
         default:
-            ret = ASTARTE_ERROR_INVALID_PARAM;
+            res = ASTARTE_RESULT_INVALID_PARAM;
             break;
     }
 
-    return ret;
+    return res;
 }
 
 // clang-format off

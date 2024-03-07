@@ -19,7 +19,7 @@
  * @{
  */
 
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /** @brief Bson document object */
 typedef struct
@@ -74,9 +74,9 @@ astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer);
  *
  * @param[in] document Document from which to extract the element.
  * @param[out] element Used to store the extracted element.
- * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if the document is empty.
+ * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if the document is empty.
  */
-astarte_error_t astarte_bson_deserializer_first_element(
+astarte_result_t astarte_bson_deserializer_first_element(
     astarte_bson_document_t document, astarte_bson_element_t *element);
 
 /**
@@ -85,9 +85,9 @@ astarte_error_t astarte_bson_deserializer_first_element(
  * @param[in] document Document containing the list.
  * @param[in] curr_element Pointer to the current element.
  * @param[out] next_element Used to store the extracted element.
- * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if no next element exists.
+ * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if no next element exists.
  */
-astarte_error_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
+astarte_result_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
     astarte_bson_element_t curr_element, astarte_bson_element_t *next_element);
 
 /**
@@ -180,9 +180,9 @@ int64_t astarte_bson_deserializer_element_to_int64(astarte_bson_element_t elemen
  * @param[in] key Element name to use as key for the lookup.
  * @param[out] element Used to return the found element, should be a pointer to an uninitialized
  * element.
- * @return ASTARTE_OK if successful, ASTARTE_ERROR_NOT_FOUND if the element does not exist.
+ * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if the element does not exist.
  */
-astarte_error_t astarte_bson_deserializer_element_lookup(
+astarte_result_t astarte_bson_deserializer_element_lookup(
     astarte_bson_document_t document, const char *key, astarte_bson_element_t *element);
 
 #ifdef __cplusplus

@@ -7,6 +7,7 @@
 #include "astarte_device_sdk/uuid.h"
 
 #include <ctype.h>
+#include <stdio.h>
 
 #include <zephyr/posix/arpa/inet.h>
 #include <zephyr/random/random.h>

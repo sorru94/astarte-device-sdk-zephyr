@@ -6,6 +6,8 @@
 
 #include "crypto.h"
 
+#include <stdio.h>
+
 #include <zephyr/net/socket.h>
 
 #include <mbedtls/ctr_drbg.h>

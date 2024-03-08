@@ -7,7 +7,7 @@ project(Astarte-Device-SDK-Doc LANGUAGES)
 
 set(MIN_WEST_VERSION 1.0.0)
 
-set(Astarte_Device_SDK_VERSION 0.5.99)
+set(Astarte_Device_SDK_VERSION 0.5.0-alpha)
 
 message(STATUS "Zephyr base: ${ASTARTE_DEVICE_SDK_BASE}")
 message(STATUS "Documentation tag: ${DOC_TAG}")

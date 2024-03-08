@@ -5,6 +5,8 @@
  */
 #include "astarte_device_sdk/device.h"
 
+#include <stdio.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/net/mqtt.h>
 #include <zephyr/net/socket.h>
@@ -315,14 +317,15 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         goto failure;
     }
-    char *broker_url_token = strtok(&broker_url[strlen("mqtts://")], ":");
+    char *saveptr = NULL;
+    char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
     if (!broker_url_token) {
         ASTARTE_LOG_ERR("MQTT broker URL is malformed");
         res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         goto failure;
     }
     strncpy(device->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
-    broker_url_token = strtok(NULL, "/");
+    broker_url_token = strtok_r(NULL, "/", &saveptr);
     if (!broker_url_token) {
         ASTARTE_LOG_ERR("MQTT broker URL is malformed");
         res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;

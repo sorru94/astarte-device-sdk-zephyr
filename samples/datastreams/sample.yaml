@@ -14,3 +14,4 @@ tests:
     integration_platforms:
       - stm32h573i_dk
       - esp_wrover_kit
+      - native_sim

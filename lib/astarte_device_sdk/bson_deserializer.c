@@ -128,15 +128,11 @@ astarte_result_t astarte_bson_deserializer_first_element(
 
     element->type = *(uint8_t *) document.list;
     element->name = (const char *) ((uint8_t *) document.list + sizeof(element->type));
-
-    // TODO Replace with strnlen after this
-    // [PR#68381](https://github.com/zephyrproject-rtos/zephyr/pull/68381) will be merged
-    // size_t max_name_str_len = document.list_size - sizeof(element->type);
-    // element->name_len = strnlen(element->name, max_name_str_len);
-    element->name_len = strlen(element->name);
-
+    size_t max_name_str_len = document.list_size - sizeof(element->type);
+    element->name_len = strnlen(element->name, max_name_str_len);
     element->value
         = (uint8_t *) document.list + sizeof(element->type) + element->name_len + NULL_TERM_SIZE;
+
     return ASTARTE_RESULT_OK;
 }
 
@@ -190,17 +186,13 @@ astarte_result_t astarte_bson_deserializer_next_element(astarte_bson_document_t 
     next_element->type = *(uint8_t *) next_element_start;
     next_element->name
         = (const char *) ((uint8_t *) next_element_start + sizeof(next_element->type));
-
-    // TODO Replace with strnlen after this
-    // [PR#68381](https://github.com/zephyrproject-rtos/zephyr/pull/68381) will be merged
-    // size_t max_name_str_len = document.list_size
-    //        - (size_t) ((uint8_t *) document.list - (uint8_t *) next_element_start)
-    //        - sizeof(next_element->type);
-    // next_element->name_len = strnlen(next_element->name, max_name_str_len);
-    next_element->name_len = strlen(next_element->name);
-
+    size_t max_name_str_len = document.list_size
+        - (size_t) ((uint8_t *) document.list - (uint8_t *) next_element_start)
+        - sizeof(next_element->type);
+    next_element->name_len = strnlen(next_element->name, max_name_str_len);
     next_element->value = (uint8_t *) next_element_start + sizeof(next_element->type)
         + next_element->name_len + NULL_TERM_SIZE;
+
     return ASTARTE_RESULT_OK;
 }
 

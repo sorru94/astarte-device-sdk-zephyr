@@ -7,6 +7,8 @@
 #include "astarte_device_sdk/pairing.h"
 #include "pairing_private.h"
 
+#include <stdio.h>
+
 #include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
 

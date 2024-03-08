@@ -7,7 +7,6 @@
 #include "http.h"
 
 #include <zephyr/kernel.h>
-#include <zephyr/logging/log.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/http/status.h>
 #include <zephyr/net/socket.h>
@@ -16,7 +15,9 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
-LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL); // NOLINT
+#include "log.h"
+
+ASTARTE_LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL);
 
 /************************************************
  *       Checks over configuration values       *
@@ -38,20 +39,18 @@ static uint8_t http_recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_
  *       Callbacks declaration/definition       *
  ***********************************************/
 
-// NOLINTNEXTLINE(hicpp-function-size)
 static void http_response_cb(
     struct http_response *rsp, enum http_final_call final_data, void *user_data)
 {
     bool *request_ok = (bool *) user_data;
     if (final_data == HTTP_DATA_MORE) {
-        LOG_ERR("Partial data received (%zd bytes)", rsp->data_len); // NOLINT
-        LOG_ERR("HTTP reply is too long for rx buffer."); // NOLINT
+        ASTARTE_LOG_ERR("Partial data received (%zd bytes)", rsp->data_len);
+        ASTARTE_LOG_ERR("HTTP reply is too long for rx buffer.");
         *request_ok = false;
     } else if (final_data == HTTP_DATA_FINAL) {
-        LOG_DBG("All the data received (%zd bytes)", rsp->data_len); // NOLINT
+        ASTARTE_LOG_DBG("All the data received (%zd bytes)", rsp->data_len);
         if ((rsp->http_status_code != HTTP_200_OK) && (rsp->http_status_code != HTTP_201_CREATED)) {
-            // NOLINTNEXTLINE
-            LOG_ERR("HTTP request failed, response code: %s %d", rsp->http_status,
+            ASTARTE_LOG_ERR("HTTP request failed, response code: %s %d", rsp->http_status,
                 rsp->http_status_code);
             *request_ok = false;
         }
@@ -82,13 +81,13 @@ static void dump_addrinfo(const struct addrinfo *input_addinfo);
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_err_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
+astarte_result_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
     int32_t timeout_ms, uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
     int sock = create_and_connect_socket();
     if (sock < 0) {
-        return ASTARTE_ERR_SOCKET;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     struct http_request req;
@@ -116,10 +115,10 @@ astarte_err_t astarte_http_post(const char *url, const char **header_fields, con
 
     int http_rc = http_client_req(sock, &req, timeout_ms, &post_ok);
     if ((http_rc < 0) || !post_ok) {
-        LOG_ERR("HTTP request failed: %d", http_rc); // NOLINT
-        LOG_ERR("Receive buffer content:\n%s", http_recv_buf); // NOLINT
+        ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
+        ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
         zsock_close(sock);
-        return ASTARTE_ERR_HTTP_REQUEST;
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
 
     // Close the used socket
@@ -137,24 +136,24 @@ astarte_err_t astarte_http_post(const char *url, const char **header_fields, con
 
     // Check that sufficient space is present in the response buffer
     if (resp_buf_size <= strlen(http_recv_body)) {
-        LOG_ERR("Insufficient output buffer for HTTP post function."); // NOLINT
-        LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
+        ASTARTE_LOG_ERR("Insufficient output buffer for HTTP post function.");
+        ASTARTE_LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1);
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Copy the received data to the response buffer
     memcpy(resp_buf, http_recv_body, strlen(http_recv_body) + 1);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
+astarte_result_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
     uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
     int sock = create_and_connect_socket();
     if (sock < 0) {
-        return ASTARTE_ERR_SOCKET;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     struct http_request req;
@@ -180,10 +179,10 @@ astarte_err_t astarte_http_get(const char *url, const char **header_fields, int3
 
     int http_rc = http_client_req(sock, &req, timeout_ms, &get_ok);
     if ((http_rc < 0) || !get_ok) {
-        LOG_ERR("HTTP request failed: %d", http_rc); // NOLINT
-        LOG_ERR("Receive buffer content:\n%s", http_recv_buf); // NOLINT
+        ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
+        ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
         zsock_close(sock);
-        return ASTARTE_ERR_HTTP_REQUEST;
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
 
     // Close the socket
@@ -201,15 +200,15 @@ astarte_err_t astarte_http_get(const char *url, const char **header_fields, int3
 
     // Check that sufficient space is present in the response buffer
     if (resp_buf_size <= strlen(http_recv_body)) {
-        LOG_ERR("Insufficient output buffer for HTTP post function."); // NOLINT
-        LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
+        ASTARTE_LOG_ERR("Insufficient output buffer for HTTP post function.");
+        ASTARTE_LOG_ERR("Requires %d bytes.", strlen(http_recv_body) + 1);
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Copy the received data to the response buffer
     memcpy(resp_buf, http_recv_body, strlen(http_recv_body) + 1);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 /************************************************
@@ -230,8 +229,8 @@ static int create_and_connect_socket(void)
     struct zsock_addrinfo *broker_addrinfo = NULL;
     int sock_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
     if (sock_rc != 0) {
-        LOG_ERR("Unable to resolve address %d", sock_rc); // NOLINT
-        LOG_ERR("Errno: %s\n", strerror(errno)); // NOLINT
+        ASTARTE_LOG_ERR("Unable to resolve address %d", sock_rc);
+        ASTARTE_LOG_ERR("Errno: %s\n", strerror(errno));
         return -1;
     }
 
@@ -244,7 +243,7 @@ static int create_and_connect_socket(void)
 #endif
     int sock = zsock_socket(broker_addrinfo->ai_family, broker_addrinfo->ai_socktype, proto);
     if (sock == -1) {
-        LOG_ERR("Socket creation error: %d", sock); // NOLINT
+        ASTARTE_LOG_ERR("Socket creation error: %d", sock);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
@@ -256,14 +255,14 @@ static int create_and_connect_socket(void)
     int sockopt_rc
         = zsock_setsockopt(sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag_opt, sizeof(sec_tag_opt));
     if (sockopt_rc == -1) {
-        LOG_ERR("Socket options error: %d", sockopt_rc); // NOLINT
+        ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
 
     sockopt_rc = zsock_setsockopt(sock, SOL_TLS, TLS_HOSTNAME, hostname, sizeof(hostname));
     if (sockopt_rc == -1) {
-        LOG_ERR("Socket options error: %d", sockopt_rc); // NOLINT
+        ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
@@ -271,8 +270,8 @@ static int create_and_connect_socket(void)
 
     int connect_rc = zsock_connect(sock, broker_addrinfo->ai_addr, broker_addrinfo->ai_addrlen);
     if (connect_rc == -1) {
-        LOG_ERR("Connection error: %d", connect_rc); // NOLINT
-        LOG_ERR("Errno: %s\n", strerror(errno)); // NOLINT
+        ASTARTE_LOG_ERR("Connection error: %d", connect_rc);
+        ASTARTE_LOG_ERR("Errno: %s\n", strerror(errno));
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
@@ -288,8 +287,8 @@ static void dump_addrinfo(const struct addrinfo *input_addinfo)
     char dst[16] = { 0 };
     inet_ntop(
         AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, dst, sizeof(dst));
-    LOG_DBG("addrinfo @%p: ai_family=%d, ai_socktype=%d, ai_protocol=%d, "
-            "sa_family=%d, sin_port=%x, ip_addr=%s",
+    ASTARTE_LOG_DBG("addrinfo @%p: ai_family=%d, ai_socktype=%d, ai_protocol=%d, "
+                    "sa_family=%d, sin_port=%x, ip_addr=%s",
         input_addinfo, input_addinfo->ai_family, input_addinfo->ai_socktype,
         input_addinfo->ai_protocol, input_addinfo->ai_addr->sa_family,
         ((struct sockaddr_in *) input_addinfo->ai_addr)->sin_port, dst);

@@ -9,15 +9,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <zephyr/logging/log.h>
 #include <zephyr/sys/dlist.h>
 #include <zephyr/sys/util.h>
 
-#include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
+#include "astarte_device_sdk/result.h"
+#include "log.h"
 
-// NOLINTNEXTLINE
-LOG_MODULE_REGISTER(astarte_introspection, CONFIG_ASTARTE_DEVICE_SDK_INTROSPECTION_LOG_LEVEL);
+ASTARTE_LOG_MODULE_REGISTER(
+    astarte_introspection, CONFIG_ASTARTE_DEVICE_SDK_INTROSPECTION_LOG_LEVEL);
 
 /**
  * @brief Function used to find a `introspection_node_t` from an interface_name
@@ -62,13 +62,13 @@ static inline void node_free(introspection_node_t *alloc_node);
  * to the location of the old node found, or NULL if there was no previous node matching
  * the passed interface->name
  * @return result code of the operation:
- * @retval ASTARTE_ERR_INTERFACE_INVALID_VERSION_ZERO the interface has both major and
+ * @retval ASTARTE_RESULT_INTERFACE_INVALID_VERSION the interface has both major and
  * minor version set to 0
- * @retval ASTARTE_ERR_INTERFACE_CONFLICTING the passed interface colflicts with the
+ * @retval ASTARTE_RESULT_INTERFACE_CONFLICTING the passed interface colflicts with the
  * previously defined one with the same name
- * @retval ASTARTE_OK check completed successfully
+ * @retval ASTARTE_RESULT_OK if the check completed successfully, an error code otherwise.
  */
-static astarte_err_t check_interface_update(introspection_t *introspection,
+static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node);
 
 /**
@@ -78,18 +78,18 @@ static astarte_err_t check_interface_update(introspection_t *introspection,
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
  * @return result code of the operation:
- * @retval ASTARTE_ERR_INTERFACE_INVALID_VERSION_ZERO the interface has both major and
+ * @retval ASTARTE_RESULT_INTERFACE_INVALID_VERSION the interface has both major and
  * minor version set to 0
- * @retval ASTARTE_OK check completed successfully
+ * @retval ASTARTE_RESULT_OK if the operation completed successfully, an error code otherwise.
  */
-static astarte_err_t append_introspection_node(
+static astarte_result_t append_introspection_node(
     introspection_t *introspection, const astarte_interface_t *interface);
 
-astarte_err_t introspection_init(introspection_t *introspection)
+astarte_result_t introspection_init(introspection_t *introspection)
 {
     if (!introspection) {
-        LOG_ERR("Called introspection initialize function with invalid pointer"); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
+        ASTARTE_LOG_ERR("Called introspection initialize function with invalid pointer");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     *introspection = (introspection_t){
@@ -97,7 +97,7 @@ astarte_err_t introspection_init(introspection_t *introspection)
     };
 
     if (!introspection->list) {
-        return ASTARTE_ERR_OUT_OF_MEMORY;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     // the list passed here has to be dynamically allocated
@@ -105,43 +105,43 @@ astarte_err_t introspection_init(introspection_t *introspection)
     // and will be later used to check for list emptyness and other functionalities
     sys_dlist_init(introspection->list);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t introspection_add(
+astarte_result_t introspection_add(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
-    astarte_err_t res = astarte_interface_validate(interface);
-    if (res != ASTARTE_OK) {
+    astarte_result_t res = astarte_interface_validate(interface);
+    if (res != ASTARTE_RESULT_OK) {
         return res;
     }
 
     introspection_node_t *check_alloc_node
         = find_node_by_name(introspection, (char *) interface->name);
     if (check_alloc_node) {
-        return ASTARTE_ERR_INTERFACE_ALREADY_PRESENT;
+        return ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT;
     }
 
     res = append_introspection_node(introspection, interface);
-    if (res != ASTARTE_OK) {
+    if (res != ASTARTE_RESULT_OK) {
         return res;
     }
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t introspection_update(
+astarte_result_t introspection_update(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
 
-    astarte_err_t res = astarte_interface_validate(interface);
-    if (res != ASTARTE_OK) {
+    astarte_result_t res = astarte_interface_validate(interface);
+    if (res != ASTARTE_RESULT_OK) {
         return res;
     }
 
     introspection_node_t *old_node = NULL;
     res = check_interface_update(introspection, interface, &old_node);
-    if (res != ASTARTE_OK) {
+    if (res != ASTARTE_RESULT_OK) {
         return res;
     }
 
@@ -151,12 +151,12 @@ astarte_err_t introspection_update(
     } else {
         // no previous interface with the same name so we append a new node
         res = append_introspection_node(introspection, interface);
-        if (res != ASTARTE_OK) {
+        if (res != ASTARTE_RESULT_OK) {
             return res;
         }
     }
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 const astarte_interface_t *introspection_get(introspection_t *introspection, char *interface_name)
@@ -170,17 +170,17 @@ const astarte_interface_t *introspection_get(introspection_t *introspection, cha
     return alloc_node->interface;
 }
 
-astarte_err_t introspection_remove(introspection_t *introspection, char *interface_name)
+astarte_result_t introspection_remove(introspection_t *introspection, char *interface_name)
 {
     introspection_node_t *alloc_node = find_node_by_name(introspection, interface_name);
 
     if (!alloc_node) {
-        return ASTARTE_ERR_INTERFACE_NOT_FOUND;
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
     node_free(alloc_node);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 size_t introspection_get_string_size(introspection_t *introspection)
@@ -190,7 +190,7 @@ size_t introspection_get_string_size(introspection_t *introspection)
 
     SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node)
     {
-        size_t name_len = strnlen(iter_node->interface->name, INTERFACE_NAME_MAX_SIZE);
+        size_t name_len = strnlen(iter_node->interface->name, ASTARTE_INTERFACE_NAME_MAX_SIZE);
         size_t major_len = get_digit_count(iter_node->interface->major_version);
         size_t minor_len = get_digit_count(iter_node->interface->minor_version);
         // size of the separators 3 (name:1:0; 2 ':' and 1 ';')
@@ -260,7 +260,8 @@ static introspection_node_t *find_node_by_name(introspection_t *introspection, c
 
     SYS_DLIST_FOR_EACH_CONTAINER(introspection->list, iter_node, node)
     {
-        if (strncmp(interface_name, iter_node->interface->name, INTERFACE_NAME_MAX_SIZE) == 0) {
+        if (strncmp(interface_name, iter_node->interface->name, ASTARTE_INTERFACE_NAME_MAX_SIZE)
+            == 0) {
             return iter_node;
         }
     }
@@ -283,7 +284,7 @@ static uint8_t get_digit_count(uint32_t num)
     return count;
 }
 
-static astarte_err_t check_interface_update(introspection_t *introspection,
+static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node)
 {
     introspection_node_t *old_node = find_node_by_name(introspection, (char *) interface->name);
@@ -291,32 +292,31 @@ static astarte_err_t check_interface_update(introspection_t *introspection,
     if (old_node) {
         const astarte_interface_t *old_interface = old_node->interface;
 
-        LOG_WRN("Trying to add an interface already present in introspection"); // NOLINT
+        ASTARTE_LOG_WRN("Trying to add an interface already present in introspection");
 
         // Check if ownership and type are the same
         if ((interface->ownership != old_interface->ownership)
             || (interface->type != old_interface->type)) {
-            LOG_ERR("Interface ownership/type conflicts with the one in introspection"); // NOLINT
-            return ASTARTE_ERR_INTERFACE_CONFLICTING;
+            ASTARTE_LOG_ERR("Interface ownership/type conflicts with the one in introspection");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
         }
 
         // Check if major versions align correctly
         if (interface->major_version < old_interface->major_version) {
-            LOG_ERR("Interface with smaller major version than one in introspection"); // NOLINT
-            return ASTARTE_ERR_INTERFACE_CONFLICTING;
+            ASTARTE_LOG_ERR("Interface with smaller major version than one in introspection");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
         }
 
         // Check if minor versions aligns correctly
         if ((interface->major_version == old_interface->major_version)
             && (interface->minor_version <= old_interface->minor_version)) {
-            // NOLINTNEXTLINE
-            LOG_ERR(
+            ASTARTE_LOG_ERR(
                 "Interface with same major version and smaller or equal minor version than the one "
                 "in introspection");
-            return ASTARTE_ERR_INTERFACE_CONFLICTING;
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
         }
 
-        LOG_WRN("Interface '%s' can be overwritten with new version '%u.%u'", // NOLINT
+        ASTARTE_LOG_WRN("Interface '%s' can be overwritten with new version '%u.%u'",
             interface->name, interface->major_version, interface->minor_version);
     }
 
@@ -325,16 +325,16 @@ static astarte_err_t check_interface_update(introspection_t *introspection,
         *introspection_node = old_node;
     }
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-static astarte_err_t append_introspection_node(
+static astarte_result_t append_introspection_node(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
     introspection_node_t *alloc_node = calloc(1, sizeof(introspection_node_t));
 
     if (!alloc_node) {
-        return ASTARTE_ERR_OUT_OF_MEMORY;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     *alloc_node = (introspection_node_t){
@@ -346,5 +346,5 @@ static astarte_err_t append_introspection_node(
 
     sys_dlist_append(introspection->list, &alloc_node->node);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }

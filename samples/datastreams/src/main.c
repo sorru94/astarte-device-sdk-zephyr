@@ -25,7 +25,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/pairing.h>
-#include <astarte_device_sdk/type.h>
+#include <astarte_device_sdk/value.h>
 
 #if defined(CONFIG_WIFI)
 #include "wifi.h"
@@ -54,16 +54,16 @@ const static astarte_interface_t device_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_DEVICE,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 const static astarte_interface_t server_datastream_interface = {
     .name = "org.astarteplatform.zephyr.examples.ServerDatastream",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 /************************************************
@@ -95,7 +95,7 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event);
 
 int main(void)
 {
-    astarte_err_t astarte_err = ASTARTE_OK;
+    astarte_result_t res = ASTARTE_RESULT_OK;
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
@@ -133,18 +133,18 @@ int main(void)
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
-    astarte_err = astarte_device_new(&device_config, &device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_new(&device_config, &device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_poll(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_poll(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("First poll should not timeout as we should receive a connection ack."); // NOLINT
         return -1;
     }
@@ -154,8 +154,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -172,8 +172,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
-    astarte_err = astarte_device_disconnect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_disconnect(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed disconnecting the device."); // NOLINT
         return -1;
     }
@@ -182,8 +182,8 @@ int main(void)
 
     LOG_INF("Start of second connection."); // NOLINT
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
@@ -192,8 +192,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -210,8 +210,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
-    astarte_err = astarte_device_destroy(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed destroying the device."); // NOLINT
         return -1;
     }
@@ -242,16 +242,16 @@ static void astarte_data_events_handler(astarte_device_data_event_t *event)
 
     if (strcmp(event->interface_name, "org.astarteplatform.zephyr.examples.ServerDatastream") == 0
         && strcmp(event->path, "/boolean_endpoint") == 0
-        && event->bson_element.type == BSON_TYPE_BOOLEAN) {
-        bool answer = !bson_deserializer_element_to_bool(event->bson_element);
+        && event->bson_element.type == ASTARTE_BSON_TYPE_BOOLEAN) {
+        bool answer = !astarte_bson_deserializer_element_to_bool(event->bson_element);
         astarte_value_t astarte_answer = astarte_value_from_boolean(answer);
         LOG_INF("Sending answer %d.", answer); // NOLINT
 
         int qos = 0;
-        astarte_err_t res = astarte_device_stream_individual(event->device,
+        astarte_result_t res = astarte_device_stream_individual(event->device,
             "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint",
             astarte_answer, NULL, qos);
-        if (res != ASTARTE_OK) {
+        if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Failue sending answer %d.", answer); // NOLINT
         }
     }

@@ -23,7 +23,7 @@
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/pairing.h>
-#include <astarte_device_sdk/type.h>
+#include <astarte_device_sdk/value.h>
 
 #if defined(CONFIG_WIFI)
 #include "wifi.h"
@@ -51,16 +51,16 @@ const static astarte_interface_t device_aggregate_interface = {
     .name = "org.astarteplatform.zephyr.examples.DeviceAggregate",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_DEVICE,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 const static astarte_interface_t server_aggregate_interface = {
     .name = "org.astarteplatform.zephyr.examples.ServerAggregate",
     .major_version = 0,
     .minor_version = 1,
-    .ownership = OWNERSHIP_SERVER,
-    .type = TYPE_DATASTREAM,
+    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
+    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
 };
 
 /************************************************
@@ -102,7 +102,8 @@ static void data_events_handler(astarte_device_data_event_t *event);
  * @param[out] the resulting parsed data
  * @return 0 when successful, 1 otherwise
  */
-static uint8_t parse_received_bson(bson_element_t bson_element, struct rx_aggregate *rx_data);
+static uint8_t parse_received_bson(
+    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data);
 
 /************************************************
  * Global functions definition
@@ -110,7 +111,7 @@ static uint8_t parse_received_bson(bson_element_t bson_element, struct rx_aggreg
 
 int main(void)
 {
-    astarte_err_t astarte_err = ASTARTE_OK;
+    astarte_result_t res = ASTARTE_RESULT_OK;
     LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
 
     // Initialize WiFi driver
@@ -149,18 +150,18 @@ int main(void)
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
-    astarte_err = astarte_device_new(&device_config, &device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_new(&device_config, &device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_connect(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
         return -1;
     }
 
-    astarte_err = astarte_device_poll(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_poll(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("First poll should not timeout as we should receive a connection ack."); // NOLINT
         return -1;
     }
@@ -170,8 +171,8 @@ int main(void)
     while (1) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
 
-        astarte_err = astarte_device_poll(device);
-        if ((astarte_err != ASTARTE_ERR_TIMEOUT) && (astarte_err != ASTARTE_OK)) {
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
             return -1;
         }
 
@@ -188,8 +189,8 @@ int main(void)
 
     LOG_INF("End of loop, disconnection imminent %s", CONFIG_BOARD); // NOLINT
 
-    astarte_err = astarte_device_destroy(device);
-    if (astarte_err != ASTARTE_OK) {
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Failed destroying the device."); // NOLINT
         return -1;
     }
@@ -261,7 +262,7 @@ static void data_events_handler(astarte_device_data_event_t *event)
     // const void *doc = bson_serializer_get_document(aggregate_bson, NULL);
     // err_t res = device_stream_aggregate(
     //     event->device, device_aggregate_interface.name, "/24", doc, 0);
-    // if (res != ASTARTE_OK) {
+    // if (res != ASTARTE_RESULT_OK) {
     //     LOG_ERR("Error streaming the aggregate");
     // }
 
@@ -269,52 +270,55 @@ static void data_events_handler(astarte_device_data_event_t *event)
     // LOG_INF("Device aggregate sent, using sensor_id: 24.");
 }
 
-static uint8_t parse_received_bson(bson_element_t bson_element, struct rx_aggregate *rx_data)
+static uint8_t parse_received_bson(
+    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data)
 {
-    if (bson_element.type != BSON_TYPE_DOCUMENT) {
+    if (bson_element.type != ASTARTE_BSON_TYPE_DOCUMENT) {
         return 1U;
     }
 
-    bson_document_t doc = bson_deserializer_element_to_document(bson_element);
+    astarte_bson_document_t doc = astarte_bson_deserializer_element_to_document(bson_element);
     const uint32_t expected_doc_size = 0x4F;
     if (doc.size != expected_doc_size) {
         return 1U;
     }
 
-    bson_element_t elem_longinteger_endpoint;
-    if ((bson_deserializer_element_lookup(doc, "longinteger_endpoint", &elem_longinteger_endpoint)
-            != ASTARTE_OK)
-        || (elem_longinteger_endpoint.type != BSON_TYPE_INT64)) {
+    astarte_bson_element_t elem_longinteger_endpoint;
+    if ((astarte_bson_deserializer_element_lookup(
+             doc, "longinteger_endpoint", &elem_longinteger_endpoint)
+            != ASTARTE_RESULT_OK)
+        || (elem_longinteger_endpoint.type != ASTARTE_BSON_TYPE_INT64)) {
         return 1U;
     }
-    rx_data->longinteger = bson_deserializer_element_to_int64(elem_longinteger_endpoint);
+    rx_data->longinteger = astarte_bson_deserializer_element_to_int64(elem_longinteger_endpoint);
 
-    bson_element_t elem_boolean_array;
-    if ((bson_deserializer_element_lookup(doc, "booleanarray_endpoint", &elem_boolean_array)
-            != ASTARTE_OK)
-        || (elem_boolean_array.type != BSON_TYPE_ARRAY)) {
+    astarte_bson_element_t elem_boolean_array;
+    if ((astarte_bson_deserializer_element_lookup(doc, "booleanarray_endpoint", &elem_boolean_array)
+            != ASTARTE_RESULT_OK)
+        || (elem_boolean_array.type != ASTARTE_BSON_TYPE_ARRAY)) {
         return 1U;
     }
 
-    bson_document_t arr = bson_deserializer_element_to_array(elem_boolean_array);
+    astarte_bson_document_t arr = astarte_bson_deserializer_element_to_array(elem_boolean_array);
     const uint32_t expected_arr_size = 0x15;
     if (arr.size != expected_arr_size) {
         return 1U;
     }
 
-    bson_element_t elem_boolean;
-    if ((bson_deserializer_first_element(arr, &elem_boolean) != ASTARTE_OK)
-        || (elem_boolean.type != BSON_TYPE_BOOLEAN)) {
+    astarte_bson_element_t elem_boolean;
+    if ((astarte_bson_deserializer_first_element(arr, &elem_boolean) != ASTARTE_RESULT_OK)
+        || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
         return 1U;
     }
-    rx_data->booleans[0] = bson_deserializer_element_to_bool(elem_boolean);
+    rx_data->booleans[0] = astarte_bson_deserializer_element_to_bool(elem_boolean);
 
     for (size_t i = 1; i < 4; i++) {
-        if ((bson_deserializer_next_element(arr, elem_boolean, &elem_boolean) != ASTARTE_OK)
-            || (elem_boolean.type != BSON_TYPE_BOOLEAN)) {
+        if ((astarte_bson_deserializer_next_element(arr, elem_boolean, &elem_boolean)
+                != ASTARTE_RESULT_OK)
+            || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
             return 1U;
         }
-        rx_data->booleans[i] = bson_deserializer_element_to_bool(elem_boolean);
+        rx_data->booleans[i] = astarte_bson_deserializer_element_to_bool(elem_boolean);
     }
 
     return 0U;

@@ -5,12 +5,13 @@
  */
 
 #include "astarte_device_sdk/bson_deserializer.h"
-#include "astarte_device_sdk/bson_types.h"
 
-#include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
-LOG_MODULE_REGISTER(bson_deserializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL); // NOLINT
+#include "astarte_device_sdk/bson_types.h"
+#include "log.h"
+
+ASTARTE_LOG_MODULE_REGISTER(bson_deserializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL);
 
 /************************************************
  *        Defines, constants and typedef        *
@@ -44,31 +45,30 @@ static uint64_t read_uint64(const void *buff);
  *         Global functions definitions         *
  ***********************************************/
 
-// NOLINTNEXTLINE(hicpp-function-size)
-bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size)
+bool astarte_bson_deserializer_check_validity(const void *buffer, size_t buffer_size)
 {
-    bson_document_t document;
+    astarte_bson_document_t document;
 
     // Validate buffer size is at least 5, the size of an empty document.
     if (buffer_size < sizeof(document.size) + NULL_TERM_SIZE) {
-        LOG_WRN("Buffer too small: no BSON document found"); // NOLINT
+        ASTARTE_LOG_WRN("Buffer too small: no BSON document found");
         return false;
     }
 
-    document = bson_deserializer_init_doc(buffer);
+    document = astarte_bson_deserializer_init_doc(buffer);
 
     // Ensure the buffer is larger or equal compared to the decoded document size
     if (buffer_size < document.size) {
-        LOG_WRN("Allocated buffer size (%i) is smaller than BSON document size (%" PRIu32 // NOLINT
-                ")", // NOLINT
-            buffer_size, document.size); // NOLINT
+        ASTARTE_LOG_WRN("Allocated buffer size (%i) is smaller than BSON document size (%" PRIu32
+                        ")",
+            buffer_size, document.size);
         return false;
     }
 
     // Check document is terminated with 0x00
     if (*(const char *) ((uint8_t *) document.list + (document.size - sizeof(document.size)) - 1)
         != 0) {
-        LOG_WRN("BSON document is not terminated by null byte."); // NOLINT
+        ASTARTE_LOG_WRN("BSON document is not terminated by null byte.");
         return false;
     }
 
@@ -85,44 +85,45 @@ bool bson_deserializer_check_validity(const void *buffer, size_t buffer_size)
     // - 1 byte for the trailing 0x00
     // NB this check could fail on the NULL value element described in the BSON specifications
     if (document.size < sizeof(document.size) + 3 + NULL_TERM_SIZE) {
-        LOG_WRN("BSON data too small"); // NOLINT
+        ASTARTE_LOG_WRN("BSON data too small");
         return false;
     }
 
     // Check that the first element of the document has a supported index
     switch (*(const char *) document.list) {
-        case BSON_TYPE_DOUBLE:
-        case BSON_TYPE_STRING:
-        case BSON_TYPE_DOCUMENT:
-        case BSON_TYPE_ARRAY:
-        case BSON_TYPE_BINARY:
-        case BSON_TYPE_BOOLEAN:
-        case BSON_TYPE_DATETIME:
-        case BSON_TYPE_INT32:
-        case BSON_TYPE_INT64:
+        case ASTARTE_BSON_TYPE_DOUBLE:
+        case ASTARTE_BSON_TYPE_STRING:
+        case ASTARTE_BSON_TYPE_DOCUMENT:
+        case ASTARTE_BSON_TYPE_ARRAY:
+        case ASTARTE_BSON_TYPE_BINARY:
+        case ASTARTE_BSON_TYPE_BOOLEAN:
+        case ASTARTE_BSON_TYPE_DATETIME:
+        case ASTARTE_BSON_TYPE_INT32:
+        case ASTARTE_BSON_TYPE_INT64:
             break;
         default:
-            LOG_WRN("Unrecognized BSON document first type\n"); // NOLINT
+            ASTARTE_LOG_WRN("Unrecognized BSON document first type\n");
             return false;
     }
 
     return true;
 }
 
-bson_document_t bson_deserializer_init_doc(const void *buffer)
+astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer)
 {
-    bson_document_t document;
+    astarte_bson_document_t document;
     document.size = read_uint32(buffer);
     document.list = (uint8_t *) buffer + sizeof(document.size);
     document.list_size = document.size - sizeof(document.size) - NULL_TERM_SIZE;
     return document;
 }
 
-astarte_err_t bson_deserializer_first_element(bson_document_t document, bson_element_t *element)
+astarte_result_t astarte_bson_deserializer_first_element(
+    astarte_bson_document_t document, astarte_bson_element_t *element)
 {
     // Document should not be empty
     if (document.size <= sizeof(document.size) + NULL_TERM_SIZE) {
-        return ASTARTE_ERR_NOT_FOUND;
+        return ASTARTE_RESULT_NOT_FOUND;
     }
 
     element->type = *(uint8_t *) document.list;
@@ -136,45 +137,45 @@ astarte_err_t bson_deserializer_first_element(bson_document_t document, bson_ele
 
     element->value
         = (uint8_t *) document.list + sizeof(element->type) + element->name_len + NULL_TERM_SIZE;
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t bson_deserializer_next_element(
-    bson_document_t document, bson_element_t curr_element, bson_element_t *next_element)
+astarte_result_t astarte_bson_deserializer_next_element(astarte_bson_document_t document,
+    astarte_bson_element_t curr_element, astarte_bson_element_t *next_element)
 {
     // Get the size of the current element
     size_t element_value_size = 0U;
     switch (curr_element.type) {
-        case BSON_TYPE_STRING: {
+        case ASTARTE_BSON_TYPE_STRING: {
             element_value_size = sizeof(int32_t) + read_uint32(curr_element.value);
             break;
         }
-        case BSON_TYPE_ARRAY:
-        case BSON_TYPE_DOCUMENT: {
+        case ASTARTE_BSON_TYPE_ARRAY:
+        case ASTARTE_BSON_TYPE_DOCUMENT: {
             element_value_size = read_uint32(curr_element.value);
             break;
         }
-        case BSON_TYPE_BINARY: {
+        case ASTARTE_BSON_TYPE_BINARY: {
             element_value_size = sizeof(int32_t) + sizeof(int8_t) + read_uint32(curr_element.value);
             break;
         }
-        case BSON_TYPE_INT32: {
+        case ASTARTE_BSON_TYPE_INT32: {
             element_value_size = sizeof(int32_t);
             break;
         }
-        case BSON_TYPE_DOUBLE:
-        case BSON_TYPE_DATETIME:
-        case BSON_TYPE_INT64: {
+        case ASTARTE_BSON_TYPE_DOUBLE:
+        case ASTARTE_BSON_TYPE_DATETIME:
+        case ASTARTE_BSON_TYPE_INT64: {
             element_value_size = sizeof(int64_t);
             break;
         }
-        case BSON_TYPE_BOOLEAN: {
+        case ASTARTE_BSON_TYPE_BOOLEAN: {
             element_value_size = sizeof(int8_t);
             break;
         }
         default: {
-            LOG_WRN("unrecognized BSON type: %i", (int) curr_element.type); // NOLINT
-            return ASTARTE_ERR;
+            ASTARTE_LOG_WRN("unrecognized BSON type: %i", (int) curr_element.type);
+            return ASTARTE_RESULT_INTERNAL_ERROR;
         }
     }
 
@@ -183,7 +184,7 @@ astarte_err_t bson_deserializer_next_element(
     // Check if we are not looking past the end of the document
     const void *end_of_document = (uint8_t *) document.list + document.list_size;
     if (next_element_start >= end_of_document) {
-        return ASTARTE_ERR_NOT_FOUND;
+        return ASTARTE_RESULT_NOT_FOUND;
     }
 
     next_element->type = *(uint8_t *) next_element_start;
@@ -200,22 +201,23 @@ astarte_err_t bson_deserializer_next_element(
 
     next_element->value = (uint8_t *) next_element_start + sizeof(next_element->type)
         + next_element->name_len + NULL_TERM_SIZE;
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t bson_deserializer_element_lookup(
-    bson_document_t document, const char *key, bson_element_t *element)
+astarte_result_t astarte_bson_deserializer_element_lookup(
+    astarte_bson_document_t document, const char *key, astarte_bson_element_t *element)
 {
-    bson_element_t candidate_element;
-    astarte_err_t err = bson_deserializer_first_element(document, &candidate_element);
-    if (err != ASTARTE_OK) {
-        return err;
+    astarte_bson_element_t candidate_element;
+    astarte_result_t ret = astarte_bson_deserializer_first_element(document, &candidate_element);
+    if (ret != ASTARTE_RESULT_OK) {
+        return ret;
     }
 
     while (strncmp(key, candidate_element.name, candidate_element.name_len + NULL_TERM_SIZE) != 0) {
-        err = bson_deserializer_next_element(document, candidate_element, &candidate_element);
-        if (err != ASTARTE_OK) {
-            return err;
+        ret = astarte_bson_deserializer_next_element(
+            document, candidate_element, &candidate_element);
+        if (ret != ASTARTE_RESULT_OK) {
+            return ret;
         }
     }
 
@@ -225,16 +227,17 @@ astarte_err_t bson_deserializer_element_lookup(
     element->name_len = candidate_element.name_len;
     element->value = candidate_element.value;
 
-    return err;
+    return ret;
 }
 
-double bson_deserializer_element_to_double(bson_element_t element)
+double astarte_bson_deserializer_element_to_double(astarte_bson_element_t element)
 {
     uint64_t value = read_uint64(element.value);
     return ((double *) &value)[0];
 }
 
-const char *bson_deserializer_element_to_string(bson_element_t element, uint32_t *len)
+const char *astarte_bson_deserializer_element_to_string(
+    astarte_bson_element_t element, uint32_t *len)
 {
     if (len) {
         *len = read_uint32(element.value) - NULL_TERM_SIZE;
@@ -242,17 +245,19 @@ const char *bson_deserializer_element_to_string(bson_element_t element, uint32_t
     return (const char *) ((uint8_t *) element.value + sizeof(uint32_t));
 }
 
-bson_document_t bson_deserializer_element_to_document(bson_element_t element)
+astarte_bson_document_t astarte_bson_deserializer_element_to_document(
+    astarte_bson_element_t element)
 {
-    return bson_deserializer_init_doc(element.value);
+    return astarte_bson_deserializer_init_doc(element.value);
 }
 
-bson_document_t bson_deserializer_element_to_array(bson_element_t element)
+astarte_bson_document_t astarte_bson_deserializer_element_to_array(astarte_bson_element_t element)
 {
-    return bson_deserializer_init_doc(element.value);
+    return astarte_bson_deserializer_init_doc(element.value);
 }
 
-const uint8_t *bson_deserializer_element_to_binary(bson_element_t element, uint32_t *len)
+const uint8_t *astarte_bson_deserializer_element_to_binary(
+    astarte_bson_element_t element, uint32_t *len)
 {
     if (len) {
         *len = read_uint32(element.value);
@@ -260,24 +265,24 @@ const uint8_t *bson_deserializer_element_to_binary(bson_element_t element, uint3
     return (const uint8_t *) ((uint8_t *) element.value + sizeof(uint32_t) + sizeof(uint8_t));
 }
 
-bool bson_deserializer_element_to_bool(bson_element_t element)
+bool astarte_bson_deserializer_element_to_bool(astarte_bson_element_t element)
 {
     return *((bool *) element.value);
 }
 
-int64_t bson_deserializer_element_to_datetime(bson_element_t element)
+int64_t astarte_bson_deserializer_element_to_datetime(astarte_bson_element_t element)
 {
     uint64_t value = read_uint64(element.value);
     return ((int64_t *) &value)[0];
 }
 
-int32_t bson_deserializer_element_to_int32(bson_element_t element)
+int32_t astarte_bson_deserializer_element_to_int32(astarte_bson_element_t element)
 {
     uint32_t value = read_uint32(element.value);
     return ((int32_t *) &value)[0];
 }
 
-int64_t bson_deserializer_element_to_int64(bson_element_t element)
+int64_t astarte_bson_deserializer_element_to_int64(astarte_bson_element_t element)
 {
     uint64_t value = read_uint64(element.value);
     return ((int64_t *) &value)[0];

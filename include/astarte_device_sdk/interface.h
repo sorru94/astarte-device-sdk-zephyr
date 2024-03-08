@@ -20,7 +20,7 @@
  * @{
  */
 
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /**
  * @brief interface ownership
@@ -30,8 +30,8 @@
  */
 typedef enum
 {
-    OWNERSHIP_DEVICE = 1, /**< Device owned interface */
-    OWNERSHIP_SERVER, /**< Server owned interface*/
+    ASTARTE_INTERFACE_OWNERSHIP_DEVICE = 1, /**< Device owned interface */
+    ASTARTE_INTERFACE_OWNERSHIP_SERVER, /**< Server owned interface*/
 } astarte_interface_ownership_t;
 
 /**
@@ -42,8 +42,8 @@ typedef enum
  */
 typedef enum
 {
-    TYPE_DATASTREAM = 1, /**< Datastream interface */
-    TYPE_PROPERTIES, /**< Properties interface */
+    ASTARTE_INTERFACE_TYPE_DATASTREAM = 1, /**< Datastream interface */
+    ASTARTE_INTERFACE_TYPE_PROPERTIES, /**< Properties interface */
 } astarte_interface_type_t;
 
 /**
@@ -54,16 +54,17 @@ typedef enum
  */
 typedef enum
 {
-    AGGREGATION_INDIVIDUAL = 1, /**< Aggregation individual */
-    AGGREGATION_OBJECT, /**< Aggregation object */
+    ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL = 1, /**< Aggregation individual */
+    ASTARTE_INTERFACE_AGGREGATION_OBJECT, /**< Aggregation object */
 } astarte_interface_aggregation_t;
 
 /**
  * @brief Maximum allowed length of an interface name
  *
+ * Includes the terminating null char.
  * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#astarte-interface-schema-interface_name
  */
-#define INTERFACE_NAME_MAX_SIZE 128
+#define ASTARTE_INTERFACE_NAME_MAX_SIZE 128
 
 /**
  * @brief Astarte interface definition
@@ -88,9 +89,9 @@ extern "C" {
  * @brief Validate an Astarte interface.
  *
  * @param[in] interface Interface to validate.
- * @return astarte_err_t ASTARTE_OK on success, otherwise an error is returned.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
  */
-astarte_err_t astarte_interface_validate(const astarte_interface_t *interface);
+astarte_result_t astarte_interface_validate(const astarte_interface_t *interface);
 
 #ifdef __cplusplus
 }

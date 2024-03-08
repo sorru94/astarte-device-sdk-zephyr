@@ -8,15 +8,16 @@
 
 #include <ctype.h>
 
-#include <zephyr/logging/log.h>
 #include <zephyr/posix/arpa/inet.h>
 #include <zephyr/random/random.h>
 
 #include <mbedtls/md.h>
 
-#define UUID_STR_LEN 36
+#include "log.h"
 
-LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEVEL); // NOLINT
+ASTARTE_LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEVEL);
+
+#define UUID_STR_LEN 36
 
 // All the macros below follow the standard for the Universally Unique Identifier as defined
 // by the IETF in the RFC 4122.
@@ -119,7 +120,7 @@ static void uuid_to_struct(const astarte_uuid_t input, struct uuid *out)
     memcpy(out->node, in_p + UUID_OFFSET_NODE, UUID_LEN_NODE);
 }
 
-astarte_err_t astarte_uuid_generate_v5(
+astarte_result_t astarte_uuid_generate_v5(
     const astarte_uuid_t namespace, const void *data, size_t data_size, astarte_uuid_t out)
 {
     const size_t sha_256_bytes = 32;
@@ -138,8 +139,8 @@ astarte_err_t astarte_uuid_generate_v5(
     // NOLINTEND(hicpp-signed-bitwise)
     mbedtls_md_free(&ctx);
     if (mbedtls_err != 0) {
-        LOG_ERR("UUID V5 generation failed."); // NOLINT
-        return ASTARTE_ERR;
+        ASTARTE_LOG_ERR("UUID V5 generation failed.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     struct uuid sha_uuid_struct;
@@ -154,15 +155,15 @@ astarte_err_t astarte_uuid_generate_v5(
 
     uuid_from_struct(&sha_uuid_struct, out);
 
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-astarte_err_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
+astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
     size_t min_out_size = UUID_STR_LEN + sizeof(char);
     if (out_size < min_out_size) {
-        LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size); // NOLINT
-        return ASTARTE_ERR;
+        ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     struct uuid uuid_struct;
@@ -177,18 +178,17 @@ astarte_err_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_
         uuid_struct
             .node[5]); // NOLINT(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
     if ((res < 0) || (res >= min_out_size)) {
-        LOG_ERR("Error converting UUID to string."); // NOLINT
-        return ASTARTE_ERR;
+        ASTARTE_LOG_ERR("Error converting UUID to string.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
-// NOLINTNEXTLINE(hicpp-function-size)
-astarte_err_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
+astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
 {
     // Length check
     if (strlen(input) != UUID_STR_LEN) {
-        return ASTARTE_ERR;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Sanity check
@@ -198,16 +198,16 @@ astarte_err_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
         if ((i == UUID_STR_POSITION_FIRST_HYPHEN) || (i == UUID_STR_POSITION_SECOND_HYPHEN)
             || (i == UUID_STR_POSITION_THIRD_HYPHEN) || (i == UUID_STR_POSITION_FOURTH_HYPHEN)) {
             if (char_i != '-') {
-                LOG_WRN("Found invalid character %c in hyphen position %d", char_i, i); // NOLINT
-                return ASTARTE_ERR;
+                ASTARTE_LOG_WRN("Found invalid character %c in hyphen position %d", char_i, i);
+                return ASTARTE_RESULT_INTERNAL_ERROR;
             }
             continue;
         }
 
         // checking is the given input is not hexadecimal
         if (!isxdigit(char_i)) {
-            LOG_WRN("Found invalid character %c in position %d", char_i, i); // NOLINT
-            return ASTARTE_ERR;
+            ASTARTE_LOG_WRN("Found invalid character %c in position %d", char_i, i);
+            return ASTARTE_RESULT_INTERNAL_ERROR;
         }
     }
 
@@ -236,7 +236,7 @@ astarte_err_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
     }
 
     uuid_from_struct(&uuid_struct, out);
-    return ASTARTE_OK;
+    return ASTARTE_RESULT_OK;
 }
 
 void astarte_uuid_generate_v4(astarte_uuid_t out)

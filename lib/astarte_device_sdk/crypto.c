@@ -6,7 +6,6 @@
 
 #include "crypto.h"
 
-#include <zephyr/logging/log.h>
 #include <zephyr/net/socket.h>
 
 #include <mbedtls/ctr_drbg.h>
@@ -17,7 +16,9 @@
 #include <mbedtls/x509_crt.h>
 #include <mbedtls/x509_csr.h>
 
-LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL); // NOLINT
+#include "log.h"
+
+ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL);
 
 /************************************************
  *       Checks over configuration values       *
@@ -39,12 +40,12 @@ LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL);
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size)
+astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size)
 {
-    astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
     if (privkey_pem_size < ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE) {
-        LOG_ERR("Insufficient output buffer size for client private key."); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
+        ASTARTE_LOG_ERR("Insufficient output buffer size for client private key.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     mbedtls_pk_context key;
@@ -56,40 +57,40 @@ astarte_err_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privk
     mbedtls_pk_init(&key);
     mbedtls_entropy_init(&entropy);
 
-    LOG_DBG("Initializing entropy"); // NOLINT
+    ASTARTE_LOG_DBG("Initializing entropy");
     int ret = mbedtls_ctr_drbg_seed(
         &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
     if (ret != 0) {
-        LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("Generating the EC key (using curve secp256r1)"); // NOLINT
+    ASTARTE_LOG_DBG("Generating the EC key (using curve secp256r1)");
 
     ret = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
     if (ret != 0) {
-        LOG_ERR("mbedtls_pk_setup returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_pk_setup returned %d", ret);
         goto exit;
     }
 
     ret = mbedtls_ecp_gen_key(
         MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(key), mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        LOG_ERR("mbedtls_ecp_gen_key returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_ecp_gen_key returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("Key succesfully generated"); // NOLINT
+    ASTARTE_LOG_DBG("Key succesfully generated");
 
     ret = mbedtls_pk_write_key_pem(&key, privkey_pem, privkey_pem_size);
     if (ret != 0) {
-        LOG_ERR("mbedtls_pk_write_key_pem returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_pk_write_key_pem returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem); // NOLINT
+    ASTARTE_LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem);
 
-    exit_code = ASTARTE_OK;
+    exit_code = ASTARTE_RESULT_OK;
 
 exit:
 
@@ -100,13 +101,13 @@ exit:
     return exit_code;
 }
 
-astarte_err_t astarte_crypto_create_csr(
+astarte_result_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size)
 {
-    astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
     if (csr_pem_size < ASTARTE_CRYPTO_CSR_BUFFER_SIZE) {
-        LOG_ERR("Insufficient output buffer size for certificate signing request."); // NOLINT
-        return ASTARTE_ERR_INVALID_PARAM;
+        ASTARTE_LOG_ERR("Insufficient output buffer size for certificate signing request.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     mbedtls_pk_context key;
@@ -126,24 +127,24 @@ astarte_err_t astarte_crypto_create_csr(
     // We set the CN to a temporary value, it's just a placeholder since Pairing API will change it
     int ret = mbedtls_x509write_csr_set_subject_name(&req, "CN=temporary");
     if (ret != 0) {
-        LOG_ERR("mbedtls_x509write_csr_set_subject_name returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_x509write_csr_set_subject_name returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("Initializing entropy"); // NOLINT
+    ASTARTE_LOG_DBG("Initializing entropy");
     ret = mbedtls_ctr_drbg_seed(
         &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
     if (ret != 0) {
-        LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("Creating the private key"); // NOLINT
+    ASTARTE_LOG_DBG("Creating the private key");
 
     ret = mbedtls_pk_parse_key(
         &key, privkey_pem, strlen(privkey_pem) + 1, NULL, 0, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        LOG_ERR("mbedtls_pk_parse_key returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_pk_parse_key returned %d", ret);
         goto exit;
     }
 
@@ -152,15 +153,15 @@ astarte_err_t astarte_crypto_create_csr(
     ret = mbedtls_x509write_csr_pem(
         &req, csr_pem, csr_pem_size, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        LOG_ERR("mbedtls_x509write_csr_pem returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_x509write_csr_pem returned %d", ret);
         goto exit;
     }
 
-    LOG_DBG("CSR succesfully created."); // NOLINT
+    ASTARTE_LOG_DBG("CSR succesfully created.");
 
-    LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem); // NOLINT
+    ASTARTE_LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem);
 
-    exit_code = ASTARTE_OK;
+    exit_code = ASTARTE_RESULT_OK;
 
 exit:
 
@@ -172,17 +173,17 @@ exit:
     return exit_code;
 }
 
-astarte_err_t astarte_crypto_get_certificate_info(
+astarte_result_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size)
 {
-    astarte_err_t exit_code = ASTARTE_ERR_MBEDTLS;
+    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
     mbedtls_x509_crt crt;
     mbedtls_x509_crt_init(&crt);
 
     size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation
     int ret = mbedtls_x509_crt_parse(&crt, (unsigned char *) cert_pem, cert_length);
     if (ret < 0) {
-        LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret); // NOLINT
+        ASTARTE_LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret);
         goto exit;
     }
 
@@ -192,19 +193,19 @@ astarte_err_t astarte_crypto_get_certificate_info(
     }
 
     if (!subj_it) {
-        LOG_ERR("CN not found in certificate"); // NOLINT
-        exit_code = ASTARTE_ERR_NOT_FOUND;
+        ASTARTE_LOG_ERR("CN not found in certificate");
+        exit_code = ASTARTE_RESULT_NOT_FOUND;
         goto exit;
     }
 
     ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
     if ((ret < 0) || (ret >= cert_cn_size)) {
-        LOG_ERR("Error encoding certificate common name"); // NOLINT
-        exit_code = ASTARTE_ERR;
+        ASTARTE_LOG_ERR("Error encoding certificate common name");
+        exit_code = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }
 
-    exit_code = ASTARTE_OK;
+    exit_code = ASTARTE_RESULT_OK;
 
 exit:
     mbedtls_x509_crt_free(&crt);

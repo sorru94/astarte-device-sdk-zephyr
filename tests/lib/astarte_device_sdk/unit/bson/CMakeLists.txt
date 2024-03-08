@@ -9,6 +9,7 @@ project(astarte_device_sdk_unit_bson)
 target_include_directories(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/include
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr
+    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/include
 )
 
 FILE(GLOB test_sources src/*.c)

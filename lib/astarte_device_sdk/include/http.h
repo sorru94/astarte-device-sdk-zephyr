@@ -13,7 +13,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,9 +29,9 @@ extern "C" {
  * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
  * @param[out] resp_buf Output buffer where to store the response from the server.
  * @param[in] resp_buf_size Size of the response output buffer.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
+astarte_result_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
     int32_t timeout_ms, uint8_t *resp_buf, size_t resp_buf_size);
 
 /**
@@ -43,9 +43,9 @@ astarte_err_t astarte_http_post(const char *url, const char **header_fields, con
  * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
  * @param[out] resp_buf Output buffer where to store the response from the server.
  * @param[in] resp_buf_size Size of the response output buffer.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
+astarte_result_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
     uint8_t *resp_buf, size_t resp_buf_size);
 
 #ifdef __cplusplus

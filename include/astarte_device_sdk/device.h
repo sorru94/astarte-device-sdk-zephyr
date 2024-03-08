@@ -23,10 +23,10 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/bson_deserializer.h"
 #include "astarte_device_sdk/bson_serializer.h"
-#include "astarte_device_sdk/error.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
-#include "astarte_device_sdk/type.h"
+#include "astarte_device_sdk/result.h"
+#include "astarte_device_sdk/value.h"
 
 /**
  * @brief Handle for an instance of an Astarte device.
@@ -82,7 +82,7 @@ typedef struct
     /** @brief Path for which the data event has been triggered */
     const char *path;
     /** @brief BSON element contained in the data event */
-    bson_element_t bson_element;
+    astarte_bson_element_t bson_element;
     /** @brief User data configured during device initialization */
     void *user_data;
 } astarte_device_data_event_t;
@@ -159,9 +159,9 @@ extern "C" {
  *
  * @param[in] cfg Configuration struct.
  * @param[out] handle Device instance initialized.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
+astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
 
 /**
  * @brief Disconnect the Astarte device instance.
@@ -169,9 +169,9 @@ astarte_err_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_ha
  * @note It will be possible to re-connect the device after disconnection.
  *
  * @param[in] handle Device instance to be disconnected.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_disconnect(astarte_device_handle_t handle);
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t handle);
 
 /**
  * @brief Destroy the Astarte device instance.
@@ -179,25 +179,25 @@ astarte_err_t astarte_device_disconnect(astarte_device_handle_t handle);
  * @note The device handle will become invalid after this operation.
  *
  * @param[in] handle Device instance to be destroyed.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_destroy(astarte_device_handle_t handle);
+astarte_result_t astarte_device_destroy(astarte_device_handle_t handle);
 
 /**
  * @brief Connect a device to Astarte.
  *
  * @param[in] device Device instance to connect to Astarte.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_connect(astarte_device_handle_t device);
+astarte_result_t astarte_device_connect(astarte_device_handle_t device);
 
 /**
  * @brief Poll data from Astarte.
  *
  * @param[in] device Device instance to poll data from Astarte.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_poll(astarte_device_handle_t device);
+astarte_result_t astarte_device_poll(astarte_device_handle_t device);
 
 /**
  * @brief Send an individual value through the device connection.
@@ -208,10 +208,10 @@ astarte_err_t astarte_device_poll(astarte_device_handle_t device);
  * @param[in] value Correctly initialized astarte value.
  * @param[in] timestamp Nullable Timestamp of the message.
  * @param[in] qos Quality of service for MQTT publish.
- * @return ASTARTE_OK if successful, otherwise an error code.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_err_t astarte_device_stream_individual(astarte_device_handle_t device, char *interface_name,
-    char *path, astarte_value_t value, const int64_t *timestamp, uint8_t qos);
+astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
+    char *interface_name, char *path, astarte_value_t value, const int64_t *timestamp, uint8_t qos);
 
 #ifdef __cplusplus
 }

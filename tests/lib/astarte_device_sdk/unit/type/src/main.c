@@ -20,7 +20,7 @@
 #include <zephyr/ztest.h>
 
 #include "astarte_device_sdk/bson_serializer.h"
-#include "astarte_device_sdk/type.h"
+#include "astarte_device_sdk/value.h"
 #include "lib/astarte_device_sdk/bson_serializer.c"
 #include "lib/astarte_device_sdk/type.c"
 
@@ -50,11 +50,11 @@ static void print_hex(const char *s, size_t len)
     ZTEST(astarte_device_sdk_type, test_serialize_##METHOD)                                        \
     {                                                                                              \
         astarte_value_t astarte_value = astarte_value_from_##METHOD(VALUE);                        \
-        bson_serializer_handle_t bson = bson_serializer_new();                                     \
+        astarte_bson_serializer_handle_t bson = astarte_bson_serializer_new();                     \
         astarte_value_serialize(bson, "v", astarte_value);                                         \
-        bson_serializer_append_end_of_document(bson);                                              \
+        astarte_bson_serializer_append_end_of_document(bson);                                      \
         int len = 0;                                                                               \
-        const void *data = bson_serializer_get_document(bson, &len);                               \
+        const void *data = astarte_bson_serializer_get_document(bson, &len);                       \
         print_hex(data, (size_t) len);                                                             \
         zassert_equal(len, sizeof(SERIALIZED_CONST));                                              \
         compare_buf((uint8_t *) data, (uint8_t *) (SERIALIZED_CONST), (size_t) len);               \
@@ -162,11 +162,11 @@ TEST_SINGLE_PROPERTY_SERIALIZATION(string, test_string, serialized_string) // NO
         astarte_value_t astarte_value                                                              \
             = astarte_value_from_##METHOD((ARRAY_ELEMENT_TYPE *) &(ARRAY_CONST),                   \
                 sizeof(ARRAY_CONST) / sizeof(ARRAY_ELEMENT_TYPE));                                 \
-        bson_serializer_handle_t bson = bson_serializer_new();                                     \
+        astarte_bson_serializer_handle_t bson = astarte_bson_serializer_new();                     \
         astarte_value_serialize(bson, "v", astarte_value);                                         \
-        bson_serializer_append_end_of_document(bson);                                              \
+        astarte_bson_serializer_append_end_of_document(bson);                                      \
         int len = 0;                                                                               \
-        const void *data = bson_serializer_get_document(bson, &len);                               \
+        const void *data = astarte_bson_serializer_get_document(bson, &len);                       \
         print_hex(data, (size_t) len);                                                             \
         zassert_equal(len, sizeof(SERIALIZED_CONST));                                              \
         compare_buf((uint8_t *) data, (uint8_t *) (SERIALIZED_CONST), (size_t) len);               \
@@ -399,11 +399,11 @@ ZTEST(astarte_device_sdk_type, test_serialize_binaryblob_array)
     astarte_value_t astarte_value = astarte_value_from_binaryblob_array(test_binaryblob_array,
         test_binaryblob_sizes, sizeof(test_binaryblob_array) / sizeof(uint8_t *));
 
-    bson_serializer_handle_t bson = bson_serializer_new();
+    astarte_bson_serializer_handle_t bson = astarte_bson_serializer_new();
     astarte_value_serialize(bson, "v", astarte_value);
-    bson_serializer_append_end_of_document(bson);
+    astarte_bson_serializer_append_end_of_document(bson);
     int len = 0;
-    const void *data = bson_serializer_get_document(bson, &len);
+    const void *data = astarte_bson_serializer_get_document(bson, &len);
 
     print_hex(data, len);
     zassert_equal(len, sizeof(serialized_binaryblob_array));

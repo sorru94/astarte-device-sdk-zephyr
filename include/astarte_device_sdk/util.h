@@ -4,15 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * @file util.h
- * @brief Utility macros and functions
- */
-
 #ifndef ASTARTE_DEVICE_SDK_UTIL_H
 #define ASTARTE_DEVICE_SDK_UTIL_H
 
 /**
+ * @file util.h
+ * @brief Utility macros and functions
+ *
  * @ingroup utils
  * @{
  */

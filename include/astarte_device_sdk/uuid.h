@@ -16,7 +16,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/error.h"
+#include "astarte_device_sdk/result.h"
 
 /** @brief Number of bytes in the binary representation of a UUID. */
 #define ASTARTE_UUID_SIZE 16
@@ -38,9 +38,9 @@ extern "C" {
  * @param[in] data A pointer to the data that will be hashed to produce the UUID.
  * @param[in] data_size The size of the data buffer.
  * @param[out] out The UUID where the result will be written.
- * @return ASTARTE_OK when successful, ASTARTE_ERR otherwise.
+ * @return ASTARTE_RESULT_OK when successful, ASTARTE_RESULT_INTERNAL_ERROR otherwise.
  */
-astarte_err_t astarte_uuid_generate_v5(
+astarte_result_t astarte_uuid_generate_v5(
     const astarte_uuid_t namespace, const void *data, size_t data_size, astarte_uuid_t out);
 
 /**
@@ -49,18 +49,18 @@ astarte_err_t astarte_uuid_generate_v5(
  * @param[in] uuid The UUID to convert to string.
  * @param[out] out  A pointer to a previously allocated buffer where the result will be written.
  * @param[in] out_size The size of the out buffer. Should be at least 37 bytes.
- * @return ASTARTE_ERR upon failure, ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon failure, ASTARTE_RESULT_OK otherwise.
  */
-astarte_err_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size);
+astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size);
 
 /**
  * @brief Parse a UUID from its canonical (RFC4122) string representation.
  *
  * @param input A pointer to the string to be parsed.
  * @param out The UUID where the result will be written.
- * @return ASTARTE_ERR upon failure, ASTARTE_OK otherwise.
+ * @return ASTARTE_RESULT_INTERNAL_ERROR upon failure, ASTARTE_RESULT_OK otherwise.
  */
-astarte_err_t astarte_uuid_from_string(const char *input, astarte_uuid_t out);
+astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out);
 
 /**
  * @brief Generate a UUIDv4.

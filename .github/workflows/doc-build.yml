@@ -44,7 +44,6 @@ jobs:
   doc-build-html:
     name: "Documentation Build (HTML)"
     runs-on: ubuntu-latest
-    container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
     timeout-minutes: 45
     concurrency:
       group: doc-build-html-${{ github.ref }}
@@ -69,15 +68,25 @@ jobs:
         tar xf doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
         echo "${PWD}/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+
     - name: Install python packages
       run: |
-        pip3 install cmake==${CMAKE_VERSION}
-        pip3 install coverxygen
+        pip install cmake==${CMAKE_VERSION}
+        pip install coverxygen
 
-    - name: West setup
+    - name: Set CI manifest as defaults
       working-directory: astarte-device-sdk-zephyr
-      run: |
-        west init -l .
+      run: mv west-ci.yml west.yml
+
+    - name: Setup Zephyr project
+      uses: zephyrproject-rtos/action-zephyr-setup@v1
+      with:
+        app-path: astarte-device-sdk-zephyr
+        toolchains: x86_64-zephyr-elf
 
     - name: Build documentation
       working-directory: astarte-device-sdk-zephyr

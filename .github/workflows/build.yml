@@ -33,9 +33,6 @@ jobs:
         - "register"
         - "aggregates"
     runs-on: ubuntu-latest
-    container: ghcr.io/zephyrproject-rtos/ci:v0.26.6
-    env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
     concurrency:
       group: build-${{ matrix.sample }}-${{ github.ref }}
       cancel-in-progress: true
@@ -45,12 +42,24 @@ jobs:
         with:
           path: astarte-device-sdk-zephyr
 
-      - name: Initialize
+      - name: Set CI manifest as defaults
         working-directory: astarte-device-sdk-zephyr
-        run: |
-          west init -l .
-          west update -o=--depth=1 -n
-          west blobs fetch hal_espressif
+        run: mv west-ci.yml west.yml
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Setup Zephyr project
+        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        with:
+          app-path: astarte-device-sdk-zephyr
+          toolchains: xtensa-espressif_esp32_zephyr-elf:arm-zephyr-eabi
+
+      - name: Fetch binaries for Espressif
+        working-directory: astarte-device-sdk-zephyr
+        run: west blobs fetch hal_espressif
 
       - name: Build ${{ matrix.sample }} sample
         working-directory: astarte-device-sdk-zephyr

@@ -89,7 +89,7 @@ astarte_result_t astarte_value_serialize(
 }
 
 // clang-format off
-#define DEFINE_ASTARTE_TYPE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                       \
+#define DEFINE_ASTARTE_VALUE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                      \
     astarte_value_t astarte_value_from_##NAME(TYPE PARAM)                                          \
     {                                                                                              \
         return (astarte_value_t) {                                                                 \
@@ -100,7 +100,7 @@ astarte_result_t astarte_value_serialize(
         };                                                                                         \
     }
 
-#define DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                 \
+#define DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                \
     astarte_value_t astarte_value_from_##NAME(TYPE PARAM, size_t len)                              \
     {                                                                                              \
         return (astarte_value_t) {                                                                 \
@@ -115,25 +115,25 @@ astarte_result_t astarte_value_serialize(
     }
 // clang-format on
 
-DEFINE_ASTARTE_TYPE_MAKE_FN(integer, ASTARTE_MAPPING_TYPE_INTEGER, int32_t, integer)
-DEFINE_ASTARTE_TYPE_MAKE_FN(longinteger, ASTARTE_MAPPING_TYPE_LONGINTEGER, int64_t, longinteger)
-DEFINE_ASTARTE_TYPE_MAKE_FN(double, ASTARTE_MAPPING_TYPE_DOUBLE, double, dbl)
-DEFINE_ASTARTE_TYPE_MAKE_FN(string, ASTARTE_MAPPING_TYPE_STRING, const char *, string)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(binaryblob, ASTARTE_MAPPING_TYPE_BINARYBLOB, void *, binaryblob)
-DEFINE_ASTARTE_TYPE_MAKE_FN(boolean, ASTARTE_MAPPING_TYPE_BOOLEAN, bool, boolean)
-DEFINE_ASTARTE_TYPE_MAKE_FN(datetime, ASTARTE_MAPPING_TYPE_DATETIME, int64_t, datetime)
+DEFINE_ASTARTE_VALUE_MAKE_FN(integer, ASTARTE_MAPPING_TYPE_INTEGER, int32_t, integer)
+DEFINE_ASTARTE_VALUE_MAKE_FN(longinteger, ASTARTE_MAPPING_TYPE_LONGINTEGER, int64_t, longinteger)
+DEFINE_ASTARTE_VALUE_MAKE_FN(double, ASTARTE_MAPPING_TYPE_DOUBLE, double, dbl)
+DEFINE_ASTARTE_VALUE_MAKE_FN(string, ASTARTE_MAPPING_TYPE_STRING, const char *, string)
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(binaryblob, ASTARTE_MAPPING_TYPE_BINARYBLOB, void *, binaryblob)
+DEFINE_ASTARTE_VALUE_MAKE_FN(boolean, ASTARTE_MAPPING_TYPE_BOOLEAN, bool, boolean)
+DEFINE_ASTARTE_VALUE_MAKE_FN(datetime, ASTARTE_MAPPING_TYPE_DATETIME, int64_t, datetime)
 
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     integer_array, ASTARTE_MAPPING_TYPE_INTEGERARRAY, int32_t *, integer_array)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     longinteger_array, ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, int64_t *, longinteger_array)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     double_array, ASTARTE_MAPPING_TYPE_DOUBLEARRAY, double *, double_array)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     string_array, ASTARTE_MAPPING_TYPE_STRINGARRAY, const char *const *, string_array)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     boolean_array, ASTARTE_MAPPING_TYPE_BOOLEANARRAY, bool *, boolean_array)
-DEFINE_ASTARTE_ARRAY_TYPE_MAKE_FN(
+DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     datetime_array, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, int64_t *, datetime_array)
 
 astarte_value_t astarte_value_from_binaryblob_array(

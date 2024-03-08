@@ -41,7 +41,7 @@ jobs:
       - name: Initialize
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west init -l .
+          west init --mf west-ci.yml -l .
           west update -o=--depth=1 -n
       - name: Install Python dependencies
         working-directory: astarte-device-sdk-zephyr
@@ -74,7 +74,7 @@ jobs:
       - name: Initialize
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west init -l .
+          west init --mf west-ci.yml -l .
           west update -o=--depth=1 -n
       - name: Install Python dependencies
         working-directory: astarte-device-sdk-zephyr

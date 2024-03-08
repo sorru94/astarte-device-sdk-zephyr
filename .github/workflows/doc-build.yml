@@ -77,7 +77,7 @@ jobs:
     - name: West setup
       working-directory: astarte-device-sdk-zephyr
       run: |
-        west init -l .
+        west init --mf west-ci.yml -l .
 
     - name: Build documentation
       working-directory: astarte-device-sdk-zephyr

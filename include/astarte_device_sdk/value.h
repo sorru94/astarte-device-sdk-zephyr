@@ -115,6 +115,10 @@ typedef struct
     astarte_mapping_type_t tag;
 } astarte_value_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Serializes the passed #astarte_value_t to the passed #astarte_bson_serializer_handle_t
  *
@@ -243,6 +247,10 @@ astarte_value_t astarte_value_from_boolean_array(bool *boolean_array, size_t len
  * ASTARTE_MAPPING_TYPE_DATETIMEARRAY.
  */
 astarte_value_t astarte_value_from_datetime_array(int64_t *datetime_array, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * @}

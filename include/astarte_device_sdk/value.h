@@ -13,7 +13,7 @@
  */
 
 /**
- * @defgroup types Values
+ * @defgroup values Values
  * @ingroup astarte_device_sdk
  * @{
  */

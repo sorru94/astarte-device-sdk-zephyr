@@ -22,7 +22,7 @@
 #include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/value.h"
 #include "lib/astarte_device_sdk/bson_serializer.c"
-#include "lib/astarte_device_sdk/type.c"
+#include "lib/astarte_device_sdk/value.c"
 
 ZTEST_SUITE(astarte_device_sdk_type, NULL, NULL, NULL, NULL, NULL);
 

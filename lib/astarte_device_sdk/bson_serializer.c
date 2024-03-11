@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "astarte_device_sdk/bson_serializer.h"
+#include "bson_serializer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -330,7 +330,7 @@ IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const int64_t *, datetime)
 IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const bool *, boolean)
 
 astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
-    const char *name, const void *const *arr, const int *sizes, int count)
+    const char *name, const void *const *arr, const size_t *sizes, int count)
 {
     astarte_result_t result = ASTARTE_RESULT_OK;
     astarte_bson_serializer_handle_t array_ser = astarte_bson_serializer_new();

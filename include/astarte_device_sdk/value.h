@@ -19,7 +19,6 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/mapping.h"
 #include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/util.h"
@@ -45,7 +44,7 @@ typedef struct
     /** @brief Array of binary blobs */
     const void *const *blobs;
     /** @brief Array of sizes of each binary blob */
-    const int *sizes;
+    const size_t *sizes;
     /** @brief Number of elements in both the array of binary blobs and array of sizes */
     size_t count;
 } astarte_value_binaryblobarray_t;
@@ -115,20 +114,22 @@ typedef struct
     astarte_mapping_type_t tag;
 } astarte_value_t;
 
+/**
+ * @brief Generic key-value pair using a string as key and an astarte_value_t as value.
+ *
+ * @details This struct is intended to be used when streaming aggregates.
+ */
+typedef struct
+{
+    /** @brief Endpoint for the pair */
+    const char *endpoint;
+    /** @brief Value for the pair */
+    astarte_value_t value;
+} astarte_value_pair_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief Serializes the passed #astarte_value_t to the passed #astarte_bson_serializer_handle_t
- *
- * @param[in,out] bson a valid handle for the serializer instance.
- * @param[in] key BSON key name, which is a C string.
- * @param[in] value the #astarte_value_t to serialize to the bson.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
- */
-astarte_result_t astarte_value_serialize(
-    astarte_bson_serializer_handle_t bson, char *key, astarte_value_t value);
 
 /**
  * @brief Initialize an astarte value from the passed integer.
@@ -228,7 +229,7 @@ astarte_value_t astarte_value_from_string_array(const char *const *string_array,
  * ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY.
  */
 astarte_value_t astarte_value_from_binaryblob_array(
-    const void *const *buf, const int *sizes, size_t count);
+    const void *const *buf, const size_t *sizes, size_t count);
 /**
  * @brief Initialize an astarte value from the passed boolean_array.
  *

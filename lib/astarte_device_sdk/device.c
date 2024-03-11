@@ -12,15 +12,16 @@
 #include <zephyr/net/socket.h>
 #include <zephyr/net/tls_credentials.h>
 
-#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/value.h"
+#include "bson_serializer.h"
 #include "crypto.h"
 #include "introspection.h"
 #include "log.h"
 #include "pairing_private.h"
+#include "value_private.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
 
@@ -517,7 +518,8 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 }
 
 astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
-    char *interface_name, char *path, astarte_value_t value, const int64_t *timestamp, uint8_t qos)
+    const char *interface_name, const char *path, astarte_value_t value, const int64_t *timestamp,
+    uint8_t qos)
 {
     astarte_bson_serializer_handle_t bson = astarte_bson_serializer_new();
     if (!bson) {
@@ -553,6 +555,67 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
 
 exit:
     astarte_bson_serializer_destroy(bson);
+
+    return exit_code;
+}
+
+astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_value_pair_t *values, size_t values_size,
+    const int64_t *timestamp, uint8_t qos)
+{
+    astarte_bson_serializer_handle_t outer_bson = astarte_bson_serializer_new();
+    astarte_bson_serializer_handle_t inner_bson = astarte_bson_serializer_new();
+    if ((!outer_bson) || (!inner_bson)) {
+        ASTARTE_LOG_ERR("Could not initialize the bson serializer");
+        return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+    }
+    astarte_result_t exit_code = astarte_value_pair_serialize(inner_bson, values, values_size);
+    if (exit_code != ASTARTE_RESULT_OK) {
+        goto exit;
+    }
+    astarte_bson_serializer_append_end_of_document(inner_bson);
+    int inner_len = 0;
+    void *inner_data = (void *) astarte_bson_serializer_get_document(inner_bson, &inner_len);
+    if (!inner_data) {
+        ASTARTE_LOG_ERR("Error during BSON serialization");
+        exit_code = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        goto exit;
+    }
+    if (inner_len < 0) {
+        ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
+        ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
+
+        exit_code = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        goto exit;
+    }
+
+    astarte_bson_serializer_append_document(outer_bson, "v", inner_data);
+
+    if (timestamp) {
+        astarte_bson_serializer_append_datetime(outer_bson, "t", *timestamp);
+    }
+    astarte_bson_serializer_append_end_of_document(outer_bson);
+
+    int len = 0;
+    void *data = (void *) astarte_bson_serializer_get_document(outer_bson, &len);
+    if (!data) {
+        ASTARTE_LOG_ERR("Error during BSON serialization");
+        exit_code = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        goto exit;
+    }
+    if (len < 0) {
+        ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
+        ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
+
+        exit_code = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        goto exit;
+    }
+
+    exit_code = publish_data(device, interface_name, path, data, len, qos);
+
+exit:
+    astarte_bson_serializer_destroy(outer_bson);
+    astarte_bson_serializer_destroy(inner_bson);
 
     return exit_code;
 }

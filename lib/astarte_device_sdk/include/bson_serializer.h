@@ -4,15 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ASTARTE_DEVICE_SDK_BSON_SERIALIZER_H
-#define ASTARTE_DEVICE_SDK_BSON_SERIALIZER_H
+#ifndef BSON_SERIALIZER_H
+#define BSON_SERIALIZER_H
 
 /**
  * @file bson_serializer.h
  * @brief Astarte BSON serializer functions.
- *
- * @ingroup utils
- * @{
  */
 
 #include "astarte_device_sdk/result.h"
@@ -240,7 +237,7 @@ astarte_result_t astarte_bson_serializer_append_string_array(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
-    const char *name, const void *const *arr, const int *sizes, int count);
+    const char *name, const void *const *arr, const size_t *sizes, int count);
 
 /**
  * @brief append a date time array
@@ -273,8 +270,4 @@ astarte_result_t astarte_bson_serializer_append_boolean_array(
 }
 #endif
 
-/**
- * @}
- */
-
-#endif // ASTARTE_DEVICE_SDK_BSON_SERIALIZER_H
+#endif // BSON_SERIALIZER_H

@@ -19,8 +19,8 @@
 
 #include <zephyr/ztest.h>
 
-#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/value.h"
+#include "bson_serializer.h"
 #include "lib/astarte_device_sdk/bson_serializer.c"
 #include "lib/astarte_device_sdk/value.c"
 

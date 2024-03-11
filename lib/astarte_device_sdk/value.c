@@ -92,10 +92,10 @@ astarte_result_t astarte_value_serialize(
 }
 
 astarte_result_t astarte_value_pair_serialize(
-    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_size)
+    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_length)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    for (size_t i = 0; i < values_size; i++) {
+    for (size_t i = 0; i < values_length; i++) {
         res = astarte_value_serialize(bson, values[i].endpoint, values[i].value);
         if (res != ASTARTE_RESULT_OK) {
             break;

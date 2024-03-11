@@ -20,7 +20,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
-#include <astarte_device_sdk/bson_serializer.h>
 #include <astarte_device_sdk/bson_types.h>
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>

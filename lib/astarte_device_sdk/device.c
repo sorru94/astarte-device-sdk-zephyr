@@ -560,8 +560,8 @@ exit:
 }
 
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_pair_t *values, size_t values_size,
-    const int64_t *timestamp, uint8_t qos)
+    const char *interface_name, const char *path, astarte_value_pair_t *values,
+    size_t values_length, const int64_t *timestamp, uint8_t qos)
 {
     astarte_bson_serializer_handle_t outer_bson = astarte_bson_serializer_new();
     astarte_bson_serializer_handle_t inner_bson = astarte_bson_serializer_new();
@@ -569,7 +569,7 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
     }
-    astarte_result_t exit_code = astarte_value_pair_serialize(inner_bson, values, values_size);
+    astarte_result_t exit_code = astarte_value_pair_serialize(inner_bson, values, values_length);
     if (exit_code != ASTARTE_RESULT_OK) {
         goto exit;
     }

@@ -36,11 +36,11 @@ astarte_result_t astarte_value_serialize(
  *
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] values Array of key-values pairs.
- * @param[in] values_size Number of elements for the values array.
+ * @param[in] values_length Number of elements for the values array.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_value_pair_serialize(
-    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_size);
+    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_length);
 
 #ifdef __cplusplus
 }

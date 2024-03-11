@@ -30,12 +30,15 @@ astartectl appengine \
     --token $TOKEN --realm-name "<REALM>" --astarte-url "<API_URL>" \
     devices send-data <DEVICE_ID> \
     org.astarteplatform.zephyr.examples.ServerAggregate \
-    /11 \
-    '{"longinteger_endpoint":45993543534, "booleanarray_endpoint":[false,false,true,true]}'
+    /sensor11 \
+    '{"double_endpoint": 459.432, "integer_endpoint": 32, "boolean_endpoint": true, \
+    "longinteger_endpoint": 45993543534, "string_endpoint": "some value", \
+    "binaryblob_endpoint": "aGVsbG8gd29ybGQ=", "doublearray_endpoint": [23.45, 543.12, 33.1, 0.1], \
+    "booleanarray_endpoint": [true, false], "stringarray_endpoint": ["hello", "world"], \
+    "binaryblobarray_endpoint": ["aGVsbG8gd29ybGQ=", "aGVsbG8gd29ybGQ="]}'
 ```
 
 Where:
 - `<REALM>` is your realm name
 - `<DEVICE_ID>` is the device ID to send the data to
 - `<API_URL>` is the Astarte api endpoint
-

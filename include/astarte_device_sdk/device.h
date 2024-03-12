@@ -22,7 +22,6 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/bson_deserializer.h"
-#include "astarte_device_sdk/bson_serializer.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/result.h"
@@ -211,7 +210,24 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device);
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
-    char *interface_name, char *path, astarte_value_t value, const int64_t *timestamp, uint8_t qos);
+    const char *interface_name, const char *path, astarte_value_t value, const int64_t *timestamp,
+    uint8_t qos);
+
+/**
+ * @brief Send an aggregated value through the device connection.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface where to publish data.
+ * @param[in] path Path where to publish data.
+ * @param[in] values Array of aggregated values pairs.
+ * @param[in] values_length Number of elements for the values array.
+ * @param[in] timestamp Nullable Timestamp of the message.
+ * @param[in] qos Quality of service for MQTT publish.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_value_pair_t *values,
+    size_t values_length, const int64_t *timestamp, uint8_t qos);
 
 #ifdef __cplusplus
 }

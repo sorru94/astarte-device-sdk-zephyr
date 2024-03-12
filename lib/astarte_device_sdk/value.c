@@ -6,11 +6,14 @@
 
 #include "astarte_device_sdk/value.h"
 
-#include "astarte_device_sdk/bson_serializer.h"
-#include "astarte_device_sdk/result.h"
+#include "bson_serializer.h"
+
+/************************************************
+ *         Global functions definitions         *
+ ***********************************************/
 
 astarte_result_t astarte_value_serialize(
-    astarte_bson_serializer_handle_t bson, char *key, astarte_value_t value)
+    astarte_bson_serializer_handle_t bson, const char *key, astarte_value_t value)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
 
@@ -88,6 +91,20 @@ astarte_result_t astarte_value_serialize(
     return res;
 }
 
+astarte_result_t astarte_value_pair_serialize(
+    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_length)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    for (size_t i = 0; i < values_length; i++) {
+        res = astarte_value_serialize(bson, values[i].endpoint, values[i].value);
+        if (res != ASTARTE_RESULT_OK) {
+            break;
+        }
+    }
+
+    return res;
+}
+
 // clang-format off
 #define DEFINE_ASTARTE_VALUE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                      \
     astarte_value_t astarte_value_from_##NAME(TYPE PARAM)                                          \
@@ -137,7 +154,7 @@ DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
     datetime_array, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, int64_t *, datetime_array)
 
 astarte_value_t astarte_value_from_binaryblob_array(
-    const void *const *buf, const int *sizes, size_t count)
+    const void *const *buf, const size_t *sizes, size_t count)
 {
     return (astarte_value_t) {
         .value = {

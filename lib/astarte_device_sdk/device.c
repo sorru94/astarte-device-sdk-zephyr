@@ -620,6 +620,18 @@ exit:
     return exit_code;
 }
 
+astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_value_t value)
+{
+    return astarte_device_stream_individual(device, interface_name, path, value, NULL, 2);
+}
+
+astarte_result_t astarte_device_unset_property(
+    astarte_device_handle_t device, const char *interface_name, const char *path)
+{
+    return publish_data(device, interface_name, path, "", 0, 2);
+}
+
 /************************************************
  *         Static functions definitions         *
  ***********************************************/

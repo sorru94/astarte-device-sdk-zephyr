@@ -60,6 +60,7 @@ jobs:
         - "datastreams"
         - "register"
         - "aggregates"
+        - "properties"
     runs-on: ubuntu-latest
     concurrency:
       group: code-checker-${{ matrix.sample }}-${{ github.ref }}

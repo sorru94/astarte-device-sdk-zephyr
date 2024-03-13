@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.5.0] - Unreleased
 ### Added
 - Method to stream device owned object aggregated datastreams.
+- Methods to set and unset device owned properties.
 
 ### Removed
 - BSON serializer utilities from `bson_serializer.h`.

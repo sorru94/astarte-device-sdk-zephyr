@@ -157,30 +157,36 @@ extern "C" {
  * registered on Astarte.
  *
  * @param[in] cfg Configuration struct.
- * @param[out] handle Device instance initialized.
+ * @param[out] device Device instance initialized.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle);
-
-/**
- * @brief Disconnect the Astarte device instance.
- *
- * @note It will be possible to re-connect the device after disconnection.
- *
- * @param[in] handle Device instance to be disconnected.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
- */
-astarte_result_t astarte_device_disconnect(astarte_device_handle_t handle);
+astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device);
 
 /**
  * @brief Destroy the Astarte device instance.
  *
  * @note The device handle will become invalid after this operation.
  *
- * @param[in] handle Device instance to be destroyed.
+ * @param[in] device Device instance to be destroyed.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_destroy(astarte_device_handle_t handle);
+astarte_result_t astarte_device_destroy(astarte_device_handle_t device);
+
+/**
+ * @brief add an interface to the device.
+ *
+ * @warning This function has to be called while the device is in the disconnected state,
+ * before a call to #astarte_device_connect or after a call to astarte_device_disconnect.
+ *
+ * @note The user is responsible for making sure the interface struct remains valid for the
+ * lifetime of the device. It is recommended to declare interface structs as static constants.
+ *
+ * @param device A valid Astarte device handle.
+ * @param interface The interface to add to the device.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_add_interface(
+    astarte_device_handle_t device, const astarte_interface_t *interface);
 
 /**
  * @brief Connect a device to Astarte.
@@ -189,6 +195,16 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t handle);
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_connect(astarte_device_handle_t device);
+
+/**
+ * @brief Disconnect the Astarte device instance.
+ *
+ * @note It will be possible to re-connect the device after disconnection.
+ *
+ * @param[in] device Device instance to be disconnected.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t device);
 
 /**
  * @brief Poll data from Astarte.

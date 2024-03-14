@@ -293,12 +293,12 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *handle)
+astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
 
-    astarte_device_handle_t device = calloc(1, sizeof(struct astarte_device));
-    if (!device) {
+    astarte_device_handle_t handle = calloc(1, sizeof(struct astarte_device));
+    if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         res = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto failure;
@@ -325,55 +325,55 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         goto failure;
     }
-    strncpy(device->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
+    strncpy(handle->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
     broker_url_token = strtok_r(NULL, "/", &saveptr);
     if (!broker_url_token) {
         ASTARTE_LOG_ERR("MQTT broker URL is malformed");
         res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         goto failure;
     }
-    strncpy(device->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
+    strncpy(handle->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
 
     ASTARTE_LOG_DBG("Initializing introspection");
-    res = introspection_init(&device->introspection);
+    res = introspection_init(&handle->introspection);
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(res));
         goto failure;
     }
     for (size_t i = 0; i < cfg->interfaces_size; i++) {
-        res = introspection_add(&device->introspection, cfg->interfaces[i]);
+        res = introspection_add(&handle->introspection, cfg->interfaces[i]);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(res));
-            introspection_free(device->introspection);
+            introspection_free(handle->introspection);
             goto failure;
         }
     }
 
-    device->http_timeout_ms = cfg->http_timeout_ms;
-    device->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
-    device->mqtt_connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
-    memcpy(device->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
-    device->connection_cbk = cfg->connection_cbk;
-    device->disconnection_cbk = cfg->disconnection_cbk;
-    device->data_cbk = cfg->data_cbk;
-    device->unset_cbk = cfg->unset_cbk;
-    device->cbk_user_data = cfg->cbk_user_data;
-    device->mqtt_is_connected = false;
-    device->mqtt_message_id = 1U;
+    handle->http_timeout_ms = cfg->http_timeout_ms;
+    handle->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
+    handle->mqtt_connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
+    memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
+    handle->connection_cbk = cfg->connection_cbk;
+    handle->disconnection_cbk = cfg->disconnection_cbk;
+    handle->data_cbk = cfg->data_cbk;
+    handle->unset_cbk = cfg->unset_cbk;
+    handle->cbk_user_data = cfg->cbk_user_data;
+    handle->mqtt_is_connected = false;
+    handle->mqtt_message_id = 1U;
 
-    *handle = device;
+    *device = handle;
 
     return res;
 
 failure:
-    free(device);
+    free(handle);
     return res;
 }
 
-astarte_result_t astarte_device_destroy(astarte_device_handle_t handle)
+astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
-    if (handle->mqtt_is_connected) {
-        int res = mqtt_disconnect(&handle->mqtt_client);
+    if (device->mqtt_is_connected) {
+        int res = mqtt_disconnect(&device->mqtt_client);
         if (res < 0) {
             ASTARTE_LOG_ERR("Device disconnection failure %d", res);
             return ASTARTE_RESULT_MQTT_ERROR;
@@ -394,8 +394,14 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t handle)
         return ASTARTE_RESULT_TLS_ERROR;
     }
 
-    free(handle);
+    free(device);
     return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_device_add_interface(
+    astarte_device_handle_t device, const astarte_interface_t *interface)
+{
+    return introspection_update(&device->introspection, interface);
 }
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
@@ -473,10 +479,10 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_device_disconnect(astarte_device_handle_t handle)
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
 {
-    if (handle->mqtt_is_connected) {
-        int res = mqtt_disconnect(&handle->mqtt_client);
+    if (device->mqtt_is_connected) {
+        int res = mqtt_disconnect(&device->mqtt_client);
         if (res < 0) {
             ASTARTE_LOG_ERR("Device disconnection failure %d", res);
             return ASTARTE_RESULT_MQTT_ERROR;

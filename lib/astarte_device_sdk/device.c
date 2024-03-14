@@ -340,12 +340,14 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(res));
         goto failure;
     }
-    for (size_t i = 0; i < cfg->interfaces_size; i++) {
-        res = introspection_add(&handle->introspection, cfg->interfaces[i]);
-        if (res != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(res));
-            introspection_free(handle->introspection);
-            goto failure;
+    if (cfg->interfaces) {
+        for (size_t i = 0; i < cfg->interfaces_size; i++) {
+            res = introspection_add(&handle->introspection, cfg->interfaces[i]);
+            if (res != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(res));
+                introspection_free(handle->introspection);
+                goto failure;
+            }
         }
     }
 

@@ -148,6 +148,7 @@ int main(void)
         = { &device_property_interface, &server_property_interface };
 
     astarte_device_config_t device_config;
+    memset(&device_config, 0, sizeof(device_config));
     device_config.http_timeout_ms = timeout_ms;
     device_config.mqtt_connection_timeout_ms = timeout_ms;
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;

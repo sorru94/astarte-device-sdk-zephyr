@@ -204,8 +204,8 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device);
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
- * @param[in] value Correctly initialized astarte value.
- * @param[in] timestamp Nullable Timestamp of the message.
+ * @param[in] value Astarte value to stream.
+ * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @param[in] qos Quality of service for MQTT publish.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
@@ -221,13 +221,36 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
  * @param[in] path Path where to publish data.
  * @param[in] values Array of aggregated values pairs.
  * @param[in] values_length Number of elements for the values array.
- * @param[in] timestamp Nullable Timestamp of the message.
+ * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @param[in] qos Quality of service for MQTT publish.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_value_pair_t *values,
     size_t values_length, const int64_t *timestamp, uint8_t qos);
+
+/**
+ * @brief Set a device property to the provided value.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface of the property.
+ * @param[in] path Path of the property.
+ * @param[in] value New value for the property.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_value_t value);
+
+/**
+ * @brief Unset a device property.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface of the property.
+ * @param[in] path Path of the property.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_unset_property(
+    astarte_device_handle_t device, const char *interface_name, const char *path);
 
 #ifdef __cplusplus
 }

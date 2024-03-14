@@ -32,6 +32,7 @@ jobs:
         - "datastreams"
         - "register"
         - "aggregates"
+        - "properties"
     runs-on: ubuntu-latest
     concurrency:
       group: build-${{ matrix.sample }}-${{ github.ref }}

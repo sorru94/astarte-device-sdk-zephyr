@@ -229,7 +229,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_iter) // NOLINT
     check_add_interface_ok(&introspection, &test_interface_c);
 
     LOG_INF("Creating introspection iterator"); // NOLINT
-    const introspection_node_t *introspection_iterator = introspection_iter(&introspection);
+    introspection_node_t *introspection_iterator = introspection_iter(&introspection);
     LOG_INF("First interface '%s'", introspection_iterator->interface); // NOLINT
     zassert_equal_ptr(&test_interface_a, introspection_iterator->interface);
 

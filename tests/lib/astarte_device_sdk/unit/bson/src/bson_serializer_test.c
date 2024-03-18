@@ -16,7 +16,7 @@
 #include <zephyr/ztest.h>
 
 #include "bson_serializer.h"
-#include <lib/astarte_device_sdk/bson_serializer.c>
+#include "lib/astarte_device_sdk/bson_serializer.c"
 
 const uint8_t serialized_bson_empty_document[] = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 

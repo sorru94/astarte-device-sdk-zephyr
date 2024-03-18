@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ASTARTE_DEVICE_SDK_BSON_DESERIALIZER_H
-#define ASTARTE_DEVICE_SDK_BSON_DESERIALIZER_H
+#ifndef BSON_DESERIALIZER_H
+#define BSON_DESERIALIZER_H
 
 /**
  * @file bson_deserializer.h
@@ -14,9 +14,6 @@
  * @details This library follows the v1.1 of the BSON standard, but does not provide support
  * for the full specification, only for a smaller subset. For more information regarding the BSON
  * format specifications see: https://bsonspec.org/spec.html.
- *
- * @ingroup utils
- * @{
  */
 
 #include "astarte_device_sdk/result.h"
@@ -68,6 +65,16 @@ bool astarte_bson_deserializer_check_validity(const void *buffer, size_t buffer_
  * @return Initialized document struct.
  */
 astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer);
+
+/**
+ * @brief Counts the number of elements in a BSON document.
+ *
+ * @param[in] document Document from which to count the number of elements.
+ * @param[out] count The number of counted elements.
+ * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if the document is empty.
+ */
+astarte_result_t astarte_bson_deserializer_doc_count_elements(
+    astarte_bson_document_t document, size_t *count);
 
 /**
  * @brief Get the first element in a document's list.
@@ -189,8 +196,4 @@ astarte_result_t astarte_bson_deserializer_element_lookup(
 }
 #endif
 
-/**
- * @}
- */
-
-#endif // ASTARTE_DEVICE_SDK_BSON_DESERIALIZER_H
+#endif // BSON_DESERIALIZER_H

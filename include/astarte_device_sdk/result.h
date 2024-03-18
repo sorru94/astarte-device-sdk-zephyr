@@ -64,8 +64,16 @@ typedef enum
     ASTARTE_RESULT_TIMEOUT = 16,
     /** @brief BSON serialization error. */
     ASTARTE_RESULT_BSON_SERIALIZER_ERROR = 17,
+    /** @brief BSON deserialization error. */
+    ASTARTE_RESULT_BSON_DESERIALIZER_ERROR = 18,
+    /** @brief A BSON array with elements of different type has been received. */
+    ASTARTE_RESULT_BSON_ARRAY_TYPES_ERROR = 19,
+    /** @brief A BSON array with elements of different type has been received. */
+    ASTARTE_RESULT_BSON_EMPTY_ARRAY_ERROR = 20,
+    /** @brief An empty BSON document has been received. */
+    ASTARTE_RESULT_BSON_EMPTY_DOCUMENT_ERROR = 21,
     /** @brief Astarte marked the device client certificate as invalid. */
-    ASTARTE_RESULT_CLIENT_CERT_INVALID = 18
+    ASTARTE_RESULT_CLIENT_CERT_INVALID = 22
 } astarte_result_t;
 
 #ifdef __cplusplus

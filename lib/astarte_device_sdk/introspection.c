@@ -30,7 +30,7 @@ ASTARTE_LOG_MODULE_REGISTER(
  * @retval NULL no interface matched the passed name
  */
 static introspection_node_t *find_node_by_name(
-    introspection_t *introspection, char *interface_name);
+    introspection_t *introspection, const char *interface_name);
 
 /**
  * @brief Counts the number of digits of the passed paramter `num`
@@ -116,8 +116,7 @@ astarte_result_t introspection_add(
         return res;
     }
 
-    introspection_node_t *check_alloc_node
-        = find_node_by_name(introspection, (char *) interface->name);
+    introspection_node_t *check_alloc_node = find_node_by_name(introspection, interface->name);
     if (check_alloc_node) {
         return ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT;
     }
@@ -159,7 +158,8 @@ astarte_result_t introspection_update(
     return ASTARTE_RESULT_OK;
 }
 
-const astarte_interface_t *introspection_get(introspection_t *introspection, char *interface_name)
+const astarte_interface_t *introspection_get(
+    introspection_t *introspection, const char *interface_name)
 {
     introspection_node_t *alloc_node = find_node_by_name(introspection, interface_name);
 
@@ -170,7 +170,7 @@ const astarte_interface_t *introspection_get(introspection_t *introspection, cha
     return alloc_node->interface;
 }
 
-astarte_result_t introspection_remove(introspection_t *introspection, char *interface_name)
+astarte_result_t introspection_remove(introspection_t *introspection, const char *interface_name)
 {
     introspection_node_t *alloc_node = find_node_by_name(introspection, interface_name);
 
@@ -254,7 +254,8 @@ static inline void node_free(introspection_node_t *alloc_node)
     free((void *) alloc_node);
 }
 
-static introspection_node_t *find_node_by_name(introspection_t *introspection, char *interface_name)
+static introspection_node_t *find_node_by_name(
+    introspection_t *introspection, const char *interface_name)
 {
     introspection_node_t *iter_node = NULL;
 
@@ -287,7 +288,7 @@ static uint8_t get_digit_count(uint32_t num)
 static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node)
 {
-    introspection_node_t *old_node = find_node_by_name(introspection, (char *) interface->name);
+    introspection_node_t *old_node = find_node_by_name(introspection, interface->name);
 
     if (old_node) {
         const astarte_interface_t *old_interface = old_node->interface;

@@ -16,7 +16,6 @@
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/value.h"
-#include "bson_serializer.h"
 #include "crypto.h"
 #include "introspection.h"
 #include "log.h"
@@ -93,10 +92,14 @@ struct astarte_device
     astarte_device_connection_cbk_t connection_cbk;
     /** @brief (optional) User callback for disconnection events. */
     astarte_device_disconnection_cbk_t disconnection_cbk;
-    /** @brief (optional) User callback for incoming data events. */
-    astarte_device_data_cbk_t data_cbk;
+    /** @brief (optional) User callback for incoming datastream individual events. */
+    astarte_device_datastream_individual_cbk_t datastream_individual_cbk;
+    /** @brief (optional) User callback for incoming datastream object events. */
+    astarte_device_datastream_object_cbk_t datastream_object_cbk;
+    /** @brief (optional) User callback for incoming property set events. */
+    astarte_device_property_set_cbk_t property_set_cbk;
     /** @brief (optional) User callback for incoming property unset events. */
-    astarte_device_unset_cbk_t unset_cbk;
+    astarte_device_property_unset_cbk_t property_unset_cbk;
     /** @brief (optional) User data to pass to all the set callbacks. */
     void *cbk_user_data;
 };
@@ -138,6 +141,17 @@ static ssize_t handle_published_message(
  */
 static void on_incoming(astarte_device_handle_t device, const char *topic, size_t topic_len,
     const char *data, size_t data_len);
+/**
+ * @brief Calls the correct callback for the received type, also deserializes the BSON payload.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface name for which the data has been received.
+ * @param[in] path Path for which the data has been received.
+ * @param[in] data Payload for the received data.
+ * @param[in] data_len Length of the payload (not including NULL terminator).
+ */
+static void trigger_data_callback(astarte_device_handle_t device, const char *interface_name,
+    const char *path, const char *data, size_t data_len);
 /**
  * @brief Fetch a new client certificate from Astarte.
  *
@@ -357,8 +371,10 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
     handle->connection_cbk = cfg->connection_cbk;
     handle->disconnection_cbk = cfg->disconnection_cbk;
-    handle->data_cbk = cfg->data_cbk;
-    handle->unset_cbk = cfg->unset_cbk;
+    handle->datastream_individual_cbk = cfg->datastream_individual_cbk;
+    handle->datastream_object_cbk = cfg->datastream_object_cbk;
+    handle->property_set_cbk = cfg->property_set_cbk;
+    handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
     handle->mqtt_is_connected = false;
     handle->mqtt_message_id = 1U;
@@ -655,7 +671,7 @@ static void on_connected(astarte_device_handle_t device, struct mqtt_connack_par
             .user_data = device->cbk_user_data,
         };
 
-        device->connection_cbk(&event);
+        device->connection_cbk(event);
     }
 
     if (connack_param.session_present_flag != 0) {
@@ -678,7 +694,7 @@ static void on_disconnected(astarte_device_handle_t device)
             .user_data = device->cbk_user_data,
         };
 
-        device->disconnection_cbk(&event);
+        device->disconnection_cbk(event);
     }
 }
 
@@ -734,11 +750,6 @@ static ssize_t handle_published_message(
 static void on_incoming(astarte_device_handle_t device, const char *topic, size_t topic_len,
     const char *data, size_t data_len)
 {
-    if (!device->data_cbk) {
-        ASTARTE_LOG_ERR("data_event_callback not set");
-        return;
-    }
-
     if (strstr(topic, device->base_topic) != topic) {
         ASTARTE_LOG_ERR("Incoming message topic doesn't begin with base topic: %s", topic);
         return;
@@ -793,17 +804,29 @@ static void on_incoming(astarte_device_handle_t device, const char *topic, size_
         return;
     }
 
-    if (!data && data_len == 0) {
-        if (device->unset_cbk) {
-            astarte_device_unset_event_t event = {
-                .device = device,
-                .interface_name = interface_name,
-                .path = path,
-                .user_data = device->cbk_user_data,
-            };
-            device->unset_cbk(&event);
+    trigger_data_callback(device, interface_name, path, data, data_len);
+}
+
+// This function is borderline hard to read. However splitting it would create duplicated code.
+// NOLINTNEXTLINE (readability-function-cognitive-complexity)
+static void trigger_data_callback(astarte_device_handle_t device, const char *interface_name,
+    const char *path, const char *data, size_t data_len)
+{
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
+
+    astarte_device_data_event_t data_event = {
+        .device = device,
+        .interface_name = interface_name,
+        .path = path,
+        .user_data = device->cbk_user_data,
+    };
+
+    if ((interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) && (!data && data_len == 0)) {
+        if (device->property_unset_cbk) {
+            device->property_unset_cbk(data_event);
         } else {
-            ASTARTE_LOG_ERR("Unset data for %s received, but unset cbk is not defined", path);
+            ASTARTE_LOG_ERR("Unset received, but no callback (%s/%s).", interface_name, path);
         }
         return;
     }
@@ -821,15 +844,58 @@ static void on_incoming(astarte_device_handle_t device, const char *topic, size_
         return;
     }
 
-    astarte_device_data_event_t event = {
-        .device = device,
-        .interface_name = interface_name,
-        .path = path,
-        .bson_element = v_elem,
-        .user_data = device->cbk_user_data,
-    };
+    if (interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
+        astarte_value_t value = { 0 };
+        astarte_result_t res = astarte_value_deserialize(v_elem, &value);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in parsing the received BSON file.");
+            return;
+        }
 
-    device->data_cbk(&event);
+        if (interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) {
+            if (device->property_set_cbk) {
+                astarte_device_property_set_event_t event = {
+                    .data_event = data_event,
+                    .value = value,
+                };
+                device->property_set_cbk(event);
+            } else {
+                ASTARTE_LOG_ERR("Set received, but no callback (%s/%s).", interface_name, path);
+            }
+        } else {
+            if (device->datastream_individual_cbk) {
+                astarte_device_datastream_individual_event_t event = {
+                    .data_event = data_event,
+                    .value = value,
+                };
+                device->datastream_individual_cbk(event);
+            } else {
+                ASTARTE_LOG_ERR("Datastream individual received, but no callback (%s/%s).",
+                    interface_name, path);
+            }
+        }
+        astarte_value_destroy_deserialized(value);
+    } else {
+        astarte_value_pair_t *values = NULL;
+        size_t values_length = 0;
+        astarte_result_t res = astarte_value_pair_deserialize(v_elem, &values, &values_length);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in parsing the received BSON file.");
+            return;
+        }
+        if (device->datastream_object_cbk) {
+            astarte_device_datastream_object_event_t event = {
+                .data_event = data_event,
+                .values = values,
+                .values_length = values_length,
+            };
+            device->datastream_object_cbk(event);
+        } else {
+            ASTARTE_LOG_ERR(
+                "Datastream object received, but no callback (%s/%s).", interface_name, path);
+        }
+        astarte_value_pair_destroy_deserialized(values, values_length);
+    }
 }
 
 static astarte_result_t get_new_client_certificate(astarte_device_handle_t device)

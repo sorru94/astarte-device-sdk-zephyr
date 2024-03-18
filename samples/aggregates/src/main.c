@@ -18,7 +18,6 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
-#include <astarte_device_sdk/bson_types.h>
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/pairing.h>
@@ -52,6 +51,7 @@ const static astarte_interface_t device_aggregate_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_OBJECT,
 };
 
 const static astarte_interface_t server_aggregate_interface = {
@@ -60,34 +60,7 @@ const static astarte_interface_t server_aggregate_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-};
-
-/************************************************
- * Structs declarations
- ***********************************************/
-
-// All the received array types will be of this size to simplify decoding
-#define MAX_RX_ARRAY_SIZE 4
-
-struct rx_aggregate
-{
-    double double_endpoint;
-    int32_t integer_endpoint;
-    bool boolean_endpoint;
-    int64_t longinteger_endpoint;
-    const char *string_endpoint;
-    const uint8_t *binaryblob_endpoint;
-    size_t binaryblob_endpoint_size;
-    int64_t datetime_endpoint;
-    double doublearray_endpoint[MAX_RX_ARRAY_SIZE];
-    size_t doublearray_endpoint_elements;
-    bool booleanarray_endpoint[MAX_RX_ARRAY_SIZE];
-    size_t booleanarray_endpoint_elements;
-    const char *stringarray_endpoint[MAX_RX_ARRAY_SIZE];
-    size_t stringarray_endpoint_elements;
-    const uint8_t *binaryblobarray_endpoint[MAX_RX_ARRAY_SIZE];
-    size_t binaryblobarray_endpoint_sizes[MAX_RX_ARRAY_SIZE];
-    size_t binaryblobarray_endpoint_elements;
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_OBJECT,
 };
 
 /************************************************
@@ -99,79 +72,32 @@ struct rx_aggregate
  *
  * @param event Astarte device connection event pointer.
  */
-static void connection_events_handler(astarte_device_connection_event_t *event);
+static void connection_events_handler(astarte_device_connection_event_t event);
 /**
  * @brief Handler for astarte disconnection events.
  *
  * @param event Astarte device disconnection event pointer.
  */
-static void disconnection_events_handler(astarte_device_disconnection_event_t *event);
+static void disconnection_events_handler(astarte_device_disconnection_event_t event);
 /**
- * @brief Handler for astarte data event.
+ * @brief Handler for astarte datastream object event.
  *
- * @param event Astarte device data event pointer.
+ * @param event Astarte device datastream object event pointer.
  */
-static void data_events_handler(astarte_device_data_event_t *event);
+static void datastream_object_events_handler(astarte_device_datastream_object_event_t event);
 /**
  * @brief Parse the received BSON data for this example.
  *
- * @param[in] bson_element The bson element to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
+ * @param[in] rx_values Array of received key-value pairs
+ * @param[in] rx_values_length Size of the array rx_values
  */
-static uint8_t parse_received_bson(
-    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data);
-/**
- * @brief Parse the scalar types in the received BSON data.
- *
- * @param[in] doc The bson document to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
- */
-static uint8_t parse_received_bson_scalar(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data);
-/**
- * @brief Parse the double array endpoint in the received BSON data.
- *
- * @param[in] doc The bson document to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
- */
-static uint8_t parse_received_bson_doublearray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data);
-/**
- * @brief Parse the boolean array endpoint in the received BSON data.
- *
- * @param[in] doc The bson document to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
- */
-static uint8_t parse_received_bson_booleanarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data);
-/**
- * @brief Parse the string array endpoint in the received BSON data.
- *
- * @param[in] doc The bson document to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
- */
-static uint8_t parse_received_bson_stringarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data);
-/**
- * @brief Parse the binaryblob array endpoint in the received BSON data.
- *
- * @param[in] doc The bson document to be parsed
- * @param[out] rx_data the resulting parsed data (should be initialized to 0 externally).
- * @return 0 when successful, 1 otherwise
- */
-static uint8_t parse_received_bson_binaryblobarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data);
+static void parse_received_data(astarte_value_pair_t *rx_values, size_t rx_values_length);
 /**
  * @brief Stream a predefined reply to Astarte.
  *
- * @param event Astarte device data event pointer.
+ * @param event Astarte device datastream object event pointer.
  */
-static void stream_reply(astarte_device_data_event_t *event);
+static void stream_reply(astarte_device_data_event_t event);
 
 /************************************************
  * Global functions definition
@@ -213,7 +139,7 @@ int main(void)
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = connection_events_handler;
     device_config.disconnection_cbk = disconnection_events_handler;
-    device_config.data_cbk = data_events_handler;
+    device_config.datastream_object_cbk = datastream_object_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
@@ -271,381 +197,102 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void connection_events_handler(astarte_device_connection_event_t *event)
+static void connection_events_handler(astarte_device_connection_event_t event)
 {
-    LOG_INF("Astarte device connected, session_present: %d", event->session_present); // NOLINT
+    LOG_INF("Astarte device connected, session_present: %d", event.session_present); // NOLINT
 }
 
-static void disconnection_events_handler(astarte_device_disconnection_event_t *event)
+static void disconnection_events_handler(astarte_device_disconnection_event_t event)
 {
     (void) event;
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
-static void data_events_handler(astarte_device_data_event_t *event)
+static void datastream_object_events_handler(astarte_device_datastream_object_event_t event)
 {
+    astarte_device_data_event_t rx_event = event.data_event;
+    astarte_value_pair_t *rx_values = event.values;
+    size_t rx_values_length = event.values_length;
     // NOLINTNEXTLINE
-    LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
-        event->interface_name, event->path, event->bson_element.type);
+    LOG_INF("Got Astarte datastream object event, interface_name: %s, path: %s",
+        rx_event.interface_name, rx_event.path);
 
-    struct rx_aggregate rx_data = { 0 };
-
-    if ((strcmp(event->interface_name, server_aggregate_interface.name) != 0)
-        || (strcmp(event->path, "/sensor11") != 0)) {
-        LOG_ERR("Server aggregate incorrectly received at path %s.", event->path); // NOLINT
+    if ((strcmp(rx_event.interface_name, server_aggregate_interface.name) != 0)
+        || (strcmp(rx_event.path, "/sensor11") != 0)) {
+        LOG_ERR("Server aggregate incorrectly received at path %s.", rx_event.path); // NOLINT
         return;
     }
 
-    if (parse_received_bson(event->bson_element, &rx_data) != 0) {
-        LOG_ERR("Server aggregate incorrectly received."); // NOLINT
-        return;
-    }
+    parse_received_data(rx_values, rx_values_length);
 
-    stream_reply(event);
+    stream_reply(rx_event);
 
     LOG_INF("Device aggregate sent, using sensor_id: sensor24."); // NOLINT
 }
 
-static uint8_t parse_received_bson(
-    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data)
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) // Still quite readable
+static void parse_received_data(astarte_value_pair_t *rx_values, size_t rx_values_length)
 {
-    if (bson_element.type != ASTARTE_BSON_TYPE_DOCUMENT) {
-        LOG_ERR("Received bson is not a document."); // NOLINT
-        return 1U;
-    }
-
-    astarte_bson_document_t doc = astarte_bson_deserializer_element_to_document(bson_element);
-
-    if (parse_received_bson_scalar(doc, rx_data) != 0) {
-        return 1U;
-    }
-
-    if (parse_received_bson_doublearray(doc, rx_data) != 0) {
-        return 1U;
-    }
-
-    if (parse_received_bson_booleanarray(doc, rx_data) != 0) {
-        return 1U;
-    }
-
-    if (parse_received_bson_stringarray(doc, rx_data) != 0) {
-        return 1U;
-    }
-
-    if (parse_received_bson_binaryblobarray(doc, rx_data) != 0) {
-        return 1U;
-    }
-
     LOG_INF("Server aggregate received with the following content:"); // NOLINT
-    LOG_INF("double_endpoint: %f", rx_data->double_endpoint); // NOLINT
-    LOG_INF("integer_endpoint: %i", rx_data->integer_endpoint); // NOLINT
-    LOG_INF("boolean_endpoint: %d", rx_data->boolean_endpoint); // NOLINT
-    LOG_INF("longinteger_endpoint: %lli", rx_data->longinteger_endpoint); // NOLINT
-    LOG_INF("string_endpoint: %s", rx_data->string_endpoint); // NOLINT
-    // NOLINTNEXTLINE
-    LOG_HEXDUMP_INF(
-        rx_data->binaryblob_endpoint, rx_data->binaryblob_endpoint_size, "binaryblob_endpoint:");
-    LOG_INF("datetime_endpoint: %lli", rx_data->datetime_endpoint); // NOLINT
-    for (size_t i = 0; i < rx_data->doublearray_endpoint_elements; i++) {
-        // NOLINTNEXTLINE
-        LOG_INF("doublearray_endpoint element %i: %f", i, rx_data->doublearray_endpoint[i]);
-    }
-    for (size_t i = 0; i < rx_data->booleanarray_endpoint_elements; i++) {
-        // NOLINTNEXTLINE
-        LOG_INF("booleanarray_endpoint element %i: %s", i,
-            (rx_data->booleanarray_endpoint[i] == true) ? "true" : "false");
-    }
-    for (size_t i = 0; i < rx_data->stringarray_endpoint_elements; i++) {
-        // NOLINTNEXTLINE
-        LOG_INF("stringarray_endpoint element %i: %s", i, rx_data->stringarray_endpoint[i]);
-    }
-    for (size_t i = 0; i < rx_data->binaryblobarray_endpoint_elements; i++) {
-        // NOLINTNEXTLINE
-        LOG_HEXDUMP_INF(rx_data->binaryblobarray_endpoint[i],
-            rx_data->binaryblobarray_endpoint_sizes[i], "binaryblobarray_endpoint element:");
-    }
+    for (size_t i = 0; i < rx_values_length; i++) {
+        const char *endpoint = rx_values[i].endpoint;
+        astarte_value_t rx_value = rx_values[i].value;
 
-    return 0U;
-}
-
-static uint8_t parse_received_bson_scalar(astarte_bson_document_t doc, struct rx_aggregate *rx_data)
-{
-    astarte_result_t astarte_result = ASTARTE_RESULT_OK;
-    astarte_bson_element_t elem_double;
-    astarte_result = astarte_bson_deserializer_element_lookup(doc, "double_endpoint", &elem_double);
-    if ((astarte_result != ASTARTE_RESULT_OK) || (elem_double.type != ASTARTE_BSON_TYPE_DOUBLE)) {
-        LOG_ERR("Received bson is not missing double_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->double_endpoint = astarte_bson_deserializer_element_to_double(elem_double);
-
-    astarte_bson_element_t elem_integer;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "integer_endpoint", &elem_integer);
-    if ((astarte_result != ASTARTE_RESULT_OK) || (elem_integer.type != ASTARTE_BSON_TYPE_INT32)) {
-        LOG_ERR("Received bson is not missing integer_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->integer_endpoint = astarte_bson_deserializer_element_to_int32(elem_integer);
-
-    astarte_bson_element_t elem_boolean;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "boolean_endpoint", &elem_boolean);
-    if ((astarte_result != ASTARTE_RESULT_OK) || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
-        LOG_ERR("Received bson is not missing boolean_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->boolean_endpoint = astarte_bson_deserializer_element_to_bool(elem_boolean);
-
-    astarte_bson_element_t elem_longinteger;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "longinteger_endpoint", &elem_longinteger);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_longinteger.type != ASTARTE_BSON_TYPE_INT64)) {
-        LOG_ERR("Received bson is not missing longinteger_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->longinteger_endpoint = astarte_bson_deserializer_element_to_int64(elem_longinteger);
-
-    astarte_bson_element_t elem_string;
-    astarte_result = astarte_bson_deserializer_element_lookup(doc, "string_endpoint", &elem_string);
-    if ((astarte_result != ASTARTE_RESULT_OK) || (elem_string.type != ASTARTE_BSON_TYPE_STRING)) {
-        LOG_ERR("Received bson is not missing string_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->string_endpoint = astarte_bson_deserializer_element_to_string(elem_string, NULL);
-
-    astarte_bson_element_t elem_binaryblob;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "binaryblob_endpoint", &elem_binaryblob);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_binaryblob.type != ASTARTE_BSON_TYPE_BINARY)) {
-        LOG_ERR("Received bson is not missing binaryblob_endpoint field."); // NOLINT
-        return 1U;
-    }
-    rx_data->binaryblob_endpoint = astarte_bson_deserializer_element_to_binary(
-        elem_binaryblob, &rx_data->binaryblob_endpoint_size);
-
-    return 0U;
-}
-
-static uint8_t parse_received_bson_doublearray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data)
-{
-    astarte_result_t astarte_result = ASTARTE_RESULT_OK;
-    astarte_bson_element_t elem_doublearray;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "doublearray_endpoint", &elem_doublearray);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_doublearray.type != ASTARTE_BSON_TYPE_ARRAY)) {
-        LOG_ERR("Received bson is not missing doublearray_endpoint field."); // NOLINT
-        return 1U;
-    }
-
-    astarte_bson_document_t arr_doublearray
-        = astarte_bson_deserializer_element_to_array(elem_doublearray);
-
-    astarte_bson_element_t elem_double;
-    for (size_t i = 0; i < MAX_RX_ARRAY_SIZE; i++) {
-        if (i == 0) {
-            astarte_result = astarte_bson_deserializer_first_element(arr_doublearray, &elem_double);
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_double.type != ASTARTE_BSON_TYPE_DOUBLE)) {
+        if (strcmp(endpoint, "double_endpoint") == 0) {
+            LOG_INF("double_endpoint: %f", rx_value.data.dbl); // NOLINT
+        }
+        if (strcmp(endpoint, "integer_endpoint") == 0) {
+            LOG_INF("integer_endpoint: %i", rx_value.data.integer); // NOLINT
+        }
+        if (strcmp(endpoint, "boolean_endpoint") == 0) {
+            // NOLINTNEXTLINE
+            LOG_INF("boolean_endpoint: %s", (rx_value.data.boolean == true) ? "true" : "false");
+        }
+        if (strcmp(endpoint, "longinteger_endpoint") == 0) {
+            LOG_INF("longinteger_endpoint: %lli", rx_value.data.longinteger); // NOLINT
+        }
+        if (strcmp(endpoint, "string_endpoint") == 0) {
+            LOG_INF("string_endpoint: %s", rx_value.data.string); // NOLINT
+        }
+        if (strcmp(endpoint, "binaryblob_endpoint") == 0) {
+            // NOLINTNEXTLINE
+            LOG_HEXDUMP_INF(
+                rx_value.data.binaryblob.buf, rx_value.data.binaryblob.len, "binaryblob_endpoint:");
+        }
+        if (strcmp(endpoint, "doublearray_endpoint") == 0) {
+            for (size_t i = 0; i < rx_value.data.double_array.len; i++) {
                 // NOLINTNEXTLINE
-                LOG_ERR("Received doublearray is empty or the first element has wrong type.");
-                return 1U;
-            }
-        } else {
-            astarte_result = astarte_bson_deserializer_next_element(
-                arr_doublearray, elem_double, &elem_double);
-            if (astarte_result == ASTARTE_RESULT_NOT_FOUND) {
-                rx_data->doublearray_endpoint_elements = i;
-                break;
-            }
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_double.type != ASTARTE_BSON_TYPE_DOUBLE)) {
-                LOG_ERR("Received doublearray element has wrong type."); // NOLINT
-                return 1U;
+                LOG_INF(
+                    "doublearray_endpoint element %i: %f", i, rx_value.data.double_array.buf[i]);
             }
         }
-        rx_data->doublearray_endpoint[i] = astarte_bson_deserializer_element_to_double(elem_double);
-        rx_data->doublearray_endpoint_elements = i + 1;
-    }
-
-    astarte_result
-        = astarte_bson_deserializer_next_element(arr_doublearray, elem_double, &elem_double);
-    if (astarte_result != ASTARTE_RESULT_NOT_FOUND) {
-        LOG_ERR("Received doublearray is too large for this example."); // NOLINT
-        return 1U;
-    }
-
-    return 0U;
-}
-
-static uint8_t parse_received_bson_booleanarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data)
-{
-    astarte_result_t astarte_result = ASTARTE_RESULT_OK;
-    astarte_bson_element_t elem_booleanarray;
-    astarte_result = astarte_bson_deserializer_element_lookup(
-        doc, "booleanarray_endpoint", &elem_booleanarray);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_booleanarray.type != ASTARTE_BSON_TYPE_ARRAY)) {
-        LOG_ERR("Received bson is not missing booleanarray_endpoint field."); // NOLINT
-        return 1U;
-    }
-
-    astarte_bson_document_t arr_booleanarray
-        = astarte_bson_deserializer_element_to_array(elem_booleanarray);
-
-    astarte_bson_element_t elem_boolean;
-    for (size_t i = 0; i < MAX_RX_ARRAY_SIZE; i++) {
-        if (i == 0) {
-            astarte_result
-                = astarte_bson_deserializer_first_element(arr_booleanarray, &elem_boolean);
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
+        if (strcmp(endpoint, "booleanarray_endpoint") == 0) {
+            for (size_t i = 0; i < rx_value.data.boolean_array.len; i++) {
                 // NOLINTNEXTLINE
-                LOG_ERR("Received booleanarray is empty or the first element has wrong type.");
-                return 1U;
-            }
-        } else {
-            astarte_result = astarte_bson_deserializer_next_element(
-                arr_booleanarray, elem_boolean, &elem_boolean);
-            if (astarte_result == ASTARTE_RESULT_NOT_FOUND) {
-                rx_data->booleanarray_endpoint_elements = i;
-                break;
-            }
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
-                LOG_ERR("Received booleanarray element has wrong type."); // NOLINT
-                return 1U;
+                LOG_INF("booleanarray_endpoint element %i: %s", i,
+                    (rx_value.data.boolean_array.buf[i] == true) ? "true" : "false");
             }
         }
-        rx_data->booleanarray_endpoint[i] = astarte_bson_deserializer_element_to_bool(elem_boolean);
-        rx_data->booleanarray_endpoint_elements = i + 1;
-    }
-
-    astarte_result
-        = astarte_bson_deserializer_next_element(arr_booleanarray, elem_boolean, &elem_boolean);
-    if (astarte_result != ASTARTE_RESULT_NOT_FOUND) {
-        LOG_ERR("Received booleanarray is too large for this example."); // NOLINT
-        return 1U;
-    }
-
-    return 0U;
-}
-
-static uint8_t parse_received_bson_stringarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data)
-{
-    astarte_result_t astarte_result = ASTARTE_RESULT_OK;
-    astarte_bson_element_t elem_stringarray;
-    astarte_result
-        = astarte_bson_deserializer_element_lookup(doc, "stringarray_endpoint", &elem_stringarray);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_stringarray.type != ASTARTE_BSON_TYPE_ARRAY)) {
-        LOG_ERR("Received bson is not missing stringarray_endpoint field."); // NOLINT
-        return 1U;
-    }
-
-    astarte_bson_document_t arr_stringarray
-        = astarte_bson_deserializer_element_to_array(elem_stringarray);
-
-    astarte_bson_element_t elem_string;
-    for (size_t i = 0; i < MAX_RX_ARRAY_SIZE; i++) {
-        if (i == 0) {
-            astarte_result = astarte_bson_deserializer_first_element(arr_stringarray, &elem_string);
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_string.type != ASTARTE_BSON_TYPE_STRING)) {
+        if (strcmp(endpoint, "stringarray_endpoint") == 0) {
+            for (size_t i = 0; i < rx_value.data.string_array.len; i++) {
                 // NOLINTNEXTLINE
-                LOG_ERR("Received stringarray is empty or the first element has wrong type.");
-                return 1U;
-            }
-        } else {
-            astarte_result = astarte_bson_deserializer_next_element(
-                arr_stringarray, elem_string, &elem_string);
-            if (astarte_result == ASTARTE_RESULT_NOT_FOUND) {
-                rx_data->stringarray_endpoint_elements = i;
-                break;
-            }
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_string.type != ASTARTE_BSON_TYPE_STRING)) {
-                LOG_ERR("Received stringarray element has wrong type."); // NOLINT
-                return 1U;
+                LOG_INF(
+                    "stringarray_endpoint element %i: %s", i, rx_value.data.string_array.buf[i]);
             }
         }
-        rx_data->stringarray_endpoint[i]
-            = astarte_bson_deserializer_element_to_string(elem_string, NULL);
-        rx_data->stringarray_endpoint_elements = i + 1;
-    }
-
-    astarte_result
-        = astarte_bson_deserializer_next_element(arr_stringarray, elem_string, &elem_string);
-    if (astarte_result != ASTARTE_RESULT_NOT_FOUND) {
-        LOG_ERR("Received stringarray is too large for this example."); // NOLINT
-        return 1U;
-    }
-
-    return 0U;
-}
-
-static uint8_t parse_received_bson_binaryblobarray(
-    astarte_bson_document_t doc, struct rx_aggregate *rx_data)
-{
-    astarte_result_t astarte_result = ASTARTE_RESULT_OK;
-    astarte_bson_element_t elem_binaryblobarray;
-    astarte_result = astarte_bson_deserializer_element_lookup(
-        doc, "binaryblobarray_endpoint", &elem_binaryblobarray);
-    if ((astarte_result != ASTARTE_RESULT_OK)
-        || (elem_binaryblobarray.type != ASTARTE_BSON_TYPE_ARRAY)) {
-        LOG_ERR("Received bson is not missing binaryblobarray_endpoint field."); // NOLINT
-        return 1U;
-    }
-
-    astarte_bson_document_t arr_binaryblobarray
-        = astarte_bson_deserializer_element_to_array(elem_binaryblobarray);
-
-    astarte_bson_element_t elem_binaryblob;
-    for (size_t i = 0; i < MAX_RX_ARRAY_SIZE; i++) {
-        if (i == 0) {
-            astarte_result
-                = astarte_bson_deserializer_first_element(arr_binaryblobarray, &elem_binaryblob);
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_binaryblob.type != ASTARTE_BSON_TYPE_BINARY)) {
+        if (strcmp(endpoint, "binaryblobarray_endpoint") == 0) {
+            const uint8_t **blobs = (const uint8_t **) rx_value.data.binaryblob_array.blobs;
+            size_t *sizes = rx_value.data.binaryblob_array.sizes;
+            size_t elements = rx_value.data.binaryblob_array.count;
+            for (size_t i = 0; i < elements; i++) {
                 // NOLINTNEXTLINE
-                LOG_ERR("Received binaryblobarray is empty or the first element has wrong type.");
-                return 1U;
-            }
-        } else {
-            astarte_result = astarte_bson_deserializer_next_element(
-                arr_binaryblobarray, elem_binaryblob, &elem_binaryblob);
-            if (astarte_result == ASTARTE_RESULT_NOT_FOUND) {
-                rx_data->binaryblobarray_endpoint_elements = i;
-                break;
-            }
-            if ((astarte_result != ASTARTE_RESULT_OK)
-                || (elem_binaryblob.type != ASTARTE_BSON_TYPE_BINARY)) {
-                LOG_ERR("Received binaryblobarray element has wrong type."); // NOLINT
-                return 1U;
+                LOG_HEXDUMP_INF(blobs[i], sizes[i], "binaryblobarray_endpoint element:");
             }
         }
-        rx_data->binaryblobarray_endpoint[i] = astarte_bson_deserializer_element_to_binary(
-            elem_binaryblob, &rx_data->binaryblobarray_endpoint_sizes[i]);
-        rx_data->binaryblobarray_endpoint_elements = i + 1;
     }
-
-    astarte_result = astarte_bson_deserializer_next_element(
-        arr_binaryblobarray, elem_binaryblob, &elem_binaryblob);
-    if (astarte_result != ASTARTE_RESULT_NOT_FOUND) {
-        LOG_ERR("Received binaryblobarray is too large for this example."); // NOLINT
-        return 1U;
-    }
-
-    return 0U;
 }
 
-static void stream_reply(astarte_device_data_event_t *event)
+static void stream_reply(astarte_device_data_event_t event)
 {
 
     LOG_INF("Sending device aggregate with the following content:"); // NOLINT
@@ -674,7 +321,7 @@ static void stream_reply(astarte_device_data_event_t *event)
     int32_t integerarray_endpoint[] = { 11, 2, 21 };
     bool booleanarray_endpoint[] = { true, false, true };
     int64_t longintegerarray_endpoint[] = { 45993543534, 5 };
-    const char *const stringarray_endpoint[] = { "hello", "world" };
+    const char *stringarray_endpoint[] = { "hello", "world" };
     uint8_t binaryblob_array_1[] = { 0x46, 0x23, 0x11 };
     uint8_t binaryblob_array_2[] = { 0x43, 0x00, 0xEE };
     size_t binaryblob_array_sizes[]
@@ -737,8 +384,7 @@ static void stream_reply(astarte_device_data_event_t *event)
             .value = astarte_value_from_string_array(
                 stringarray_endpoint, ARRAY_SIZE(stringarray_endpoint)) },
         { .endpoint = "binaryblobarray_endpoint",
-            .value
-            = astarte_value_from_binaryblob_array((const void *const) binaryblobarray_endpoint,
+            .value = astarte_value_from_binaryblob_array((const void **) binaryblobarray_endpoint,
                 binaryblob_array_sizes, ARRAY_SIZE(binaryblobarray_endpoint)) },
         { .endpoint = "datetimearray_endpoint",
             .value = astarte_value_from_datetime_array(
@@ -746,7 +392,7 @@ static void stream_reply(astarte_device_data_event_t *event)
     };
 
     astarte_result_t res
-        = astarte_device_stream_aggregated(event->device, device_aggregate_interface.name,
+        = astarte_device_stream_aggregated(event.device, device_aggregate_interface.name,
             "/sensor24", value_pairs, ARRAY_SIZE(value_pairs), NULL, 0);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Error streaming the aggregate"); // NOLINT

@@ -32,6 +32,8 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include "eth.h"
 #endif
 
+#include "generated_interfaces.h"
+
 /************************************************
  *       Checks over configuration values       *
  ***********************************************/
@@ -48,24 +50,6 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 #define MQTT_POLL_TIMEOUT_MS 200
 
 #define DEVICE_OPERATIONAL_TIME_MS (15 * SEC_PER_MIN * MSEC_PER_SEC)
-
-const static astarte_interface_t device_datastream_interface = {
-    .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
-
-const static astarte_interface_t server_datastream_interface = {
-    .name = "org.astarteplatform.zephyr.examples.ServerDatastream",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
 
 /************************************************
  * Static functions declaration
@@ -121,7 +105,8 @@ int main(void)
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
-        = { &device_datastream_interface, &server_datastream_interface };
+        = { &org_astarteplatform_zephyr_examples_DeviceDatastream,
+              &org_astarteplatform_zephyr_examples_ServerDatastream };
 
     astarte_device_config_t device_config;
     memset(&device_config, 0, sizeof(device_config));
@@ -245,7 +230,8 @@ static void datastream_individual_events_handler(astarte_device_datastream_indiv
     LOG_INF("Got Astarte datastream individual event, interface_name: %s, path: %s, value type: %d",
         rx_event.interface_name, rx_event.path, rx_value.tag);
 
-    if (strcmp(rx_event.interface_name, device_datastream_interface.name) == 0
+    if (strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerDatastream.name)
+            == 0
         && strcmp(rx_event.path, "/boolean_endpoint") == 0
         && rx_value.tag == ASTARTE_MAPPING_TYPE_BOOLEAN) {
         astarte_value_t tx_value = astarte_value_from_boolean(!rx_value.data.boolean);
@@ -253,14 +239,15 @@ static void datastream_individual_events_handler(astarte_device_datastream_indiv
 
         int qos = 0;
         astarte_result_t res = astarte_device_stream_individual(rx_event.device,
-            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint", tx_value,
-            NULL, qos);
+            org_astarteplatform_zephyr_examples_DeviceDatastream.name, "/boolean_endpoint",
+            tx_value, NULL, qos);
         if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Failue sending answer."); // NOLINT
         }
     }
 
-    if (strcmp(rx_event.interface_name, server_datastream_interface.name) == 0
+    if (strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerDatastream.name)
+            == 0
         && strcmp(rx_event.path, "/stringarray_endpoint") == 0
         && rx_value.tag == ASTARTE_MAPPING_TYPE_STRINGARRAY) {
 

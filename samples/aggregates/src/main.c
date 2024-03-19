@@ -29,6 +29,8 @@
 #include "eth.h"
 #endif
 
+#include "generated_interfaces.h"
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 /************************************************
@@ -44,24 +46,6 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 
 #define MQTT_POLL_TIMEOUT_MS 200
 #define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
-
-const static astarte_interface_t device_aggregate_interface = {
-    .name = "org.astarteplatform.zephyr.examples.DeviceAggregate",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_OBJECT,
-};
-
-const static astarte_interface_t server_aggregate_interface = {
-    .name = "org.astarteplatform.zephyr.examples.ServerAggregate",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_OBJECT,
-};
 
 /************************************************
  * Static functions declaration
@@ -130,7 +114,8 @@ int main(void)
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
-        = { &device_aggregate_interface, &server_aggregate_interface };
+        = { &org_astarteplatform_zephyr_examples_DeviceAggregate,
+              &org_astarteplatform_zephyr_examples_ServerAggregate };
 
     astarte_device_config_t device_config;
     memset(&device_config, 0, sizeof(device_config));
@@ -217,7 +202,8 @@ static void datastream_object_events_handler(astarte_device_datastream_object_ev
     LOG_INF("Got Astarte datastream object event, interface_name: %s, path: %s",
         rx_event.interface_name, rx_event.path);
 
-    if ((strcmp(rx_event.interface_name, server_aggregate_interface.name) != 0)
+    if ((strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerAggregate.name)
+            != 0)
         || (strcmp(rx_event.path, "/sensor11") != 0)) {
         LOG_ERR("Server aggregate incorrectly received at path %s.", rx_event.path); // NOLINT
         return;
@@ -391,9 +377,9 @@ static void stream_reply(astarte_device_data_event_t event)
                 datetimearray_endpoint, ARRAY_SIZE(datetimearray_endpoint)) },
     };
 
-    astarte_result_t res
-        = astarte_device_stream_aggregated(event.device, device_aggregate_interface.name,
-            "/sensor24", value_pairs, ARRAY_SIZE(value_pairs), NULL, 0);
+    astarte_result_t res = astarte_device_stream_aggregated(event.device,
+        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", value_pairs,
+        ARRAY_SIZE(value_pairs), NULL, 0);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Error streaming the aggregate"); // NOLINT
     }

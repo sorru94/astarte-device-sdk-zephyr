@@ -20,6 +20,8 @@
  * @{
  */
 
+#include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/mapping.h"
 #include "astarte_device_sdk/result.h"
 
 /**
@@ -86,6 +88,10 @@ typedef struct
     astarte_interface_type_t type;
     /** @brief Aggregation, see #astarte_interface_aggregation_t */
     astarte_interface_aggregation_t aggregation;
+    /** @brief Array of mappings */
+    const astarte_mapping_t *mappings;
+    /** @brief Lenght of the array of mappings */
+    size_t mappings_length;
 } astarte_interface_t;
 
 #ifdef __cplusplus
@@ -104,6 +110,8 @@ astarte_result_t astarte_interface_validate(const astarte_interface_t *interface
 }
 #endif
 
-/** @} */
+/**
+ * @}
+ */
 
 #endif // ASTARTE_DEVICE_SDK_INTERFACE_H

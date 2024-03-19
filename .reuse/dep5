@@ -5,3 +5,11 @@ Source: https://github.com/secomind/astarte-device-sdk-zephyr
 Files: skipfile.txt
 Copyright: SECO Mind Srl
 License: CC0-1.0
+
+Files: samples/common/interfaces/generated_interfaces.c
+Copyright: SECO Mind Srl
+License: Apache-2.0
+
+Files: samples/common/interfaces/generated_interfaces.h
+Copyright: SECO Mind Srl
+License: Apache-2.0

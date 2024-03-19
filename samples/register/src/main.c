@@ -31,30 +31,14 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include "eth.h"
 #endif
 
+#include "generated_interfaces.h"
+
 /************************************************
  * Constants and defines
  ***********************************************/
 
 #define MQTT_POLL_TIMEOUT_MS 200
 #define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
-
-const static astarte_interface_t device_datastream_interface = {
-    .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
-
-const static astarte_interface_t server_datastream_interface = {
-    .name = "org.astarteplatform.zephyr.examples.ServerDatastream",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
 
 /************************************************
  * Static functions declaration
@@ -137,7 +121,8 @@ int main(void)
     LOG_WRN("Credential secret: '%s'", cred_secr); // NOLINT
 
     const astarte_interface_t *interfaces[]
-        = { &device_datastream_interface, &server_datastream_interface };
+        = { &org_astarteplatform_zephyr_examples_DeviceDatastream,
+              &org_astarteplatform_zephyr_examples_ServerDatastream };
 
     astarte_device_config_t device_config;
     memset(&device_config, 0, sizeof(device_config));

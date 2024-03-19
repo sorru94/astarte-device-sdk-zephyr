@@ -3,4 +3,6 @@
 +*/lib/astarte_device_sdk/*.c
 +*/samples/*/include/*.h
 +*/samples/*/src/*.c
++*/samples/common/interfaces/generated_interfaces.h
++*/samples/common/interfaces/generated_interfaces.c
 -*

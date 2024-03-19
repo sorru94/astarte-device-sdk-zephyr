@@ -21,6 +21,8 @@
  * @{
  */
 
+#include "astarte_device_sdk/astarte.h"
+
 /**
  * @brief Allowed types in a mapping on an Astarte interface
  *
@@ -61,6 +63,44 @@ typedef enum
     ASTARTE_MAPPING_TYPE_DATETIMEARRAY = 14,
 } astarte_mapping_type_t;
 
-/** @} */
+/**
+ * @brief mapping reliability definition
+ *
+ * This enum represents the possible values of the reliability of an astarte mapping
+ * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#astarte-mapping-schema-reliability
+ */
+typedef enum
+{
+    /** @brief Unreliable data transmission QoS: 0 */
+    ASTARTE_MAPPING_RELIABILITY_UNRELIABLE = 0,
+    /** @brief Guaranteed data transmission QoS: 1 */
+    ASTARTE_MAPPING_RELIABILITY_GUARANTEED = 1,
+    /** @brief Unique data transmission QoS: 2 */
+    ASTARTE_MAPPING_RELIABILITY_UNIQUE = 2,
+} astarte_mapping_reliability_t;
+
+/**
+ * @brief interface mapping definition
+ *
+ * This structs represent a subset of the information contained in an Astarte interface mapping
+ * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#mapping
+ */
+typedef struct
+{
+    /** @brief Mapping endpoint */
+    const char *endpoint;
+    /** @brief Mapping type */
+    astarte_mapping_type_t type;
+    /** @brief Mapping reliability */
+    astarte_mapping_reliability_t reliability;
+    /** @brief Explicit timestamp flag */
+    bool explicit_timestamp;
+    /** @brief Allow unset flag */
+    bool allow_unset;
+} astarte_mapping_t;
+
+/**
+ * @}
+ */
 
 #endif // ASTARTE_DEVICE_SDK_MAPPING_H

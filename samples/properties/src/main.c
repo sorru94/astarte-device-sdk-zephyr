@@ -29,6 +29,8 @@
 #include "eth.h"
 #endif
 
+#include "generated_interfaces.h"
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 /************************************************
@@ -44,24 +46,6 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 
 #define MQTT_POLL_TIMEOUT_MS 200
 #define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
-
-const static astarte_interface_t device_property_interface = {
-    .name = "org.astarteplatform.zephyr.examples.DeviceProperty",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
-    .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
-
-const static astarte_interface_t server_property_interface = {
-    .name = "org.astarteplatform.zephyr.examples.ServerProperty",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
-    .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
-    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-};
 
 #define GROUP_1_ID 40
 #define GROUP_2_ID 41
@@ -145,8 +129,8 @@ int main(void)
     int32_t timeout_ms = 3 * MSEC_PER_SEC;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
-    const astarte_interface_t *interfaces[]
-        = { &device_property_interface, &server_property_interface };
+    const astarte_interface_t *interfaces[] = { &org_astarteplatform_zephyr_examples_DeviceProperty,
+        &org_astarteplatform_zephyr_examples_ServerProperty };
 
     astarte_device_config_t device_config;
     memset(&device_config, 0, sizeof(device_config));
@@ -232,7 +216,8 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
     LOG_INF("Got Astarte property set event, interface_name: %s, path: %s", rx_event.interface_name,
         rx_event.path);
 
-    if ((strcmp(rx_event.interface_name, server_property_interface.name) == 0)
+    if ((strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerProperty.name)
+            == 0)
         && (strcmp(rx_event.path, "/sensor11/integer_endpoint") == 0)
         && (rx_value.tag == ASTARTE_MAPPING_TYPE_INTEGER)
         && (rx_value.data.integer == GROUP_1_ID)) {
@@ -240,7 +225,8 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
         LOG_INF("Received set property event on integer endpoint with content '%d'.", GROUP_1_ID);
         set_properties_group_1(rx_event);
     }
-    if ((strcmp(rx_event.interface_name, server_property_interface.name) == 0)
+    if ((strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerProperty.name)
+            == 0)
         && (strcmp(rx_event.path, "/sensor11/integer_endpoint") == 0)
         && (rx_value.tag == ASTARTE_MAPPING_TYPE_INTEGER)
         && (rx_value.data.integer == GROUP_2_ID)) {
@@ -248,7 +234,8 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
         LOG_INF("Received set property event on integer endpoint with content '%d'.", GROUP_2_ID);
         set_properties_group_2(rx_event);
     }
-    if ((strcmp(rx_event.interface_name, server_property_interface.name) == 0)
+    if ((strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerProperty.name)
+            == 0)
         && (strcmp(rx_event.path, "/sensor11/integer_endpoint") == 0)
         && (rx_value.tag == ASTARTE_MAPPING_TYPE_INTEGER)
         && (rx_value.data.integer == GROUP_3_ID)) {
@@ -256,7 +243,8 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
         LOG_INF("Received set property event on integer endpoint with content '%d'.", GROUP_3_ID);
         unset_properties_group_1(rx_event);
     }
-    if ((strcmp(rx_event.interface_name, server_property_interface.name) == 0)
+    if ((strcmp(rx_event.interface_name, org_astarteplatform_zephyr_examples_ServerProperty.name)
+            == 0)
         && (strcmp(rx_event.path, "/sensor11/integer_endpoint") == 0)
         && (rx_value.tag == ASTARTE_MAPPING_TYPE_INTEGER)
         && (rx_value.data.integer == GROUP_4_ID)) {
@@ -273,32 +261,37 @@ static void set_properties_group_1(astarte_device_data_event_t event)
     LOG_INF("Setting group 1 device properties."); // NOLINT
 
     astarte_result_t res = ASTARTE_RESULT_OK;
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/double_endpoint", astarte_value_from_double(32.4));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/double_endpoint",
+        astarte_value_from_double(32.4));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for double_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/string_endpoint", astarte_value_from_string("hello world"));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/string_endpoint",
+        astarte_value_from_string("hello world"));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for string_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/datetime_endpoint", astarte_value_from_datetime(1710237968800));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/datetime_endpoint",
+        astarte_value_from_datetime(1710237968800));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for datetime_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/longinteger_endpoint", astarte_value_from_longinteger(34359738368));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/longinteger_endpoint",
+        astarte_value_from_longinteger(34359738368));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for longinteger_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/boolean_endpoint", astarte_value_from_boolean(true));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/boolean_endpoint",
+        astarte_value_from_boolean(true));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for boolean_endpoint failed."); // NOLINT
         return;
@@ -314,23 +307,24 @@ static void set_properties_group_2(astarte_device_data_event_t event)
     LOG_INF("Setting group 2 device properties."); // NOLINT
 
     astarte_result_t res = ASTARTE_RESULT_OK;
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/integer_endpoint", astarte_value_from_integer(11));
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/integer_endpoint",
+        astarte_value_from_integer(11));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for integer_endpoint failed."); // NOLINT
         return;
     }
     bool bool_arr[] = { true, false };
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/booleanarray_endpoint",
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/booleanarray_endpoint",
         astarte_value_from_boolean_array(bool_arr, ARRAY_SIZE(bool_arr)));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for booleanarray_endpoint failed."); // NOLINT
         return;
     }
     double double_array[] = { 0.1, 32.4, 0.0, 23.4 };
-    res = astarte_device_set_property(event.device, device_property_interface.name,
-        "/sensor44/doublearray_endpoint",
+    res = astarte_device_set_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/doublearray_endpoint",
         astarte_value_from_double_array(double_array, ARRAY_SIZE(double_array)));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Setting operation for doublearray_endpoint failed."); // NOLINT
@@ -346,38 +340,38 @@ static void unset_properties_group_1(astarte_device_data_event_t event)
     LOG_INF("Unsetting group 1 device properties."); // NOLINT
 
     astarte_result_t res = ASTARTE_RESULT_OK;
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/double_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/double_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for double_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/string_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/string_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for string_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/datetime_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/datetime_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for datetime_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/longinteger_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/longinteger_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for longinteger_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/boolean_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/boolean_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for boolean_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/booleanarray_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/booleanarray_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for booleanarray_endpoint failed."); // NOLINT
         return;
@@ -392,20 +386,20 @@ static void unset_properties_group_2(astarte_device_data_event_t event)
     LOG_INF("Unsetting group 2 device properties."); // NOLINT
 
     astarte_result_t res = ASTARTE_RESULT_OK;
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/integer_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/integer_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for integer_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/booleanarray_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/booleanarray_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for booleanarray_endpoint failed."); // NOLINT
         return;
     }
-    res = astarte_device_unset_property(
-        event.device, device_property_interface.name, "/sensor44/doublearray_endpoint");
+    res = astarte_device_unset_property(event.device,
+        org_astarteplatform_zephyr_examples_DeviceProperty.name, "/sensor44/doublearray_endpoint");
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Unsetting operation for doublearray_endpoint failed."); // NOLINT
         return;

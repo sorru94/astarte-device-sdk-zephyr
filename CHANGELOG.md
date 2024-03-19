@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Method to stream device owned object aggregated datastreams.
 - Methods to set and unset device owned properties.
+- Mapping type `astarte_mapping_t`. To be used to store Astarte mapping definitions.
+- West command to generate interfaces definitions from `.json` files.
 
 ### Changed
 - The `astarte_device_data_cbk_t` callback has been replaced by three separate callbacks.

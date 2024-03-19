@@ -104,7 +104,7 @@ Once you have built the application, run the following command to flash it on th
 west flash
 ```
 
-And the following command to run on an emulated board:
+And the following command to run on an emulated board or the native simulator:
 ```shell
 west build -t run
 ```
@@ -132,11 +132,25 @@ To run the unit tests use:
 west twister -c -v --inline-logs -p unit_testing -T ./astarte-device-sdk-zephyr/unittests
 ```
 
+## West extension commands
+
+### Interface definitions generation
+
+The standard format of an Astarte interface is a JSON file as defined in the
+[Astarte documentation](https://docs.astarte-platform.org/astarte/latest/030-interface.html).
+However, an Astarte device on Zephyr uses C structures to define Astarte interfaces.
+Translating an interface from a JSON definition to a C definition for Zephyr can be a repetitive
+and error-prone process.
+
+For this reason, an extension command for `west` has been created to facilitate this procedure.
+The `generate-interfaces` extension command accepts as input one or more JSON interface definitions
+and automatically generates the corresponding C source code.
+Run `west generate-interfaces --help` to learn about the generation options.
+
 ### Code formatting
 
 The code in this module is formatted using `clang-format`.
-An extension command for `west` has been created to facilitate formatting, `clang-format`
-should be installed before running this command.
+An extension command for `west` has been created to facilitate formatting.
 Run `west format --help` to learn about the formatting options.
 
 ### Static code analysis
@@ -146,29 +160,14 @@ Run `west format --help` to learn about the formatting options.
 analysis tools in `west`.
 It can be configured to run different static checkers, such as `clang-tidy` and `cppcheck`.
 
-Install the python dependencies the extensions with the following command:
-```bash
-pip install -r ~/zephyr-workspace/astarte-device-sdk-zephyr/scripts/requirements.txt
-```
-In addition, `clang-tidy` should be installed, if not already present on the system:
-```bash
-wget https://apt.llvm.org/llvm.sh
-chmod +x llvm.sh
-sudo ./llvm.sh $LLVM_VERSION
-sudo update-alternatives --install /bin/clang-tidy clang-tidy /bin/clang-tidy-$LLVM_VERSION 100
-```
-Where `$LLVM_VERSION` is LLVM version to install.
-
 An extension command for `west` has been created to facilitate running static analysis with
 `clang-tidy`.
 Run `west static --help` to read what this command performs.
 
-Note that this extension is only available when using this repository as a stand-alone project.
-
 ### Build doxygen documentation
 
 The dependencies for generating the doxygen documentation are:
-- `doxygen <= 1.9.4`
+- `doxygen <= 1.9.6`
 - `graphviz`
 
 An extension command for `west` has been created to facilitate generating the documentation.

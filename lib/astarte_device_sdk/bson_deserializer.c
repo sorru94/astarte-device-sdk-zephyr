@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "astarte_device_sdk/bson_deserializer.h"
+#include "bson_deserializer.h"
 
 #include <zephyr/sys/byteorder.h>
 
-#include "astarte_device_sdk/bson_types.h"
+#include "bson_types.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(bson_deserializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL);
@@ -116,6 +116,34 @@ astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer)
     document.list = (uint8_t *) buffer + sizeof(document.size);
     document.list_size = document.size - sizeof(document.size) - NULL_TERM_SIZE;
     return document;
+}
+
+astarte_result_t astarte_bson_deserializer_doc_count_elements(
+    astarte_bson_document_t document, size_t *count)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_bson_element_t element;
+    res = astarte_bson_deserializer_first_element(document, &element);
+    if (res == ASTARTE_RESULT_NOT_FOUND) {
+        *count = 0;
+        return ASTARTE_RESULT_OK;
+    }
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
+    size_t document_length = 0U;
+
+    do {
+        document_length++;
+        res = astarte_bson_deserializer_next_element(document, element, &element);
+    } while (res == ASTARTE_RESULT_OK);
+
+    if (res != ASTARTE_RESULT_NOT_FOUND) {
+        return res;
+    }
+
+    *count = document_length;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_bson_deserializer_first_element(

@@ -20,9 +20,9 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
-#include <astarte_device_sdk/bson_types.h>
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
+#include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
 #include <astarte_device_sdk/value.h>
 
@@ -55,6 +55,7 @@ const static astarte_interface_t device_datastream_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 const static astarte_interface_t server_datastream_interface = {
@@ -63,6 +64,7 @@ const static astarte_interface_t server_datastream_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 /************************************************
@@ -74,19 +76,20 @@ const static astarte_interface_t server_datastream_interface = {
  *
  * @param event Astarte device connection event pointer.
  */
-static void astarte_connection_events_handler(astarte_device_connection_event_t *event);
+static void astarte_connection_events_handler(astarte_device_connection_event_t event);
 /**
  * @brief Handler for astarte disconnection events.
  *
  * @param event Astarte device disconnection event pointer.
  */
-static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event);
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t event);
 /**
  * @brief Handler for astarte data event.
  *
  * @param event Astarte device data event pointer.
  */
-static void astarte_data_events_handler(astarte_device_data_event_t *event);
+static void datastream_individual_events_handler(
+    astarte_device_datastream_individual_event_t event);
 
 /************************************************
  * Global functions definition
@@ -127,7 +130,7 @@ int main(void)
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = astarte_connection_events_handler;
     device_config.disconnection_cbk = astarte_disconnection_events_handler;
-    device_config.data_cbk = astarte_data_events_handler;
+    device_config.datastream_individual_cbk = datastream_individual_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
@@ -223,36 +226,47 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void astarte_connection_events_handler(astarte_device_connection_event_t *event)
+static void astarte_connection_events_handler(astarte_device_connection_event_t event)
 {
-    LOG_INF("Astarte device connected, session_present: %d", event->session_present); // NOLINT
+    LOG_INF("Astarte device connected, session_present: %d", event.session_present); // NOLINT
 }
 
-static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event)
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t event)
 {
     (void) event;
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
-static void astarte_data_events_handler(astarte_device_data_event_t *event)
+static void datastream_individual_events_handler(astarte_device_datastream_individual_event_t event)
 {
+    astarte_device_data_event_t rx_event = event.data_event;
+    astarte_value_t rx_value = event.value;
     // NOLINTNEXTLINE
-    LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
-        event->interface_name, event->path, event->bson_element.type);
+    LOG_INF("Got Astarte datastream individual event, interface_name: %s, path: %s, value type: %d",
+        rx_event.interface_name, rx_event.path, rx_value.tag);
 
-    if (strcmp(event->interface_name, "org.astarteplatform.zephyr.examples.ServerDatastream") == 0
-        && strcmp(event->path, "/boolean_endpoint") == 0
-        && event->bson_element.type == ASTARTE_BSON_TYPE_BOOLEAN) {
-        bool answer = !astarte_bson_deserializer_element_to_bool(event->bson_element);
-        astarte_value_t astarte_answer = astarte_value_from_boolean(answer);
-        LOG_INF("Sending answer %d.", answer); // NOLINT
+    if (strcmp(rx_event.interface_name, device_datastream_interface.name) == 0
+        && strcmp(rx_event.path, "/boolean_endpoint") == 0
+        && rx_value.tag == ASTARTE_MAPPING_TYPE_BOOLEAN) {
+        astarte_value_t tx_value = astarte_value_from_boolean(!rx_value.data.boolean);
+        LOG_INF("Sending answer %s.", (!rx_value.data.boolean) ? "true" : "false"); // NOLINT
 
         int qos = 0;
-        astarte_result_t res = astarte_device_stream_individual(event->device,
-            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint",
-            astarte_answer, NULL, qos);
+        astarte_result_t res = astarte_device_stream_individual(rx_event.device,
+            "org.astarteplatform.zephyr.examples.DeviceDatastream", "/boolean_endpoint", tx_value,
+            NULL, qos);
         if (res != ASTARTE_RESULT_OK) {
-            LOG_INF("Failue sending answer %d.", answer); // NOLINT
+            LOG_INF("Failue sending answer."); // NOLINT
+        }
+    }
+
+    if (strcmp(rx_event.interface_name, server_datastream_interface.name) == 0
+        && strcmp(rx_event.path, "/stringarray_endpoint") == 0
+        && rx_value.tag == ASTARTE_MAPPING_TYPE_STRINGARRAY) {
+
+        LOG_INF("Received message:"); // NOLINT
+        for (size_t i = 0; i < rx_value.data.string_array.len; i++) {
+            LOG_INF("-- %s", rx_value.data.string_array.buf[i]); // NOLINT
         }
     }
 }

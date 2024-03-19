@@ -98,7 +98,8 @@ astarte_result_t introspection_update(
  * @return pointer to the interface matching the passed interface_name
  * @retval NULL no interface was found
  */
-const astarte_interface_t *introspection_get(introspection_t *introspection, char *interface_name);
+const astarte_interface_t *introspection_get(
+    introspection_t *introspection, const char *interface_name);
 
 /**
  * @brief Removes an interface from the introspection list
@@ -110,7 +111,7 @@ const astarte_interface_t *introspection_get(introspection_t *introspection, cha
  * @retval ASTARTE_RESULT_INTERFACE_NOT_FOUND no interface matching the name was found
  * @retval ASTARTE_RESULT_OK interface removed successfully
  */
-astarte_result_t introspection_remove(introspection_t *introspection, char *interface_name);
+astarte_result_t introspection_remove(introspection_t *introspection, const char *interface_name);
 
 /**
  * @brief Computes the introspection string length

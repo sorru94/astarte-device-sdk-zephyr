@@ -20,7 +20,6 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/mapping.h"
-#include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/util.h"
 
 /** @brief Container for a binary blob type */
@@ -32,7 +31,7 @@ ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_longintegerarray_t, int64_t);
 /** @brief Container for a double array type */
 ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_doublearray_t, double);
 /** @brief Container for a string array type */
-ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_stringarray_t, const char *const);
+ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_stringarray_t, const char *);
 /** @brief Container for a bool array type */
 ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_booleanarray_t, bool);
 
@@ -42,9 +41,9 @@ ASTARTE_UTIL_DEFINE_ARRAY(astarte_value_booleanarray_t, bool);
 typedef struct
 {
     /** @brief Array of binary blobs */
-    const void *const *blobs;
+    const void **blobs;
     /** @brief Array of sizes of each binary blob */
-    const size_t *sizes;
+    size_t *sizes;
     /** @brief Number of elements in both the array of binary blobs and array of sizes */
     size_t count;
 } astarte_value_binaryblobarray_t;
@@ -108,8 +107,8 @@ typedef union
  */
 typedef struct
 {
-    /** @brief Value of the tagged enum */
-    astarte_value_param_t value;
+    /** @brief Data portion of the tagged enum */
+    astarte_value_param_t data;
     /** @brief Tag of the tagged enum */
     astarte_mapping_type_t tag;
 } astarte_value_t;
@@ -218,7 +217,7 @@ astarte_value_t astarte_value_from_double_array(double *double_array, size_t len
  * @return The astarte value that wraps a string_array with type tag
  * ASTARTE_MAPPING_TYPE_STRINGARRAY.
  */
-astarte_value_t astarte_value_from_string_array(const char *const *string_array, size_t len);
+astarte_value_t astarte_value_from_string_array(const char **string_array, size_t len);
 /**
  * @brief Initialize an astarte value from the passed string_array.
  *
@@ -228,8 +227,7 @@ astarte_value_t astarte_value_from_string_array(const char *const *string_array,
  * @return The astarte value that wraps a binary_array with type tag
  * ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY.
  */
-astarte_value_t astarte_value_from_binaryblob_array(
-    const void *const *buf, const size_t *sizes, size_t count);
+astarte_value_t astarte_value_from_binaryblob_array(const void **buf, size_t *sizes, size_t count);
 /**
  * @brief Initialize an astarte value from the passed boolean_array.
  *

@@ -74,11 +74,18 @@ typedef enum
  */
 typedef struct
 {
-    const char *name; /**< Interface name */
-    uint32_t major_version; /**< Major version */
-    uint32_t minor_version; /**< Minor version */
-    astarte_interface_ownership_t ownership; /**< Ownership, see #astarte_interface_ownership_t */
-    astarte_interface_type_t type; /**< Type, see #astarte_interface_type_t */
+    /** @brief Interface name */
+    const char *name;
+    /** @brief Major version */
+    uint32_t major_version;
+    /** @brief Minor version */
+    uint32_t minor_version;
+    /** @brief Ownership, see #astarte_interface_ownership_t */
+    astarte_interface_ownership_t ownership;
+    /** @brief Type, see #astarte_interface_type_t */
+    astarte_interface_type_t type;
+    /** @brief Aggregation, see #astarte_interface_aggregation_t */
+    astarte_interface_aggregation_t aggregation;
 } astarte_interface_t;
 
 #ifdef __cplusplus

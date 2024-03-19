@@ -44,6 +44,7 @@ const static astarte_interface_t device_datastream_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 const static astarte_interface_t server_datastream_interface = {
@@ -52,6 +53,7 @@ const static astarte_interface_t server_datastream_interface = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 /************************************************
@@ -63,19 +65,20 @@ const static astarte_interface_t server_datastream_interface = {
  *
  * @param event Astarte device connection event pointer.
  */
-static void astarte_connection_events_handler(astarte_device_connection_event_t *event);
+static void astarte_connection_events_handler(astarte_device_connection_event_t event);
 /**
  * @brief Handler for astarte disconnection events.
  *
  * @param event Astarte device disconnection event pointer.
  */
-static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event);
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t event);
 /**
  * @brief Handler for astarte data event.
  *
  * @param event Astarte device data event pointer.
  */
-static void astarte_data_events_handler(astarte_device_data_event_t *event);
+static void datastream_individual_events_handler(
+    astarte_device_datastream_individual_event_t event);
 
 /************************************************
  * Global functions definition
@@ -143,7 +146,7 @@ int main(void)
     device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = astarte_connection_events_handler;
     device_config.disconnection_cbk = astarte_disconnection_events_handler;
-    device_config.data_cbk = astarte_data_events_handler;
+    device_config.datastream_individual_cbk = datastream_individual_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
@@ -201,20 +204,22 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void astarte_connection_events_handler(astarte_device_connection_event_t *event)
+static void astarte_connection_events_handler(astarte_device_connection_event_t event)
 {
-    LOG_INF("Astarte device connected, session_present: %d", event->session_present); // NOLINT
+    LOG_INF("Astarte device connected, session_present: %d", event.session_present); // NOLINT
 }
 
-static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t *event)
+static void astarte_disconnection_events_handler(astarte_device_disconnection_event_t event)
 {
     (void) event;
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
-static void astarte_data_events_handler(astarte_device_data_event_t *event)
+static void datastream_individual_events_handler(astarte_device_datastream_individual_event_t event)
 {
+    astarte_device_data_event_t rx_event = event.data_event;
+    astarte_value_t rx_value = event.value;
     // NOLINTNEXTLINE
-    LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
-        event->interface_name, event->path, event->bson_element.type);
+    LOG_INF("Got Astarte datastream individual event, interface_name: %s, path: %s, value type: %d",
+        rx_event.interface_name, rx_event.path, rx_value.tag);
 }

@@ -4,17 +4,44 @@ Copyright 2024 SECO Mind Srl
 SPDX-License-Identifier: Apache-2.0
 -->
 
-## Common sample configuration
+## Samples organization
 
-The examples needs to be configured to work with a testing/demonstration Astarte instance or
-a fully deployed Astarte instance.
-We assume a device with a known device id has been manually registered in the Astarte instance.
-The credential secret obtained through the registration should be added to the configuration.
-The configuration can be added in the `prj.conf` file of this example.
+All the samples contained in this folder share some source code and configuration settings.
+The common components for all the samples can be found in the `common` folder.
 
-All usecases require setting the WiFi SSID and password to valid values.
+Some of the common settings are:
+- Board specific overlays and configurations. Contained in the `common/boards` folder.
+- Common source code for generic Ethernet/Wifi connectivity, TLS settings plus some utilities for
+  generation of standard datasets. Contained in the `common/include` and `common/src` folders.
+- Common Astarte interfaces shared by the samples. These interfaces have been designed to be generic
+  in order for the samples to demonstrate as much functionality as possible.
+  The interfaces are definedi in JSON filed sontained in the `common/interfaces` folder.
+  In addition to the JSON version of the interfaces, an auto-generated version of the same interfaces
+  is contained in the `generated_interfaces` header/source files. Those files have been generated
+  running the `west generate-interfaces` command and should not be modified manually.
+- A generic `Kconfig` file defines some configuration flags used by all the samples.
+- A `prj.conf` file contains configuration settings common for all the samples.
 
-### Configuration for testing or demonstration
+### Common samples behaviour
+
+All the samples behave in a similar manner.
+Each sample contains two threads:
+- A master application thread that will handle Ethernet/Wifi reconnection and trasmit data to
+  Astarte if needed.
+- A secondary thread that will manage the Astarte device and handle reception of data from Astarte.
+
+The two threads are configured to be at the same priority.
+
+Each sample will connect to Astarte and remain connected for a configurable amount of time.
+Furthermore, samples intended to demonstrate a specific interface type such as datastream or
+property will transmit a predefined set of data after a configurable intervall of time.
+
+After the operational time of the device has concluded, the device will disconnect and the sample
+will terminate.
+
+## Samples configuration
+
+### Configuration for demonstration non-TLS capable Astarte
 
 This option assumes you are using this example with an Astarte instance similar to the
 one explained in the
@@ -35,7 +62,7 @@ Where `<DEVICE_ID>` is the device ID of the device you would like to use in the 
 is the hostname for your Astarte instance, `<REALM_NAME>` is the name of your testing realm and
 `<CREDENTIAL_SECRET>` is the credential secret obtained through the manual registration.
 
-### Configuration for fully functional Astarte
+### Configuration for fully TLS capable Astarte
 
 This option assumes you are using a fully deployed Astarte instance with valid certificates from
 an official certificate authority.
@@ -55,19 +82,6 @@ is the hostname for your Astarte instance, `<REALM_NAME>` is the name of your te
 
 In addition, the file `ca_certificates.h` should be modified, placing in the `ca_certificate_root`
 array a valid CA certificate in the PEM format.
-
-#### Build with TLS enables
-
-To build the sample and enable tls you also need to pass the extra config file `../common/overlay-tls.conf`.
-To do that you can run:
-```sh
-west build -b <BOARD> <SAMPLES_SUBDIRECTORY> -- -DEXTRA_CONF_FILE=../common/overlay-tls.conf
-```
-
-As an example you could run this command while in the root of the repo:
-```sh
-west build -b esp_wrover_kit samples/datastreams -- -DEXTRA_CONF_FILE=../common/overlay-tls.conf
-```
 
 ### Configuration of secrets in ignored files
 

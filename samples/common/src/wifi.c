@@ -7,19 +7,102 @@
 #include "wifi.h"
 
 #include <errno.h>
+
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/net/net_event.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/wifi_mgmt.h>
 
-#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(wifi, CONFIG_APP_LOG_LEVEL); // NOLINT
+
+/************************************************
+ * Constants and defines
+ ***********************************************/
 
 static K_SEM_DEFINE(wifi_connected, 0, 1);
 static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
 
 static struct net_mgmt_event_callback wifi_cb;
 static struct net_mgmt_event_callback ipv4_cb;
+
+/************************************************
+ * Static functions declaration
+ ***********************************************/
+
+static void handle_wifi_connect_result(struct net_mgmt_event_callback *cb);
+static void handle_wifi_disconnect_result(struct net_mgmt_event_callback *cb);
+static void handle_ipv4_result(struct net_if *iface);
+
+static void wifi_connect(void);
+static void wifi_status(void);
+
+/************************************************
+ *       Callbacks declaration/definition       *
+ ***********************************************/
+
+static void wifi_mgmt_event_handler(
+    struct net_mgmt_event_callback *cb, uint32_t mgmt_event, struct net_if *iface)
+{
+    switch (mgmt_event) {
+
+        case NET_EVENT_WIFI_CONNECT_RESULT:
+            handle_wifi_connect_result(cb);
+            break;
+
+        case NET_EVENT_WIFI_DISCONNECT_RESULT:
+            handle_wifi_disconnect_result(cb);
+            break;
+
+        case NET_EVENT_IPV4_ADDR_ADD:
+            handle_ipv4_result(iface);
+            break;
+
+        default:
+            LOG_DBG("Received unhandled wifi mgmt event %d", mgmt_event);
+            break;
+    }
+}
+
+/************************************************
+ * Global functions definition
+ ***********************************************/
+
+void wifi_init(void)
+{
+    LOG_INF("Initializing wifi...\n\n");
+
+    net_mgmt_init_event_callback(&wifi_cb, wifi_mgmt_event_handler,
+        NET_EVENT_WIFI_CONNECT_RESULT | NET_EVENT_WIFI_DISCONNECT_RESULT);
+
+    net_mgmt_init_event_callback(&ipv4_cb, wifi_mgmt_event_handler, NET_EVENT_IPV4_ADDR_ADD);
+
+    net_mgmt_add_event_callback(&wifi_cb);
+    net_mgmt_add_event_callback(&ipv4_cb);
+
+    do {
+        wifi_connect();
+        k_sleep(K_SECONDS(1));
+    } while (k_sem_count_get(&wifi_connected) == 0);
+    wifi_status();
+    while (k_sem_count_get(&ipv4_address_obtained) == 0) {
+        k_sleep(K_SECONDS(1));
+    }
+
+    LOG_INF("Ready...\n\n");
+}
+
+void wifi_poll(void)
+{
+    // Attempt reconnection if disconnected
+    while (k_sem_count_get(&wifi_connected) == 0) {
+        wifi_connect();
+        k_sleep(K_SECONDS(1));
+    }
+}
+/************************************************
+ *         Static functions definitions         *
+ ***********************************************/
 
 static void handle_wifi_connect_result(struct net_mgmt_event_callback *cb)
 {
@@ -69,29 +152,7 @@ static void handle_ipv4_result(struct net_if *iface)
     k_sem_give(&ipv4_address_obtained);
 }
 
-static void wifi_mgmt_event_handler(
-    struct net_mgmt_event_callback *cb, uint32_t mgmt_event, struct net_if *iface)
-{
-    switch (mgmt_event) {
-
-        case NET_EVENT_WIFI_CONNECT_RESULT:
-            handle_wifi_connect_result(cb);
-            break;
-
-        case NET_EVENT_WIFI_DISCONNECT_RESULT:
-            handle_wifi_disconnect_result(cb);
-            break;
-
-        case NET_EVENT_IPV4_ADDR_ADD:
-            handle_ipv4_result(iface);
-            break;
-
-        default:
-            break;
-    }
-}
-
-void wifi_connect(void)
+static void wifi_connect(void)
 {
     struct net_if *iface = net_if_get_default();
 
@@ -114,7 +175,7 @@ void wifi_connect(void)
     }
 }
 
-void wifi_status(void)
+static void wifi_status(void)
 {
     struct net_if *iface = net_if_get_default();
 
@@ -133,34 +194,4 @@ void wifi_status(void)
         LOG_INF("Security: %s\n", wifi_security_txt(status.security));
         LOG_INF("RSSI: %d\n", status.rssi);
     }
-}
-
-void wifi_disconnect(void)
-{
-    struct net_if *iface = net_if_get_default();
-
-    if (net_mgmt(NET_REQUEST_WIFI_DISCONNECT, iface, NULL, 0)) {
-        LOG_INF("WiFi Disconnection Request Failed\n");
-    }
-}
-
-void wifi_init(void)
-{
-    LOG_INF("Initializing wifi...\n\n");
-
-    net_mgmt_init_event_callback(&wifi_cb, wifi_mgmt_event_handler,
-        NET_EVENT_WIFI_CONNECT_RESULT | NET_EVENT_WIFI_DISCONNECT_RESULT);
-
-    net_mgmt_init_event_callback(&ipv4_cb, wifi_mgmt_event_handler, NET_EVENT_IPV4_ADDR_ADD);
-
-    net_mgmt_add_event_callback(&wifi_cb);
-    net_mgmt_add_event_callback(&ipv4_cb);
-
-    do {
-        wifi_connect();
-    } while (k_sem_take(&wifi_connected, K_SECONDS(1)) != 0);
-    wifi_status();
-    k_sem_take(&ipv4_address_obtained, K_FOREVER);
-
-    LOG_INF("Ready...\n\n");
 }

@@ -256,6 +256,7 @@ static int create_and_connect_socket(void)
         = zsock_setsockopt(sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag_opt, sizeof(sec_tag_opt));
     if (sockopt_rc == -1) {
         ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
+        zsock_close(sock);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
@@ -263,6 +264,7 @@ static int create_and_connect_socket(void)
     sockopt_rc = zsock_setsockopt(sock, SOL_TLS, TLS_HOSTNAME, hostname, sizeof(hostname));
     if (sockopt_rc == -1) {
         ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
+        zsock_close(sock);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }
@@ -272,6 +274,7 @@ static int create_and_connect_socket(void)
     if (connect_rc == -1) {
         ASTARTE_LOG_ERR("Connection error: %d", connect_rc);
         ASTARTE_LOG_ERR("Errno: %s\n", strerror(errno));
+        zsock_close(sock);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
     }

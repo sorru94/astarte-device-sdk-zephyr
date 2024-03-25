@@ -318,36 +318,6 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
-    char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
-    res = astarte_pairing_get_broker_url(
-        cfg->http_timeout_ms, cfg->cred_secr, broker_url, ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
-        goto failure;
-    }
-
-    int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
-    if (strncmp_rc != 0) {
-        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-        res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        goto failure;
-    }
-    char *saveptr = NULL;
-    char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
-    if (!broker_url_token) {
-        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-        res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        goto failure;
-    }
-    strncpy(handle->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
-    broker_url_token = strtok_r(NULL, "/", &saveptr);
-    if (!broker_url_token) {
-        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-        res = ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        goto failure;
-    }
-    strncpy(handle->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
-
     ASTARTE_LOG_DBG("Initializing introspection");
     res = introspection_init(&handle->introspection);
     if (res != ASTARTE_RESULT_OK) {
@@ -398,6 +368,8 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         }
     }
 
+    // TODO: the following two operations should only be performed if the certificate/key have
+    // been added as credentials
     int tls_rc = tls_credential_delete(
         CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
     if (tls_rc != 0) {
@@ -424,6 +396,39 @@ astarte_result_t astarte_device_add_interface(
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 {
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
+    // Get MQTT broker URL if not already present
+    if ((strnlen(device->broker_hostname, MAX_MQTT_BROKER_HOSTNAME_LEN + 1) == 0)
+        || (strnlen(device->broker_port, MAX_MQTT_BROKER_PORT_LEN + 1) == 0)) {
+        char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
+        res = astarte_pairing_get_broker_url(device->http_timeout_ms, device->cred_secr, broker_url,
+            ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
+            return res;
+        }
+
+        int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
+        if (strncmp_rc != 0) {
+            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+        }
+        char *saveptr = NULL;
+        char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
+        if (!broker_url_token) {
+            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+        }
+        strncpy(device->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
+        broker_url_token = strtok_r(NULL, "/", &saveptr);
+        if (!broker_url_token) {
+            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+        }
+        strncpy(device->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
+    }
+
     // Check if certificate is valid
     if (strlen(device->crt_pem) == 0) {
         astarte_result_t res = get_new_client_certificate(device);

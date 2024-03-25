@@ -704,15 +704,15 @@ static ssize_t handle_published_message(
     int ret = 0U;
     size_t received = 0U;
     uint32_t message_size = pub->message.payload.len;
-    uint8_t msg_buffer[MAX_MQTT_MSG_SIZE];
+    char msg_buffer[MAX_MQTT_MSG_SIZE] = { 0 };
     const bool discarded = message_size > MAX_MQTT_MSG_SIZE;
 
-    ASTARTE_LOG_DBG("RECEIVED on topic \"%s\" [ id: %u qos: %u ] payload: %u / %u B",
-        (const char *) pub->message.topic.topic.utf8, pub->message_id, pub->message.topic.qos,
-        message_size, MAX_MQTT_MSG_SIZE);
+    ASTARTE_LOG_DBG("RECEIVED on topic \"%.*s\" [ id: %u qos: %u ] payload: %u / %u B",
+        pub->message.topic.topic.size, (const char *) pub->message.topic.topic.utf8,
+        pub->message_id, pub->message.topic.qos, message_size, MAX_MQTT_MSG_SIZE);
 
     while (received < message_size) {
-        uint8_t *pkt = discarded ? msg_buffer : &msg_buffer[received];
+        char *pkt = discarded ? msg_buffer : &msg_buffer[received];
 
         ret = mqtt_read_publish_payload_blocking(&device->mqtt_client, pkt, MAX_MQTT_MSG_SIZE);
         if (ret < 0) {
@@ -740,8 +740,15 @@ static ssize_t handle_published_message(
     if (!discarded) {
         ASTARTE_LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256U), "Received payload:");
 
-        const char *topic = (const char *) pub->message.topic.topic.utf8;
-        on_incoming(device, topic, strlen(topic), (const char *) msg_buffer, message_size);
+        size_t topic_len = pub->message.topic.topic.size;
+        if (topic_len >= MAX_MQTT_TOPIC_SIZE) {
+            ASTARTE_LOG_ERR(
+                "MQTT topics longer than %d chars are not supported.", MAX_MQTT_TOPIC_SIZE - 1);
+            return -ENOTSUP;
+        }
+        char topic[MAX_MQTT_TOPIC_SIZE] = { 0 };
+        strncpy(topic, pub->message.topic.topic.utf8, MAX_MQTT_TOPIC_SIZE - 1);
+        on_incoming(device, topic, topic_len, msg_buffer, message_size);
     }
 
     return discarded ? -ENOMEM : (ssize_t) received;

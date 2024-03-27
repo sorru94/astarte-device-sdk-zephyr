@@ -199,6 +199,7 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_ADDR_DEL:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
+            k_sem_take(&ipv4_address_obtained, K_NO_WAIT);
             break;
 
         case NET_EVENT_IPV4_MADDR_ADD:
@@ -348,4 +349,32 @@ int eth_connect(void)
     LOG_INF("Ready..."); // NOLINT
 
     return 0;
+}
+
+void eth_poll(void)
+{
+    struct net_if *iface = net_if_get_default();
+    if (!iface) {
+        LOG_ERR("Default interface non existant."); // NOLINT
+        return;
+    }
+
+    // Check if connected
+    while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
+        LOG_WRN("Ethernet interface is non operational."); // NOLINT
+        k_sleep(K_SECONDS(1));
+    }
+
+    // Restart DHCP if required.
+    if (k_sem_count_get(&ipv4_address_obtained) == 0) {
+        LOG_WRN("Missing IPv4 address."); // NOLINT
+        net_dhcpv4_restart(iface);
+        LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
+        while (k_sem_count_get(&ipv4_address_obtained) == 0) {
+            k_sleep(K_MSEC(200));
+        }
+        LOG_INF("Ready..."); // NOLINT
+    }
+
+    k_sleep(K_MSEC(500));
 }

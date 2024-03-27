@@ -12,4 +12,9 @@
  */
 void wifi_init(void);
 
+/**
+ * @brief This poll function makes sure the wifi connection is still up
+ */
+void wifi_poll(void);
+
 #endif /* WIFI_H */

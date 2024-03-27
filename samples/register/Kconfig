@@ -14,25 +14,53 @@ endmenu
 rsource "../../Kconfig"
 
 menu "Sample application"
-config SLEEP_MS
-    int "Sleeping milliseconds"
-    default 1000
-    help
-        The sleeping time used in the sample application.
 
-config WIFI_SSID
-    string "WiFi SSID"
-    default "myssid"
+config DEVICE_OPERATIONAL_TIME_SECONDS
+    int "Device operational time (s)"
+    default 60
     help
-        SSID (network name) for the example to connect to.
+        Use this setting to change how long the device will remain connected to Astarte.
 
-config WIFI_PASSWORD
-    string "WiFi Password"
-    default "mypassword"
+config DEVICE_THREAD_STACK_SIZE
+    int "Device thread stack size (Bytes)"
+    default 16384
     help
-        WiFi password (WPA or WPA2) for the example to use.
-endmenu
+        Use this setting to change the size of the stack for the thread running the Astarte device.
+
+config DEVICE_THREAD_PRIORITY
+    int "Device thread priority"
+    default 0
+    help
+        Use this setting to change the priority of the thread running the Astarte device.
+
+config DEVICE_POLL_PERIOD_MS
+    int "Device thread polling period (ms)"
+    default 100
+    help
+        Use this setting to change the polling period for the Astarte device.
+
+config MQTT_FIRST_POLL_TIMEOUT_MS
+    int "MQTT first polling timeout (ms)"
+    default 3000
+    help
+        Use this setting to change the MQTT polling timeout for first polling operations.
+
+config MQTT_SUBSEQUENT_POLL_TIMEOUT_MS
+    int "MQTT subsequent polling timeout (ms)"
+    default 200
+    help
+        Use this setting to change the MQTT polling timeout for subsequent polling operations.
+
+config HTTP_TIMEOUT_MS
+    int "HTTP operations timeout (ms)"
+    default 500
+    help
+        Use this setting to change the timeout for HTTP requests.
+
+rsource "../common/Kconfig"
 
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

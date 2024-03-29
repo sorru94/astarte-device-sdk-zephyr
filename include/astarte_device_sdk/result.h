@@ -75,7 +75,9 @@ typedef enum
     /** @brief Astarte marked the device client certificate as invalid. */
     ASTARTE_RESULT_CLIENT_CERT_INVALID = 22,
     /** @brief The provided path does not match the mapping endpoint. */
-    ASTARTE_RESULT_MAPPING_PATH_MISMATCH = 23
+    ASTARTE_RESULT_MAPPING_PATH_MISMATCH = 23,
+    /** @brief Could not find the mapping corresponding to a path in an interface. */
+    ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 24
 } astarte_result_t;
 
 #ifdef __cplusplus

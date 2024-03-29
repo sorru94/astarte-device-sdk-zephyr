@@ -94,22 +94,6 @@ typedef struct
     size_t mappings_length;
 } astarte_interface_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Validate an Astarte interface.
- *
- * @param[in] interface Interface to validate.
- * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
- */
-astarte_result_t astarte_interface_validate(const astarte_interface_t *interface);
-
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * @}
  */

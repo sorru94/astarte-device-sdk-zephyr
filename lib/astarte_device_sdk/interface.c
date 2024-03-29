@@ -5,8 +5,8 @@
  */
 
 #include "astarte_device_sdk/interface.h"
+#include "interface_private.h"
 
-#include "astarte_device_sdk/result.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_interface, CONFIG_ASTARTE_DEVICE_SDK_INTROSPECTION_LOG_LEVEL);

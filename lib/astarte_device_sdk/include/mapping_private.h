@@ -20,6 +20,17 @@ extern "C" {
 #endif
 
 /**
+ * @brief Convert an array mapping type to its corresponding scalar mapping type.
+ *
+ * @param[in] array_type Input mapping type. Has to be an array type.
+ * @param[out] scalar_type The resulting scalar type.
+ * @retval ASTARTE_RESULT_OK On success.
+ * @retval ASTARTE_RESULT_INTERNAL_ERROR When the input type is not an array type or a mapping type.
+ */
+astarte_result_t astarte_mapping_array_to_scalar_type(
+    astarte_mapping_type_t array_type, astarte_mapping_type_t *scalar_type);
+
+/**
  * @brief Check if a path corresponds to the endpoint of a mapping.
  *
  * @note A path is an endpoint with all parametrization substituted by real values.

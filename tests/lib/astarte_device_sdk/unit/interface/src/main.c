@@ -73,25 +73,25 @@ ZTEST(astarte_device_sdk_interface, test_astarte_interface_get_mapping)
 
     const char path_first_endpoint[] = "/binaryblob_endpoint";
     mapping = NULL;
-    res = astarte_interface_get_mapping(&interface, path_first_endpoint, &mapping);
+    res = astarte_interface_get_mapping_from_path(&interface, path_first_endpoint, &mapping);
     zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
     zassert_equal_ptr(mapping, &mappings[0]);
 
     const char path_second_endpoint[] = "/binaryblobarray_endpoint";
     mapping = NULL;
-    res = astarte_interface_get_mapping(&interface, path_second_endpoint, &mapping);
+    res = astarte_interface_get_mapping_from_path(&interface, path_second_endpoint, &mapping);
     zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
     zassert_equal_ptr(mapping, &mappings[1]);
 
     const char path_third_endpoint[] = "/boolean_endpoint";
     mapping = NULL;
-    res = astarte_interface_get_mapping(&interface, path_third_endpoint, &mapping);
+    res = astarte_interface_get_mapping_from_path(&interface, path_third_endpoint, &mapping);
     zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
     zassert_equal_ptr(mapping, &mappings[2]);
 
     const char path_missing_endpoint[] = "/missing_endpoint";
     mapping = NULL;
-    res = astarte_interface_get_mapping(&interface, path_missing_endpoint, &mapping);
+    res = astarte_interface_get_mapping_from_path(&interface, path_missing_endpoint, &mapping);
     zassert_equal(
         res, ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE, "Res: %s", astarte_result_to_name(res));
 }

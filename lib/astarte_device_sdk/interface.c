@@ -7,6 +7,9 @@
 #include "astarte_device_sdk/interface.h"
 #include "interface_private.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "mapping_private.h"
 
 #include "log.h"
@@ -27,7 +30,7 @@ astarte_result_t astarte_interface_validate(const astarte_interface_t *interface
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_interface_get_mapping(
+astarte_result_t astarte_interface_get_mapping_from_path(
     const astarte_interface_t *interface, const char *path, const astarte_mapping_t **mapping)
 {
     for (size_t i = 0; i < interface->mappings_length; i++) {
@@ -43,4 +46,32 @@ astarte_result_t astarte_interface_get_mapping(
 
     ASTARTE_LOG_DBG("Mapping not found in interface. Search path: %s.", path);
     return ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
+}
+
+astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interface_t *interface,
+    const char *path1, const char *path2, const astarte_mapping_t **mapping)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    const size_t fullpath_size = strlen(path1) + 1 + strlen(path2) + 1;
+    char *fullpath = calloc(fullpath_size, sizeof(char));
+    if (!fullpath) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
+    if (snprintf(fullpath, fullpath_size, "%s/%s", path1, path2) != fullpath_size - 1) {
+        ASTARTE_LOG_ERR("Failure in formatting the full endpoint path.");
+        res = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto exit;
+    }
+    res = astarte_interface_get_mapping_from_path(interface, fullpath, mapping);
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR(
+            "For path '%s' could not find mapping in interface '%s'.", fullpath, interface->name);
+        res = ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
+        goto exit;
+    }
+
+exit:
+    free(fullpath);
+    return res;
 }

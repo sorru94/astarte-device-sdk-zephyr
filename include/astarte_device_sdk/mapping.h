@@ -89,6 +89,14 @@ typedef struct
 {
     /** @brief Mapping endpoint */
     const char *endpoint;
+    /**
+     * @brief Modified mapping endpoint for regex matching.
+     *
+     * @details The original mapping endpoint can contain parameters in the form
+     * `%{([a-zA-Z_][a-zA-Z0-9_]*)}`. In this modified endpoint all the parameters have been
+     * substituted by the regex pattern: `[a-zA-Z_]+[a-zA-Z0-9_]*` to ease pattern matching.
+     */
+    const char *regex_endpoint;
     /** @brief Mapping type */
     astarte_mapping_type_t type;
     /** @brief Mapping reliability */

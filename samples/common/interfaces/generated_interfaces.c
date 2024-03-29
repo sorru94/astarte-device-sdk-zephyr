@@ -14,6 +14,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
 
     {
         .endpoint = "/%{sensor_id}/double_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -21,6 +22,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/integer_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -28,6 +30,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/boolean_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -35,6 +38,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/longinteger_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -42,6 +46,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/string_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -49,6 +54,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/binaryblob_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -56,6 +62,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/datetime_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -63,6 +70,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/doublearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -70,6 +78,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/integerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -77,6 +86,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/booleanarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -84,6 +94,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/longintegerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -91,6 +102,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/stringarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -98,6 +110,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/binaryblobarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -105,6 +118,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
     {
         .endpoint = "/%{sensor_id}/datetimearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -127,6 +141,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
 
     {
         .endpoint = "/binaryblob_endpoint",
+        .regex_endpoint = "/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -134,6 +149,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/binaryblobarray_endpoint",
+        .regex_endpoint = "/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -141,6 +157,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/boolean_endpoint",
+        .regex_endpoint = "/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -148,6 +165,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/booleanarray_endpoint",
+        .regex_endpoint = "/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -155,6 +173,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/datetime_endpoint",
+        .regex_endpoint = "/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -162,6 +181,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/datetimearray_endpoint",
+        .regex_endpoint = "/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -169,6 +189,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/double_endpoint",
+        .regex_endpoint = "/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -176,6 +197,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/doublearray_endpoint",
+        .regex_endpoint = "/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -183,6 +205,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/integer_endpoint",
+        .regex_endpoint = "/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -190,6 +213,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/integerarray_endpoint",
+        .regex_endpoint = "/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -197,6 +221,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/longinteger_endpoint",
+        .regex_endpoint = "/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -204,6 +229,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/longintegerarray_endpoint",
+        .regex_endpoint = "/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -211,6 +237,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/string_endpoint",
+        .regex_endpoint = "/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -218,6 +245,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
     {
         .endpoint = "/stringarray_endpoint",
+        .regex_endpoint = "/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -240,6 +268,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
 
     {
         .endpoint = "/%{sensor_id}/double_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -247,6 +276,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/integer_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -254,6 +284,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/boolean_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -261,6 +292,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/longinteger_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -268,6 +300,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/string_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -275,6 +308,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/binaryblob_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -282,6 +316,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/datetime_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -289,6 +324,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/doublearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -296,6 +332,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/integerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -303,6 +340,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/booleanarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -310,6 +348,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/longintegerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -317,6 +356,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/stringarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -324,6 +364,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/binaryblobarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -331,6 +372,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
     {
         .endpoint = "/%{sensor_id}/datetimearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -353,6 +395,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
 
     {
         .endpoint = "/%{sensor_id}/double_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -360,6 +403,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/integer_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -367,6 +411,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/boolean_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -374,6 +419,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/longinteger_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -381,6 +427,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/string_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -388,6 +435,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/binaryblob_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -395,6 +443,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/datetime_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -402,6 +451,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/doublearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -409,6 +459,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/integerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -416,6 +467,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/booleanarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -423,6 +475,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/longintegerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -430,6 +483,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/stringarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -437,6 +491,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/binaryblobarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -444,6 +499,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
     {
         .endpoint = "/%{sensor_id}/datetimearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -466,6 +522,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
 
     {
         .endpoint = "/binaryblob_endpoint",
+        .regex_endpoint = "/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -473,6 +530,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/binaryblobarray_endpoint",
+        .regex_endpoint = "/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -480,6 +538,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/boolean_endpoint",
+        .regex_endpoint = "/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -487,6 +546,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/booleanarray_endpoint",
+        .regex_endpoint = "/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -494,6 +554,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/datetime_endpoint",
+        .regex_endpoint = "/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -501,6 +562,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/datetimearray_endpoint",
+        .regex_endpoint = "/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -508,6 +570,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/double_endpoint",
+        .regex_endpoint = "/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -515,6 +578,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/doublearray_endpoint",
+        .regex_endpoint = "/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -522,6 +586,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/integer_endpoint",
+        .regex_endpoint = "/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -529,6 +594,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/integerarray_endpoint",
+        .regex_endpoint = "/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -536,6 +602,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/longinteger_endpoint",
+        .regex_endpoint = "/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -543,6 +610,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/longintegerarray_endpoint",
+        .regex_endpoint = "/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -550,6 +618,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/string_endpoint",
+        .regex_endpoint = "/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -557,6 +626,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
     {
         .endpoint = "/stringarray_endpoint",
+        .regex_endpoint = "/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
@@ -579,6 +649,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
 
     {
         .endpoint = "/%{sensor_id}/double_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -586,6 +657,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/integer_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integer_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -593,6 +665,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/boolean_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/boolean_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -600,6 +673,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/longinteger_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longinteger_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -607,6 +681,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/string_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/string_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -614,6 +689,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/binaryblob_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblob_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -621,6 +697,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/datetime_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetime_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -628,6 +705,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/doublearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/doublearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -635,6 +713,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/integerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -642,6 +721,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/booleanarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/booleanarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -649,6 +729,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/longintegerarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/longintegerarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -656,6 +737,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/stringarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/stringarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -663,6 +745,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/binaryblobarray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/binaryblobarray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -670,6 +753,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
     {
         .endpoint = "/%{sensor_id}/datetimearray_endpoint",
+        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/datetimearray_endpoint",
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,

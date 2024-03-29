@@ -14,6 +14,7 @@
 
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/result.h"
+#include "interface_private.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(

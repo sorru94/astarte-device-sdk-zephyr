@@ -73,7 +73,9 @@ typedef enum
     /** @brief An empty BSON document has been received. */
     ASTARTE_RESULT_BSON_EMPTY_DOCUMENT_ERROR = 21,
     /** @brief Astarte marked the device client certificate as invalid. */
-    ASTARTE_RESULT_CLIENT_CERT_INVALID = 22
+    ASTARTE_RESULT_CLIENT_CERT_INVALID = 22,
+    /** @brief The provided path does not match the mapping endpoint. */
+    ASTARTE_RESULT_MAPPING_PATH_MISMATCH = 23
 } astarte_result_t;
 
 #ifdef __cplusplus

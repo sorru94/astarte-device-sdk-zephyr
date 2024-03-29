@@ -143,4 +143,9 @@ module-str = Log level for Astarte device SDK value
 module-help = Sets log level for Astarte device SDK value.
 source "subsys/logging/Kconfig.template.log_config"
 
+module = ASTARTE_DEVICE_SDK_MAPPING
+module-str = Log level for Astarte device SDK mapping
+module-help = Sets log level for Astarte device SDK mapping.
+source "subsys/logging/Kconfig.template.log_config"
+
 endmenu

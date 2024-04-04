@@ -537,7 +537,12 @@ static astarte_result_t astarte_value_deserialize_scalar(
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGER:
             ASTARTE_LOG_DBG("Deserializing long integer value.");
-            int64_t int64_tmp = astarte_bson_deserializer_element_to_int64(bson_elem);
+            int64_t int64_tmp = 0U;
+            if (bson_elem.type == ASTARTE_BSON_TYPE_INT32) {
+                int64_tmp = (int64_t) astarte_bson_deserializer_element_to_int32(bson_elem);
+            } else {
+                int64_tmp = astarte_bson_deserializer_element_to_int64(bson_elem);
+            }
             *value = astarte_value_from_longinteger(int64_tmp);
             break;
         case ASTARTE_MAPPING_TYPE_STRING:
@@ -681,8 +686,52 @@ ASTARTE_VALUE_DESERIALIZE_ARRAY_MAKE_FN(
     datetime, int64_t, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, datetime_array)
 ASTARTE_VALUE_DESERIALIZE_ARRAY_MAKE_FN(
     int32, int32_t, ASTARTE_MAPPING_TYPE_INTEGERARRAY, integer_array)
-ASTARTE_VALUE_DESERIALIZE_ARRAY_MAKE_FN(
-    int64, int64_t, ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, longinteger_array)
+
+static astarte_result_t astarte_value_deserialize_array_int64(
+    astarte_bson_document_t bson_doc, astarte_value_t *value, size_t array_length)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    int64_t *array = calloc(array_length, sizeof(int64_t));
+    if (!array) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        res = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto failure;
+    }
+
+    astarte_bson_element_t inner_elem;
+    res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
+    if (res != ASTARTE_RESULT_OK) {
+        goto failure;
+    }
+
+    if (inner_elem.type == ASTARTE_BSON_TYPE_INT32) {
+        array[0] = (int64_t) astarte_bson_deserializer_element_to_int32(inner_elem);
+    } else {
+        array[0] = astarte_bson_deserializer_element_to_int64(inner_elem);
+    }
+
+    for (size_t i = 1; i < array_length; i++) {
+        res = astarte_bson_deserializer_next_element(bson_doc, inner_elem, &inner_elem);
+        if (res != ASTARTE_RESULT_OK) {
+            goto failure;
+        }
+
+        if (inner_elem.type == ASTARTE_BSON_TYPE_INT32) {
+            array[i] = (int64_t) astarte_bson_deserializer_element_to_int32(inner_elem);
+        } else {
+            array[i] = astarte_bson_deserializer_element_to_int64(inner_elem);
+        }
+    }
+
+    value->tag = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY;
+    value->data.longinteger_array.len = array_length;
+    value->data.longinteger_array.buf = array;
+    return ASTARTE_RESULT_OK;
+
+failure:
+    free(array);
+    return res;
+}
 
 static astarte_result_t astarte_value_deserialize_array_string(
     astarte_bson_document_t bson_doc, astarte_value_t *value, size_t array_length)
@@ -815,6 +864,10 @@ static bool astarte_value_check_if_bson_type_is_mapping_type(
         default:
             ASTARTE_LOG_ERR("Invalid mapping type (%d).", mapping_type);
             return false;
+    }
+
+    if ((expected_bson_type == ASTARTE_BSON_TYPE_INT64) && (bson_type == ASTARTE_BSON_TYPE_INT32)) {
+        return true;
     }
 
     if (bson_type != expected_bson_type) {

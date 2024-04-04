@@ -32,35 +32,35 @@
  */
 typedef enum
 {
-    /** @brief Astarte integer type */
-    ASTARTE_MAPPING_TYPE_INTEGER = 1,
-    /** @brief Astarte longinteger type */
-    ASTARTE_MAPPING_TYPE_LONGINTEGER = 2,
-    /** @brief Astarte double type */
-    ASTARTE_MAPPING_TYPE_DOUBLE = 3,
-    /** @brief Astarte string type */
-    ASTARTE_MAPPING_TYPE_STRING = 4,
     /** @brief Astarte binaryblob type */
-    ASTARTE_MAPPING_TYPE_BINARYBLOB = 5,
+    ASTARTE_MAPPING_TYPE_BINARYBLOB = 1,
     /** @brief Astarte boolean type */
-    ASTARTE_MAPPING_TYPE_BOOLEAN = 6,
+    ASTARTE_MAPPING_TYPE_BOOLEAN = 2,
     /** @brief Astarte datetime type */
-    ASTARTE_MAPPING_TYPE_DATETIME = 7,
+    ASTARTE_MAPPING_TYPE_DATETIME = 3,
+    /** @brief Astarte double type */
+    ASTARTE_MAPPING_TYPE_DOUBLE = 4,
+    /** @brief Astarte integer type */
+    ASTARTE_MAPPING_TYPE_INTEGER = 5,
+    /** @brief Astarte longinteger type */
+    ASTARTE_MAPPING_TYPE_LONGINTEGER = 6,
+    /** @brief Astarte string type */
+    ASTARTE_MAPPING_TYPE_STRING = 7,
 
-    /** @brief Astarte integerarray type */
-    ASTARTE_MAPPING_TYPE_INTEGERARRAY = 8,
-    /** @brief Astarte longintegerarray type */
-    ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY = 9,
-    /** @brief Astarte doublearray type */
-    ASTARTE_MAPPING_TYPE_DOUBLEARRAY = 10,
-    /** @brief Astarte stringarray type */
-    ASTARTE_MAPPING_TYPE_STRINGARRAY = 11,
     /** @brief Astarte binaryblobarray type */
-    ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY = 12,
+    ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY = 8,
     /** @brief Astarte booleanarray type */
-    ASTARTE_MAPPING_TYPE_BOOLEANARRAY = 13,
+    ASTARTE_MAPPING_TYPE_BOOLEANARRAY = 9,
     /** @brief Astarte datetimearray type */
-    ASTARTE_MAPPING_TYPE_DATETIMEARRAY = 14,
+    ASTARTE_MAPPING_TYPE_DATETIMEARRAY = 10,
+    /** @brief Astarte doublearray type */
+    ASTARTE_MAPPING_TYPE_DOUBLEARRAY = 11,
+    /** @brief Astarte integerarray type */
+    ASTARTE_MAPPING_TYPE_INTEGERARRAY = 12,
+    /** @brief Astarte longintegerarray type */
+    ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY = 13,
+    /** @brief Astarte stringarray type */
+    ASTARTE_MAPPING_TYPE_STRINGARRAY = 14,
 } astarte_mapping_type_t;
 
 /**

@@ -13,6 +13,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/value.h"
 #include "bson_deserializer.h"
 #include "bson_serializer.h"
@@ -52,11 +53,12 @@ astarte_result_t astarte_value_pair_serialize(
  * @note No encapsulation is permitted in the BSON element, the value should be directy accessible.
  *
  * @param[in] bson_elem The BSON element containing the data to deserialize.
+ * @param[in] type An expected mapping type for the Astarte value.
  * @param[out] value The resulting value.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_value_deserialize(
-    astarte_bson_element_t bson_elem, astarte_value_t *value);
+    astarte_bson_element_t bson_elem, astarte_mapping_type_t type, astarte_value_t *value);
 
 /**
  * @brief Destroy the data serialized with #astarte_value_deserialize.
@@ -81,12 +83,15 @@ void astarte_value_destroy_deserialized(astarte_value_t value);
  * with all its element deserializable with #astarte_value_deserialize.
  *
  * @param[in] bson_elem The BSON element containing the data to deserialize.
+ * @param[in] interface The interface corresponding the the Astarte value to deserialize.
+ * @param[in] path The path corresponding to the BSON element to deserialize.
  * @param[out] values The resulting array of key-value pairs.
  * @param[out] values_length The number of elements in the values array.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_value_pair_deserialize(
-    astarte_bson_element_t bson_elem, astarte_value_pair_t **values, size_t *values_length);
+astarte_result_t astarte_value_pair_deserialize(astarte_bson_element_t bson_elem,
+    const astarte_interface_t *interface, const char *path, astarte_value_pair_t **values,
+    size_t *values_length);
 
 /**
  * @brief Destroy the data serialized with #astarte_value_pair_deserialize.

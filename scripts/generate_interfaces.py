@@ -14,15 +14,15 @@ python -m black --line-length 100 ./scripts/*.py
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from string import Template
 
 from astarte.device import Interface
 from colored import fore, stylize
-from west.commands import WestCommand
-
 from west import log
+from west.commands import WestCommand
 
 static_name = "generate-interfaces"
 static_help = "Generate interfaces header(s)"
@@ -175,6 +175,7 @@ mapping_definition_template = Template(
     r"""
     {
         .endpoint = "${endpoint}",
+        .regex_endpoint = "${regex_endpoint}",
         .type = ${type},
         .reliability = ${reliability},
         .explicit_timestamp = ${explicit_timestamp},
@@ -214,6 +215,11 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
                 # Fill in the mapping information in the template
                 mapping_struct = mapping_definition_template.substitute(
                     endpoint=mapping.endpoint,
+                    regex_endpoint=re.sub(
+                        r"%{([a-zA-Z_][a-zA-Z0-9_]*)}",
+                        r"[a-zA-Z_][a-zA-Z0-9_]*",
+                        mapping.endpoint,
+                    ),
                     type="ASTARTE_MAPPING_TYPE_" + mapping.type.upper(),
                     reliability="ASTARTE_MAPPING_RELIABILITY_"
                     + reliability_lookup[mapping.reliability],

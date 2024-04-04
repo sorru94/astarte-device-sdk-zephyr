@@ -17,6 +17,7 @@
 #include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/value.h"
 #include "crypto.h"
+#include "interface_private.h"
 #include "introspection.h"
 #include "log.h"
 #include "pairing_private.h"
@@ -857,8 +858,14 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
     }
 
     if (interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
+        const astarte_mapping_t *mapping = NULL;
+        astarte_result_t res = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Could not find received mapping in interface %s.", interface_name);
+            return;
+        }
         astarte_value_t value = { 0 };
-        astarte_result_t res = astarte_value_deserialize(v_elem, &value);
+        res = astarte_value_deserialize(v_elem, mapping->type, &value);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file.");
             return;
@@ -890,7 +897,8 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
     } else {
         astarte_value_pair_t *values = NULL;
         size_t values_length = 0;
-        astarte_result_t res = astarte_value_pair_deserialize(v_elem, &values, &values_length);
+        astarte_result_t res
+            = astarte_value_pair_deserialize(v_elem, interface, path, &values, &values_length);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file.");
             return;

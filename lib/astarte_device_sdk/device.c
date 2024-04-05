@@ -29,6 +29,10 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
  *       Checks over configuration values       *
  ***********************************************/
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
+#warning "TLS has been disabled (unsafe)!"
+#endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT) */
+
 /************************************************
  *        Defines, constants and typedef        *
  ***********************************************/
@@ -39,8 +43,8 @@ static uint8_t mqtt_rx_buffer[MQTT_RX_TX_BUFFER_SIZE];
 static uint8_t mqtt_tx_buffer[MQTT_RX_TX_BUFFER_SIZE];
 
 static sec_tag_t sec_tag_list[] = {
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
-    CONFIG_ASTARTE_DEVICE_SDK_CA_CERT_TAG,
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
+    CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
 #endif
     CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
 };
@@ -477,7 +481,7 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 
     // MQTT TLS configuration
     struct mqtt_sec_config *tls_config = &(device->mqtt_client.transport.tls.config);
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
     tls_config->peer_verify = TLS_PEER_VERIFY_REQUIRED;
 #else
     tls_config->peer_verify = TLS_PEER_VERIFY_NONE;

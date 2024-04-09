@@ -66,7 +66,7 @@ config MQTT_SUBSEQUENT_POLL_TIMEOUT_MS
 
 config HTTP_TIMEOUT_MS
     int "HTTP operations timeout (ms)"
-    default 500
+    default 3000
     help
         Use this setting to change the timeout for HTTP requests.
 

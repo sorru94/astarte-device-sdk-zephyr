@@ -52,7 +52,8 @@ The following entries should be modified in the `proj.conf` file.
 ```conf
 CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID="<DEVICE_ID>"
 CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME="<HOSTNAME>"
-CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS=y
+CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP=y
+CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT=y
 CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
 
@@ -65,12 +66,14 @@ is the hostname for your Astarte instance, `<REALM_NAME>` is the name of your te
 ### Configuration for fully TLS capable Astarte
 
 This option assumes you are using a fully deployed Astarte instance with valid certificates from
-an official certificate authority.
+an official certificate authority. All the samples assume the root CA certificate for the MQTT
+broker to be the same as the root CA certificate for all HTTPs APIs.
 
 ```conf
 CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID="<DEVICE_ID>"
 CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME="<HOSTNAME>"
-CONFIG_ASTARTE_DEVICE_SDK_CA_CERT_TAG=1
+CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG=1
+CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=2
 CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
 

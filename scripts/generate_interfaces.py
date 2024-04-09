@@ -106,7 +106,7 @@ reliability_lookup = {
 
 interface_header_template = Template(
     r"""/**
- * @file generated_interfaces.h
+ * @file ${output_filename}.h
  * @brief Contains automatically generated interfaces.
  *
  * @warning Do not modify this file manually.
@@ -116,8 +116,8 @@ interface_header_template = Template(
  */
 
 // NOLINTNEXTLINE This guard is clear enough.
-#ifndef GENERATED_INTERFACES_H
-#define GENERATED_INTERFACES_H
+#ifndef ${output_filename_cap}_H
+#define ${output_filename_cap}_H
 
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
@@ -127,19 +127,19 @@ interface_header_template = Template(
 ${interfaces_declarations}
 // NOLINTEND(readability-identifier-naming)
 
-#endif /* GENERATED_INTERFACES_H */
+#endif /* ${output_filename_cap}_H */
 """
 )
 
 interface_source_template = Template(
     r"""/**
- * @file generated_interfaces.c
+ * @file ${output_filename}.c
  * @brief Contains automatically generated interfaces.
  *
  * @warning Do not modify this file manually.
  */
 
-#include "generated_interfaces.h"
+#include "${output_filename}.h"
 
 // Interface names should resemble as closely as possible their respective .json file names.
 // NOLINTBEGIN(readability-identifier-naming)
@@ -261,11 +261,13 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
 
     # Fill in the header
     interfaces_header = interface_header_template.substitute(
-        interfaces_declarations="\n".join(interfaces_declarations)
+        output_filename=output_fn,
+        output_filename_cap=output_fn.upper(),
+        interfaces_declarations="\n".join(interfaces_declarations),
     )
 
     interfaces_source = interface_source_template.substitute(
-        interfaces_declarations="\n".join(interfaces_structs)
+        output_filename=output_fn, interfaces_declarations="\n".join(interfaces_structs)
     )
 
     # Write the output files if required

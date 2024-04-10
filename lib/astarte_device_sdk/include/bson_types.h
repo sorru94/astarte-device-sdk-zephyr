@@ -4,15 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ASTARTE_DEVICE_SDK_BSON_TYPES_H
-#define ASTARTE_DEVICE_SDK_BSON_TYPES_H
+#ifndef BSON_TYPES_H
+#define BSON_TYPES_H
 
 /**
  * @file bson_types.h
  * @brief Astarte BSON types definitions.
- *
- * @ingroup utils
- * @{
  */
 
 // clang-format off
@@ -41,8 +38,4 @@
 
 // clang-format on
 
-/**
- * @}
- */
-
-#endif // ASTARTE_DEVICE_SDK_BSON_TYPES_H
+#endif // BSON_TYPES_H

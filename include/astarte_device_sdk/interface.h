@@ -20,6 +20,8 @@
  * @{
  */
 
+#include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/mapping.h"
 #include "astarte_device_sdk/result.h"
 
 /**
@@ -74,29 +76,26 @@ typedef enum
  */
 typedef struct
 {
-    const char *name; /**< Interface name */
-    uint32_t major_version; /**< Major version */
-    uint32_t minor_version; /**< Minor version */
-    astarte_interface_ownership_t ownership; /**< Ownership, see #astarte_interface_ownership_t */
-    astarte_interface_type_t type; /**< Type, see #astarte_interface_type_t */
+    /** @brief Interface name */
+    const char *name;
+    /** @brief Major version */
+    uint32_t major_version;
+    /** @brief Minor version */
+    uint32_t minor_version;
+    /** @brief Ownership, see #astarte_interface_ownership_t */
+    astarte_interface_ownership_t ownership;
+    /** @brief Type, see #astarte_interface_type_t */
+    astarte_interface_type_t type;
+    /** @brief Aggregation, see #astarte_interface_aggregation_t */
+    astarte_interface_aggregation_t aggregation;
+    /** @brief Array of mappings */
+    const astarte_mapping_t *mappings;
+    /** @brief Lenght of the array of mappings */
+    size_t mappings_length;
 } astarte_interface_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
- * @brief Validate an Astarte interface.
- *
- * @param[in] interface Interface to validate.
- * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
+ * @}
  */
-astarte_result_t astarte_interface_validate(const astarte_interface_t *interface);
-
-#ifdef __cplusplus
-}
-#endif
-
-/** @} */
 
 #endif // ASTARTE_DEVICE_SDK_INTERFACE_H

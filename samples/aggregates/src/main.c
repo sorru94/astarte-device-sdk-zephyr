@@ -8,20 +8,22 @@
 
 #include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
-#include <zephyr/logging/log.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/posix/arpa/inet.h>
 
-#if !defined(CONFIG_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
+#if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
+    || !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
 #include "ca_certificates.h"
 #include <zephyr/net/tls_credentials.h>
 #endif
 
-#include <astarte_device_sdk/bson_serializer.h>
-#include <astarte_device_sdk/bson_types.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
+
 #include <astarte_device_sdk/device.h>
 #include <astarte_device_sdk/interface.h>
+#include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
 #include <astarte_device_sdk/value.h>
 
@@ -30,8 +32,9 @@
 #else
 #include "eth.h"
 #endif
+#include "utils.h"
 
-LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
+#include "generated_interfaces.h"
 
 /************************************************
  *       Checks over configuration values       *
@@ -41,69 +44,50 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
     "Missing credential secret in aggregates example");
 
 /************************************************
- * Constants and defines
+ * Constants, static variables and defines
  ***********************************************/
 
-#define MQTT_POLL_TIMEOUT_MS 200
-#define DEVICE_OPERATIONAL_TIME_MS (60 * MSEC_PER_SEC)
+#define MAIN_THREAD_SLEEP_MS 500
 
-const static astarte_interface_t device_aggregate_interface = {
-    .name = "org.astarteplatform.zephyr.examples.DeviceAggregate",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-};
-
-const static astarte_interface_t server_aggregate_interface = {
-    .name = "org.astarteplatform.zephyr.examples.ServerAggregate",
-    .major_version = 0,
-    .minor_version = 1,
-    .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
-    .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
-};
-
-/************************************************
- * Structs declarations
- ***********************************************/
-
-struct rx_aggregate
-{
-    bool booleans[4];
-    int64_t longinteger;
-};
+#define DEVICE_THREAD_FLAGS_TERMINATION 1U
+static atomic_t device_thread_flags;
+K_THREAD_STACK_DEFINE(device_thread_stack_area, CONFIG_DEVICE_THREAD_STACK_SIZE);
+static struct k_thread device_thread_data;
 
 /************************************************
  * Static functions declaration
  ***********************************************/
 
 /**
- * @brief Handler for astarte connection events.
+ * @brief Entry point for the Astarte device thread.
  *
- * @param event Astarte device connection event pointer.
+ * @param device_handle Handle to the Astarte device.
+ * @param unused1 Unused parameter.
+ * @param unused2 Unused parameter.
  */
-static void connection_events_handler(astarte_device_connection_event_t *event);
+static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2);
 /**
- * @brief Handler for astarte disconnection events.
+ * @brief Callback handler for Astarte connection events.
  *
- * @param event Astarte device disconnection event pointer.
+ * @param event Astarte device connection event.
  */
-static void disconnection_events_handler(astarte_device_disconnection_event_t *event);
+static void connection_callback(astarte_device_connection_event_t event);
 /**
- * @brief Handler for astarte data event.
+ * @brief Callback handler for Astarte disconnection events.
  *
- * @param event Astarte device data event pointer.
+ * @param event Astarte device disconnection event.
  */
-static void data_events_handler(astarte_device_data_event_t *event);
+static void disconnection_callback(astarte_device_disconnection_event_t event);
 /**
- * @brief Parse the received BSON data for this example.
+ * @brief Handler for astarte datastream object event.
  *
- * @param[in] bson_element The bson element to be parsed
- * @param[out] the resulting parsed data
- * @return 0 when successful, 1 otherwise
+ * @param event Astarte device datastream object event pointer.
  */
-static uint8_t parse_received_bson(
-    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data);
+static void datastream_object_events_handler(astarte_device_datastream_object_event_t event);
+/**
+ * @brief Helper function used to transmit some fixed data to Astarte.
+ */
+static void transmit_data(astarte_device_handle_t device);
 
 /************************************************
  * Global functions definition
@@ -111,89 +95,85 @@ static uint8_t parse_received_bson(
 
 int main(void)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
-    LOG_INF("MQTT Example\nBoard: %s", CONFIG_BOARD); // NOLINT
+    LOG_INF("Astarte device sample"); // NOLINT
+    LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
 
-    // Initialize WiFi driver
+    // Initialize WiFi/Ethernet driver
 #if defined(CONFIG_WIFI)
     LOG_INF("Initializing WiFi driver."); // NOLINT
     wifi_init();
 #else
+    LOG_INF("Initializing Ethernet driver."); // NOLINT
     if (eth_connect() != 0) {
         LOG_ERR("Connectivity intialization failed!"); // NOLINT
         return -1;
     }
 #endif
 
-    k_sleep(K_SECONDS(5)); // sleep for 5 seconds
-
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS)
-    tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CA_CERT_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
+    // Add TLS certificate if required
+#if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
+    || !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
+    tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
         ca_certificate_root, sizeof(ca_certificate_root));
 #endif
 
-    int32_t timeout_ms = 3 * MSEC_PER_SEC;
+    // Create a new instance of an Astarte device
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
-        = { &device_aggregate_interface, &server_aggregate_interface };
+        = { &org_astarteplatform_zephyr_examples_DeviceAggregate,
+              &org_astarteplatform_zephyr_examples_ServerAggregate };
 
     astarte_device_config_t device_config;
-    device_config.http_timeout_ms = timeout_ms;
-    device_config.mqtt_connection_timeout_ms = timeout_ms;
-    device_config.mqtt_connected_timeout_ms = MQTT_POLL_TIMEOUT_MS;
-    device_config.connection_cbk = connection_events_handler;
-    device_config.disconnection_cbk = disconnection_events_handler;
-    device_config.data_cbk = data_events_handler;
+    memset(&device_config, 0, sizeof(device_config));
+    device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
+    device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_FIRST_POLL_TIMEOUT_MS;
+    device_config.mqtt_connected_timeout_ms = CONFIG_MQTT_SUBSEQUENT_POLL_TIMEOUT_MS;
+    device_config.connection_cbk = connection_callback;
+    device_config.disconnection_cbk = disconnection_callback;
+    device_config.datastream_object_cbk = datastream_object_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
-    res = astarte_device_new(&device_config, &device);
+    astarte_result_t res = astarte_device_new(&device_config, &device);
     if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device creation failure."); // NOLINT
         return -1;
     }
 
-    res = astarte_device_connect(device);
-    if (res != ASTARTE_RESULT_OK) {
-        return -1;
-    }
+    // Spawn a new thread for the Astarte device
+    k_thread_create(&device_thread_data, device_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_thread_stack_area), device_thread_entry_point, (void *) device,
+        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
-    res = astarte_device_poll(device);
-    if (res != ASTARTE_RESULT_OK) {
-        LOG_ERR("First poll should not timeout as we should receive a connection ack."); // NOLINT
-        return -1;
-    }
-
-    k_timepoint_t disconnect_timepoint = sys_timepoint_calc(K_MSEC(DEVICE_OPERATIONAL_TIME_MS));
-    int count = 0;
-    while (1) {
-        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(MQTT_POLL_TIMEOUT_MS));
-
-        res = astarte_device_poll(device);
-        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
-            return -1;
+    // Wait for a predefined operational time.
+    k_timepoint_t disconnect_timepoint
+        = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
+    k_timepoint_t transmit_timepoint
+        = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_TRANSMISSION_DELAY_SECONDS));
+    bool transmission_performed = false;
+    while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
+        if ((!transmission_performed)
+            && (K_TIMEOUT_EQ(sys_timepoint_timeout(transmit_timepoint), K_NO_WAIT))) {
+            LOG_INF("Transmitting some data using the Astarte device."); // NOLINT
+            transmit_data(device);
+            transmission_performed = true;
         }
-
-        if (++count % (CONFIG_SLEEP_MS / MQTT_POLL_TIMEOUT_MS) == 0) {
-            LOG_INF("Polling mqtt events... %s", CONFIG_BOARD); // NOLINT
-            count = 0;
-        }
-        k_sleep(sys_timepoint_timeout(timepoint));
-
-        if (K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
-            break;
-        }
+        k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 
-    LOG_INF("End of loop, disconnection imminent %s", CONFIG_BOARD); // NOLINT
+    // Signal to the Astarte thread that is should terminate.
+    atomic_set_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION);
 
-    res = astarte_device_destroy(device);
-    if (res != ASTARTE_RESULT_OK) {
-        LOG_ERR("Failed destroying the device."); // NOLINT
-        return -1;
+    // Wait for the Astarte thread to terminate.
+    if (k_thread_join(&device_thread_data, K_FOREVER) != 0) {
+        LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
     }
+
+    LOG_INF("Astarte device sample finished."); // NOLINT
+    k_sleep(K_MSEC(MSEC_PER_SEC));
 
     return 0;
 }
@@ -202,124 +182,121 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void connection_events_handler(astarte_device_connection_event_t *event)
+static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
-    LOG_INF("Astarte device connected, session_present: %d", event->session_present); // NOLINT
+    (void) unused1;
+    (void) unused2;
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
+    astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
+    res = astarte_device_connect(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device connection failure."); // NOLINT
+        return;
+    }
+
+    res = astarte_device_poll(device);
+    if (res != ASTARTE_RESULT_OK) {
+        // First poll should not timeout as we should receive a connection ack.
+        LOG_ERR("Astarte device first poll failure."); // NOLINT
+        return;
+    }
+
+    while (!atomic_test_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION)) {
+        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
+
+        res = astarte_device_poll(device);
+        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
+            LOG_ERR("Astarte device poll failure."); // NOLINT
+            return;
+        }
+
+        k_sleep(sys_timepoint_timeout(timepoint));
+    }
+
+    LOG_INF("End of loop, disconnection imminent."); // NOLINT
+
+    res = astarte_device_disconnect(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device disconnection failure."); // NOLINT
+        return;
+    }
+
+    LOG_INF("Astarte thread will now be terminated."); // NOLINT
+
+    k_sleep(K_MSEC(MSEC_PER_SEC));
 }
 
-static void disconnection_events_handler(astarte_device_disconnection_event_t *event)
+static void connection_callback(astarte_device_connection_event_t event)
+{
+    LOG_INF("Astarte device connected, session_present: %d", event.session_present); // NOLINT
+}
+
+static void disconnection_callback(astarte_device_disconnection_event_t event)
 {
     (void) event;
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
-static void data_events_handler(astarte_device_data_event_t *event)
+static void datastream_object_events_handler(astarte_device_datastream_object_event_t event)
 {
-    // NOLINTNEXTLINE
-    LOG_INF("Got Astarte data event, interface_name: %s, path: %s, bson_type: %d",
-        event->interface_name, event->path, event->bson_element.type);
+    const char *interface_name = event.data_event.interface_name;
+    const char *path = event.data_event.path;
+    astarte_value_pair_t *values = event.values;
+    size_t values_length = event.values_length;
 
-    struct rx_aggregate rx_data;
+    LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
 
-    if ((strcmp(event->interface_name, server_aggregate_interface.name) != 0)
-        || (strcmp(event->path, "/11") != 0)) {
-        LOG_ERR("Server aggregate incorrectly received at path %s.", event->path); // NOLINT
-        return;
+    LOG_INF("Astarte object:"); // NOLINT
+    for (size_t i = 0; i < values_length; i++) {
+        const char *endpoint = values[i].endpoint;
+        astarte_value_t value = values[i].value;
+        LOG_INF("Partial endpoint: %s", endpoint); // NOLINT
+        utils_log_astarte_value(value);
     }
-
-    if (parse_received_bson(event->bson_element, &rx_data) != 0) {
-        LOG_ERR("Server aggregate incorrectly received."); // NOLINT
-        return;
-    }
-
-    LOG_INF("Server aggregate received with the following content:"); // NOLINT
-    LOG_INF("longinteger_endpoint: %lli", rx_data.longinteger); // NOLINT
-    // NOLINTNEXTLINE
-    LOG_INF("booleanarray_endpoint: {%d, %d, %d, %d}", rx_data.booleans[0], rx_data.booleans[1],
-        rx_data.booleans[2], rx_data.booleans[3]);
-
-    // TODO enable the device response once we implement stream aggregate
-    // const double double_endpoint = 43.2;
-    // const int32_t integer_endpoint = 54;
-    // bool boolean_endpoint = true;
-    // const double doubleanarray_endpoint[] = { 11.2, 2.2, 99.9, 421.1 };
-    // LOG_INF("Sending device aggregate with the following content:");
-    // LOG_INF("double_endpoint: %lf", double_endpoint);
-    // LOG_INF("integer_endpoint: %" PRIu32, integer_endpoint);
-    // LOG_INF("boolean_endpoint: %d", boolean_endpoint);
-    // LOG_INF("doubleanarray_endpoint: {%lf, %lf, %lf, %lf}", doubleanarray_endpoint[0],
-    //    doubleanarray_endpoint[1], doubleanarray_endpoint[2], doubleanarray_endpoint[3]);
-
-    // bson_serializer_handle_t aggregate_bson = bson_serializer_new();
-    // bson_serializer_append_double(aggregate_bson, "double_endpoint", double_endpoint);
-    // bson_serializer_append_int32(aggregate_bson, "integer_endpoint", integer_endpoint);
-    // bson_serializer_append_boolean(
-    //     aggregate_bson, "boolean_endpoint", boolean_endpoint);
-    // bson_serializer_append_double_array(
-    //     aggregate_bson, "doublearray_endpoint", doubleanarray_endpoint, 4);
-    // bson_serializer_append_end_of_document(aggregate_bson);
-
-    // const void *doc = bson_serializer_get_document(aggregate_bson, NULL);
-    // err_t res = device_stream_aggregate(
-    //     event->device, device_aggregate_interface.name, "/24", doc, 0);
-    // if (res != ASTARTE_RESULT_OK) {
-    //     LOG_ERR("Error streaming the aggregate");
-    // }
-
-    // bson_serializer_destroy(aggregate_bson);
-    // LOG_INF("Device aggregate sent, using sensor_id: 24.");
 }
 
-static uint8_t parse_received_bson(
-    astarte_bson_element_t bson_element, struct rx_aggregate *rx_data)
+static void transmit_data(astarte_device_handle_t device)
 {
-    if (bson_element.type != ASTARTE_BSON_TYPE_DOCUMENT) {
-        return 1U;
-    }
+    astarte_value_pair_t value_pairs[UTILS_DATA_ELEMENTS] = {
+        { .endpoint = "binaryblob_endpoint",
+            .value = astarte_value_from_binaryblob(
+                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)) },
+        { .endpoint = "binaryblobarray_endpoint",
+            .value = astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
+                (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)) },
+        { .endpoint = "boolean_endpoint", .value = astarte_value_from_boolean(utils_boolean_data) },
+        { .endpoint = "booleanarray_endpoint",
+            .value = astarte_value_from_boolean_array(
+                (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)) },
+        { .endpoint = "datetime_endpoint",
+            .value = astarte_value_from_datetime(utils_unix_time_data) },
+        { .endpoint = "datetimearray_endpoint",
+            .value = astarte_value_from_datetime_array(
+                (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data)) },
+        { .endpoint = "double_endpoint", .value = astarte_value_from_double(utils_double_data) },
+        { .endpoint = "doublearray_endpoint",
+            .value = astarte_value_from_double_array(
+                (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)) },
+        { .endpoint = "integer_endpoint", .value = astarte_value_from_integer(utils_integer_data) },
+        { .endpoint = "integerarray_endpoint",
+            .value = astarte_value_from_integer_array(
+                (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)) },
+        { .endpoint = "longinteger_endpoint",
+            .value = astarte_value_from_longinteger(utils_longinteger_data) },
+        { .endpoint = "longintegerarray_endpoint",
+            .value = astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
+                ARRAY_SIZE(utils_longinteger_array_data)) },
+        { .endpoint = "string_endpoint", .value = astarte_value_from_string(utils_string_data) },
+        { .endpoint = "stringarray_endpoint",
+            .value = astarte_value_from_string_array(
+                (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) }
+    };
 
-    astarte_bson_document_t doc = astarte_bson_deserializer_element_to_document(bson_element);
-    const uint32_t expected_doc_size = 0x4F;
-    if (doc.size != expected_doc_size) {
-        return 1U;
+    astarte_result_t res = astarte_device_stream_aggregated(device,
+        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", value_pairs,
+        ARRAY_SIZE(value_pairs), NULL, 0);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Error streaming the aggregate"); // NOLINT
     }
-
-    astarte_bson_element_t elem_longinteger_endpoint;
-    if ((astarte_bson_deserializer_element_lookup(
-             doc, "longinteger_endpoint", &elem_longinteger_endpoint)
-            != ASTARTE_RESULT_OK)
-        || (elem_longinteger_endpoint.type != ASTARTE_BSON_TYPE_INT64)) {
-        return 1U;
-    }
-    rx_data->longinteger = astarte_bson_deserializer_element_to_int64(elem_longinteger_endpoint);
-
-    astarte_bson_element_t elem_boolean_array;
-    if ((astarte_bson_deserializer_element_lookup(doc, "booleanarray_endpoint", &elem_boolean_array)
-            != ASTARTE_RESULT_OK)
-        || (elem_boolean_array.type != ASTARTE_BSON_TYPE_ARRAY)) {
-        return 1U;
-    }
-
-    astarte_bson_document_t arr = astarte_bson_deserializer_element_to_array(elem_boolean_array);
-    const uint32_t expected_arr_size = 0x15;
-    if (arr.size != expected_arr_size) {
-        return 1U;
-    }
-
-    astarte_bson_element_t elem_boolean;
-    if ((astarte_bson_deserializer_first_element(arr, &elem_boolean) != ASTARTE_RESULT_OK)
-        || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
-        return 1U;
-    }
-    rx_data->booleans[0] = astarte_bson_deserializer_element_to_bool(elem_boolean);
-
-    for (size_t i = 1; i < 4; i++) {
-        if ((astarte_bson_deserializer_next_element(arr, elem_boolean, &elem_boolean)
-                != ASTARTE_RESULT_OK)
-            || (elem_boolean.type != ASTARTE_BSON_TYPE_BOOLEAN)) {
-            return 1U;
-        }
-        rx_data->booleans[i] = astarte_bson_deserializer_element_to_bool(elem_boolean);
-    }
-
-    return 0U;
 }

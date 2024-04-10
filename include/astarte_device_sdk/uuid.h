@@ -21,6 +21,9 @@
 /** @brief Number of bytes in the binary representation of a UUID. */
 #define ASTARTE_UUID_SIZE 16
 
+/** @brief Length of the UUID string representation. */
+#define ASTARTE_UUID_STR_LEN 36
+
 /** @brief Binary representation of a UUID. */
 typedef uint8_t astarte_uuid_t[ASTARTE_UUID_SIZE];
 

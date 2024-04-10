@@ -29,13 +29,23 @@ config ASTARTE_DEVICE_SDK_HOSTNAME
 	help
 	  This hostname will be solved using a DNS to the IP address of the Astarte instance.
 
-config ASTARTE_DEVICE_SDK_CA_CERT_TAG
-	int "CA root certificate TLS security tag"
+config ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG
+	int "HTTPs CA root certificate TLS security tag"
 	depends on ASTARTE_DEVICE_SDK
-	depends on !ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS
+	depends on !ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP
 	help
-	  The CA certificate should be added by the user with the tls_credential_add function.
-	  This configuration option should be set to the tag used when adding the CA certificate.
+	  This tag will be used for all HTTPs connections within the Astarte device.
+	  A CA certificate should be added by the user with the tls_credential_add function.
+	  Set this option to the tag used when adding the CA certificate.
+
+config ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG
+	int "MQTTs CA root certificate TLS security tag"
+	depends on ASTARTE_DEVICE_SDK
+	depends on !ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
+	help
+	  This tag will be used for all MQTTs connections within the Astarte device.
+	  A CA certificate should be added by the user with the tls_credential_add function.
+	  Set this option to the tag used when adding the CA certificate.
 
 config ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG
 	int "TLS security tag for client certificate"
@@ -67,16 +77,25 @@ config ASTARTE_DEVICE_SDK_REALM_NAME
 
 menu "Development options"
 
-config ASTARTE_DEVICE_SDK_DEVELOP_DISABLE_OR_IGNORE_TLS
-	bool "Disable TLS for all sockets"
+config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP
+	bool "Disable TLS for all HTTP requests"
 	depends on ASTARTE_DEVICE_SDK
 	default false
 	help
 	  Enable this option to connect to a local Astarte instance.
-	  With this option enabled:
-	  - All HTTP(s) operations will be performed over an unsecure channel. Without TLS.
-	  - All MQTT(s) operations will still be perfomed using mutual TLS authentication.
-	  	However, any error related the server certificate will be ignored.
+	  With this option enabled all HTTP(s) operations will be performed over an unsecure channel,
+	  without TLS.
+
+	  Should be used only for development purposes as it's highly unsafe.
+
+config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
+	bool "Disable TLS for all MQTT connections"
+	depends on ASTARTE_DEVICE_SDK
+	default false
+	help
+	  Enable this option to connect to a local Astarte instance.
+	  With this option enabled all MQTT(s) operations will still be perfomed using mutual TLS
+	  authentication. However, any error related the server certificate will be ignored.
 
 	  Should be used only for development purposes as it's highly unsafe.
 
@@ -136,6 +155,16 @@ source "subsys/logging/Kconfig.template.log_config"
 module = ASTARTE_DEVICE_SDK_INTROSPECTION
 module-str = Log level for Astarte device SDK introspection
 module-help = Sets log level for Astarte device SDK introspection.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_VALUE
+module-str = Log level for Astarte device SDK value
+module-help = Sets log level for Astarte device SDK value.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_MAPPING
+module-str = Log level for Astarte device SDK mapping
+module-help = Sets log level for Astarte device SDK mapping.
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu

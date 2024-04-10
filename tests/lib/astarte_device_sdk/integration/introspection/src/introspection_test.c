@@ -25,6 +25,7 @@ const static astarte_interface_t test_interface_a = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 const static astarte_interface_t test_interface_b = {
@@ -33,6 +34,7 @@ const static astarte_interface_t test_interface_b = {
     .minor_version = 1,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_DEVICE,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 const static astarte_interface_t test_interface_c = {
@@ -41,6 +43,7 @@ const static astarte_interface_t test_interface_c = {
     .minor_version = 0,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_DATASTREAM,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 static char *get_introspection_string(introspection_t *introspection)
@@ -229,7 +232,7 @@ ZTEST(astarte_device_sdk_introspection, test_introspection_iter) // NOLINT
     check_add_interface_ok(&introspection, &test_interface_c);
 
     LOG_INF("Creating introspection iterator"); // NOLINT
-    const introspection_node_t *introspection_iterator = introspection_iter(&introspection);
+    introspection_node_t *introspection_iterator = introspection_iter(&introspection);
     LOG_INF("First interface '%s'", introspection_iterator->interface); // NOLINT
     zassert_equal_ptr(&test_interface_a, introspection_iterator->interface);
 
@@ -278,6 +281,7 @@ const astarte_interface_t test_interface_a_v2_valid = {
     .minor_version = 2,
     .ownership = ASTARTE_INTERFACE_OWNERSHIP_SERVER,
     .type = ASTARTE_INTERFACE_TYPE_PROPERTIES,
+    .aggregation = ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
 };
 
 ZTEST(astarte_device_sdk_introspection, test_introspection_update_ok) // NOLINT

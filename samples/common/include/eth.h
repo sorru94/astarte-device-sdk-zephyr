@@ -19,4 +19,11 @@
  */
 int eth_connect(void);
 
+/**
+ * @brief Poll the Ethernet driver, ensuring a connection is present.
+ *
+ * @note This function will block when connectivity is not present.
+ */
+void eth_poll(void);
+
 #endif /* ETH_H */

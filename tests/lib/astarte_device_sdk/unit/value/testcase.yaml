@@ -1,0 +1,8 @@
+# (C) Copyright 2024, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  lib.astarte_device_sdk.unit.value:
+    tags: astarte_device_sdk
+    type: unit

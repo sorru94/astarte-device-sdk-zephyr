@@ -12,6 +12,7 @@ tests:
   datastreams.default:
     build_only: true
     integration_platforms:
+      - mimxrt1060_evkb
       - stm32h573i_dk
       - esp_wrover_kit
       - native_sim

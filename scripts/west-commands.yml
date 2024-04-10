@@ -23,3 +23,8 @@ west-commands:
       - name: static
         class: WestCommandStatic
         help: run static analysis on the sources (clang-tidy)
+  - file: scripts/generate_interfaces.py
+    commands:
+      - name: generate-interfaces
+        class: WestCommandGenerateInterfaces
+        help: Generates C interfaces definitions from .json definitions.

@@ -18,8 +18,6 @@
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEVEL);
 
-#define UUID_STR_LEN 36
-
 // All the macros below follow the standard for the Universally Unique Identifier as defined
 // by the IETF in the RFC 4122.
 // The full specification can be found here: https://datatracker.ietf.org/doc/html/rfc4122
@@ -161,7 +159,7 @@ astarte_result_t astarte_uuid_generate_v5(
 
 astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = UUID_STR_LEN + sizeof(char);
+    size_t min_out_size = ASTARTE_UUID_STR_LEN + sizeof(char);
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INTERNAL_ERROR;
@@ -188,12 +186,12 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
 astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
 {
     // Length check
-    if (strlen(input) != UUID_STR_LEN) {
+    if (strlen(input) != ASTARTE_UUID_STR_LEN) {
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Sanity check
-    for (int i = 0; i < UUID_STR_LEN; i++) {
+    for (int i = 0; i < ASTARTE_UUID_STR_LEN; i++) {
         char char_i = input[i];
         // Check that hyphens are in the right place
         if ((i == UUID_STR_POSITION_FIRST_HYPHEN) || (i == UUID_STR_POSITION_SECOND_HYPHEN)

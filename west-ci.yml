@@ -21,4 +21,6 @@ manifest:
           - cmsis
           - hal_espressif
           - hal_stm32
+          - hal_nxp
           - mbedtls
+          - picolibc

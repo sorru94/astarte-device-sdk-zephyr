@@ -33,7 +33,8 @@ Second, a new entry should be added to the projects list:
       remote: secomind
       repo-path: astarte-device-sdk-zephyr.git
       path: astarte-device-sdk-zephyr
-      revision: main
+      revision: release-0.5
+      west-commands: scripts/west-commands.yml
 ```
 Remember to run `west update` after performing changes to the manifest file.
 

@@ -4,13 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "astarte_device_sdk/device.h"
+#include "device_private.h"
 
 #include <stdio.h>
-
-#include <zephyr/kernel.h>
-#include <zephyr/net/mqtt.h>
-#include <zephyr/net/socket.h>
-#include <zephyr/net/tls_credentials.h>
+#include <stdlib.h>
 
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/pairing.h"
@@ -26,39 +23,13 @@
 ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
 
 /************************************************
- *       Checks over configuration values       *
- ***********************************************/
-
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
-#warning "TLS has been disabled (unsafe)!"
-#endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT) */
-
-/************************************************
  *        Defines, constants and typedef        *
  ***********************************************/
 
-/* Buffers for MQTT client. */
-#define MQTT_RX_TX_BUFFER_SIZE 256U
-static uint8_t mqtt_rx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-static uint8_t mqtt_tx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-
-static sec_tag_t sec_tag_list[] = {
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
-    CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
-#endif
-    CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-};
-
-/* Max allowed hostname characters are 253 */
-#define MAX_MQTT_BROKER_HOSTNAME_LEN 253
+/** @brief Max allowed hostname characters are 253 */
+#define MQTT_MAX_BROKER_HOSTNAME_LEN 253
 /** @brief Max allowed port number is 65535 */
-#define MAX_MQTT_BROKER_PORT_LEN 5
-/* The total MQTT topic length should never match this size. */
-#define MAX_MQTT_TOPIC_SIZE 512
-/* The base MQTT topic length should never match this size. */
-#define MAX_MQTT_CLIENT_ID_SIZE 128
-/* Size for the application message buffer, used to store incoming messages */
-#define MAX_MQTT_MSG_SIZE 4096U
+#define MQTT_MAX_BROKER_PORT_LEN 5
 
 /**
  * @brief Internal struct for an instance of an Astarte device.
@@ -69,10 +40,6 @@ struct astarte_device
 {
     /** @brief Timeout for http requests. */
     int32_t http_timeout_ms;
-    /** @brief Timeout for socket polls before connection to an MQTT broker. */
-    int32_t mqtt_connection_timeout_ms;
-    /** @brief Timeout for socket polls on an already connected MQTT broker. */
-    int32_t mqtt_connected_timeout_ms;
     /** @brief Private key for the device in the PEM format. */
     char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
     /** @brief Device certificate in the PEM format. */
@@ -80,9 +47,9 @@ struct astarte_device
     /** @brief Device's credential secret. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT broker hostname. */
-    char broker_hostname[MAX_MQTT_BROKER_HOSTNAME_LEN + 1];
+    char broker_hostname[MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
     /** @brief MQTT broker port. */
-    char broker_port[MAX_MQTT_BROKER_PORT_LEN + 1];
+    char broker_port[MQTT_MAX_BROKER_PORT_LEN + 1];
     /** @brief Client ID to be used for all MQTT connections. Has to be unique for each device.
      *
      * @details To ensure the uniqueness of this ID it will be set to the common name of the client
@@ -90,15 +57,11 @@ struct astarte_device
      * This client ID will also be used as base topic for all incoming and outgoing MQTT messages
      * exchanged with Astarte.
      */
-    char mqtt_client_id[MAX_MQTT_CLIENT_ID_SIZE];
+    char mqtt_client_id[ASTARTE_MQTT_MAX_CLIENT_ID_SIZE];
     /** @brief MQTT client handle. */
-    struct mqtt_client mqtt_client;
-    /** @brief Last transmitted message ID. */
-    uint16_t mqtt_message_id;
+    astarte_mqtt_t astarte_mqtt;
     /** @brief Device introspection. */
     introspection_t introspection;
-    /** @brief Flag representing if the device is connected to the MQTT broker. */
-    bool mqtt_is_connected;
     /** @brief (optional) User callback for connection events. */
     astarte_device_connection_cbk_t connection_cbk;
     /** @brief (optional) User callback for disconnection events. */
@@ -119,39 +82,6 @@ struct astarte_device
  *         Static functions declaration         *
  ***********************************************/
 
-/**
- * @brief This function should be called each time a connection event is received.
- *
- * @param[in] device Handle to the device instance.
- * @param[in] connack_param CONNACK parameter, containing the session present flag.
- */
-static void on_connected(astarte_device_handle_t device, struct mqtt_connack_param connack_param);
-/**
- * @brief This function should be called each time a disconnection event is received.
- *
- * @param[in] device Handle to the device instance.
- */
-static void on_disconnected(astarte_device_handle_t device);
-/**
- * @brief Helper function to parse an incoming published message.
- *
- * @param[in] device Handle to the device instance.
- * @param[in] pub Received published data in the MQTT client format.
- * @return The number of bytes received upon success, a negative error (errno.h) otherwise.
- */
-static ssize_t handle_published_message(
-    astarte_device_handle_t device, const struct mqtt_publish_param *pub);
-/**
- * @brief This function should be called each time an MQTT publish message is received.
- *
- * @param[in] device Handle to the device instance.
- * @param[in] topic Topic on which the publish message has been received.
- * @param[in] topic_len Length of the topic string (not including NULL terminator).
- * @param[in] data Payload for the received data.
- * @param[in] data_len Length of the payload (not including NULL terminator).
- */
-static void on_incoming(astarte_device_handle_t device, const char *topic, size_t topic_len,
-    const char *data, size_t data_len);
 /**
  * @brief Calls the correct callback for the received type, also deserializes the BSON payload.
  *
@@ -213,108 +143,6 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
     const char *path, void *data, int data_size, int qos);
 
 /************************************************
- *       Callbacks declaration/definition       *
- ***********************************************/
-
-static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt_evt *evt)
-{
-    int res = 0;
-    struct astarte_device *device = CONTAINER_OF(client, struct astarte_device, mqtt_client);
-
-    switch (evt->type) {
-        case MQTT_EVT_CONNACK:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT connect failed %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("MQTT client connected");
-            on_connected(device, evt->param.connack);
-            break;
-
-        case MQTT_EVT_DISCONNECT:
-            ASTARTE_LOG_DBG("MQTT client disconnected %d", evt->result);
-            on_disconnected(device);
-            break;
-
-        case MQTT_EVT_PUBLISH:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT publish reception failed %d", evt->result);
-                break;
-            }
-
-            const struct mqtt_publish_param *pub = &evt->param.publish;
-            res = handle_published_message(device, pub);
-            if ((res < 0) || (res != pub->message.payload.len)) {
-                ASTARTE_LOG_ERR("MQTT published incoming data parsing error %d", res);
-                break;
-            }
-
-            break;
-
-        case MQTT_EVT_PUBREL:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBREL error %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("PUBREL packet id: %u", evt->param.pubrel.message_id);
-
-            struct mqtt_pubcomp_param pubcomp = { .message_id = evt->param.pubrel.message_id };
-            res = mqtt_publish_qos2_complete(&device->mqtt_client, &pubcomp);
-            if (res != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBCOMP transmission error %d", res);
-            }
-
-            break;
-
-        case MQTT_EVT_PUBACK:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBACK error %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("PUBACK packet id: %u", evt->param.puback.message_id);
-            break;
-
-        case MQTT_EVT_PUBREC:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBREC error %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("PUBREC packet id: %u", evt->param.pubrec.message_id);
-            const struct mqtt_pubrel_param rel_param
-                = { .message_id = evt->param.pubrec.message_id };
-            int err = mqtt_publish_qos2_release(client, &rel_param);
-            if (err != 0) {
-                ASTARTE_LOG_ERR("Failed to send MQTT PUBREL: %d", err);
-            }
-            break;
-
-        case MQTT_EVT_PUBCOMP:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBCOMP error %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("PUBCOMP packet id: %u", evt->param.pubcomp.message_id);
-            break;
-
-        case MQTT_EVT_SUBACK:
-            if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT SUBACK error %d", evt->result);
-                break;
-            }
-            ASTARTE_LOG_DBG("SUBACK packet id: %u", evt->param.suback.message_id);
-            break;
-
-        case MQTT_EVT_PINGRESP:
-            ASTARTE_LOG_DBG("PINGRESP packet");
-            break;
-
-        default:
-            ASTARTE_LOG_WRN("Unhandled MQTT event: %d", evt->type);
-            break;
-    }
-}
-
-/************************************************
  *         Global functions definitions         *
  ***********************************************/
 
@@ -347,8 +175,6 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     }
 
     handle->http_timeout_ms = cfg->http_timeout_ms;
-    handle->mqtt_connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
-    handle->mqtt_connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
     memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
     handle->connection_cbk = cfg->connection_cbk;
     handle->disconnection_cbk = cfg->disconnection_cbk;
@@ -357,8 +183,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->property_set_cbk = cfg->property_set_cbk;
     handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
-    handle->mqtt_is_connected = false;
-    handle->mqtt_message_id = 1U;
+
+    astarte_mqtt_init(
+        &handle->astarte_mqtt, cfg->mqtt_connection_timeout_ms, cfg->mqtt_connected_timeout_ms);
 
     *device = handle;
 
@@ -371,12 +198,9 @@ failure:
 
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
-    if (device->mqtt_is_connected) {
-        int res = mqtt_disconnect(&device->mqtt_client);
-        if (res < 0) {
-            ASTARTE_LOG_ERR("Device disconnection failure %d", res);
-            return ASTARTE_RESULT_MQTT_ERROR;
-        }
+    astarte_result_t res = astarte_device_disconnect(device);
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
     }
 
     // TODO: the following two operations should only be performed if the certificate/key have
@@ -410,8 +234,8 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
     astarte_result_t res = ASTARTE_RESULT_OK;
 
     // Get MQTT broker URL if not already present
-    if ((strnlen(device->broker_hostname, MAX_MQTT_BROKER_HOSTNAME_LEN + 1) == 0)
-        || (strnlen(device->broker_port, MAX_MQTT_BROKER_PORT_LEN + 1) == 0)) {
+    if ((strnlen(device->broker_hostname, MQTT_MAX_BROKER_HOSTNAME_LEN + 1) == 0)
+        || (strnlen(device->broker_port, MQTT_MAX_BROKER_PORT_LEN + 1) == 0)) {
         char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
         res = astarte_pairing_get_broker_url(device->http_timeout_ms, device->cred_secr, broker_url,
             ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
@@ -431,13 +255,13 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
             ASTARTE_LOG_ERR("MQTT broker URL is malformed");
             return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         }
-        strncpy(device->broker_hostname, broker_url_token, MAX_MQTT_BROKER_HOSTNAME_LEN + 1);
+        strncpy(device->broker_hostname, broker_url_token, MQTT_MAX_BROKER_HOSTNAME_LEN + 1);
         broker_url_token = strtok_r(NULL, "/", &saveptr);
         if (!broker_url_token) {
             ASTARTE_LOG_ERR("MQTT broker URL is malformed");
             return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
         }
-        strncpy(device->broker_port, broker_url_token, MAX_MQTT_BROKER_PORT_LEN + 1);
+        strncpy(device->broker_port, broker_url_token, MQTT_MAX_BROKER_PORT_LEN + 1);
     }
 
     // Check if certificate is valid
@@ -461,100 +285,18 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
         }
     }
 
-    // Get broker address info
-    struct zsock_addrinfo *broker_addrinfo = NULL;
-    struct zsock_addrinfo hints;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    int sock_rc
-        = zsock_getaddrinfo(device->broker_hostname, device->broker_port, &hints, &broker_addrinfo);
-    if (sock_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve broker address %d", sock_rc);
-        ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
-        return ASTARTE_RESULT_SOCKET_ERROR;
-    }
-
-    // MQTT client configuration
-    mqtt_client_init(&device->mqtt_client);
-    device->mqtt_client.broker = broker_addrinfo->ai_addr;
-    device->mqtt_client.evt_cb = mqtt_evt_handler;
-    device->mqtt_client.client_id.utf8 = (uint8_t *) device->mqtt_client_id;
-    device->mqtt_client.client_id.size = strnlen(device->mqtt_client_id, MAX_MQTT_CLIENT_ID_SIZE);
-    device->mqtt_client.password = NULL;
-    device->mqtt_client.user_name = NULL;
-    device->mqtt_client.protocol_version = MQTT_VERSION_3_1_1;
-    device->mqtt_client.transport.type = MQTT_TRANSPORT_SECURE;
-
-    // MQTT TLS configuration
-    struct mqtt_sec_config *tls_config = &(device->mqtt_client.transport.tls.config);
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
-    tls_config->peer_verify = TLS_PEER_VERIFY_REQUIRED;
-#else
-    tls_config->peer_verify = TLS_PEER_VERIFY_NONE;
-#endif
-    tls_config->cipher_list = NULL;
-    tls_config->sec_tag_list = sec_tag_list;
-    tls_config->sec_tag_count = ARRAY_SIZE(sec_tag_list);
-    tls_config->hostname = device->broker_hostname;
-
-    // MQTT buffers configuration
-    device->mqtt_client.rx_buf = mqtt_rx_buffer;
-    device->mqtt_client.rx_buf_size = sizeof(mqtt_rx_buffer);
-    device->mqtt_client.tx_buf = mqtt_tx_buffer;
-    device->mqtt_client.tx_buf_size = sizeof(mqtt_tx_buffer);
-
-    // Request connection to broker
-    int mqtt_rc = mqtt_connect(&device->mqtt_client);
-    if (mqtt_rc != 0) {
-        ASTARTE_LOG_ERR("MQTT connection error (%d)", mqtt_rc);
-        return ASTARTE_RESULT_MQTT_ERROR;
-    }
-
-    return ASTARTE_RESULT_OK;
+    return astarte_mqtt_connect(&device->astarte_mqtt, device->broker_hostname, device->broker_port,
+        device->mqtt_client_id);
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
 {
-    if (device->mqtt_is_connected) {
-        int res = mqtt_disconnect(&device->mqtt_client);
-        if (res < 0) {
-            ASTARTE_LOG_ERR("Device disconnection failure %d", res);
-            return ASTARTE_RESULT_MQTT_ERROR;
-        }
-    }
-    return ASTARTE_RESULT_OK;
+    return astarte_mqtt_disconnect(&device->astarte_mqtt);
 }
 
 astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 {
-    // Poll the socket
-    struct zsock_pollfd socket_fds[1];
-    int socket_nfds = 1;
-    socket_fds[0].fd = device->mqtt_client.transport.tls.sock;
-    socket_fds[0].events = ZSOCK_POLLIN;
-    int32_t timeout = (device->mqtt_is_connected) ? device->mqtt_connected_timeout_ms
-                                                  : device->mqtt_connection_timeout_ms;
-    int32_t keepalive = mqtt_keepalive_time_left(&device->mqtt_client);
-    int socket_rc = zsock_poll(socket_fds, socket_nfds, MIN(timeout, keepalive));
-    if (socket_rc < 0) {
-        ASTARTE_LOG_ERR("Poll error: %d", errno);
-        return ASTARTE_RESULT_SOCKET_ERROR;
-    }
-    if (socket_rc != 0) {
-        // Process the MQTT response
-        int mqtt_rc = mqtt_input(&device->mqtt_client);
-        if (mqtt_rc != 0) {
-            ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_rc);
-            return ASTARTE_RESULT_MQTT_ERROR;
-        }
-    }
-    // Keep alive the connection
-    int mqtt_rc = mqtt_live(&device->mqtt_client);
-    if ((mqtt_rc != 0) && (mqtt_rc != -EAGAIN)) {
-        ASTARTE_LOG_ERR("Failed to keep alive MQTT: %d", mqtt_rc);
-        return ASTARTE_RESULT_MQTT_ERROR;
-    }
-    return (socket_rc == 0) ? ASTARTE_RESULT_TIMEOUT : ASTARTE_RESULT_OK;
+    return astarte_mqtt_poll(&device->astarte_mqtt);
 }
 
 astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
@@ -676,9 +418,9 @@ astarte_result_t astarte_device_unset_property(
  *         Static functions definitions         *
  ***********************************************/
 
-static void on_connected(astarte_device_handle_t device, struct mqtt_connack_param connack_param)
+void on_connected(astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connack_param)
 {
-    device->mqtt_is_connected = true;
+    struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
     if (device->connection_cbk) {
         astarte_device_connection_event_t event = {
@@ -700,9 +442,9 @@ static void on_connected(astarte_device_handle_t device, struct mqtt_connack_par
     // TODO: send device owned props
 }
 
-static void on_disconnected(astarte_device_handle_t device)
+void on_disconnected(astarte_mqtt_t *astarte_mqtt)
 {
-    device->mqtt_is_connected = false;
+    struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
     if (device->disconnection_cbk) {
         astarte_device_disconnection_event_t event = {
@@ -714,73 +456,19 @@ static void on_disconnected(astarte_device_handle_t device)
     }
 }
 
-static ssize_t handle_published_message(
-    astarte_device_handle_t device, const struct mqtt_publish_param *pub)
-{
-    int ret = 0U;
-    size_t received = 0U;
-    uint32_t message_size = pub->message.payload.len;
-    char msg_buffer[MAX_MQTT_MSG_SIZE] = { 0 };
-    const bool discarded = message_size > MAX_MQTT_MSG_SIZE;
-
-    ASTARTE_LOG_DBG("RECEIVED on topic \"%.*s\" [ id: %u qos: %u ] payload: %u / %u B",
-        pub->message.topic.topic.size, (const char *) pub->message.topic.topic.utf8,
-        pub->message_id, pub->message.topic.qos, message_size, MAX_MQTT_MSG_SIZE);
-
-    while (received < message_size) {
-        char *pkt = discarded ? msg_buffer : &msg_buffer[received];
-
-        ret = mqtt_read_publish_payload_blocking(&device->mqtt_client, pkt, MAX_MQTT_MSG_SIZE);
-        if (ret < 0) {
-            return ret;
-        }
-
-        received += ret;
-    }
-
-    if (pub->message.topic.qos == MQTT_QOS_1_AT_LEAST_ONCE) {
-        struct mqtt_puback_param puback = { .message_id = pub->message_id };
-        ret = mqtt_publish_qos1_ack(&device->mqtt_client, &puback);
-        if (ret != 0) {
-            ASTARTE_LOG_ERR("MQTT PUBACK transmission error %d", ret);
-        }
-    }
-    if (pub->message.topic.qos == MQTT_QOS_2_EXACTLY_ONCE) {
-        struct mqtt_pubrec_param pubrec = { .message_id = pub->message_id };
-        ret = mqtt_publish_qos2_receive(&device->mqtt_client, &pubrec);
-        if (ret != 0) {
-            ASTARTE_LOG_ERR("MQTT PUBREC transmission error %d", ret);
-        }
-    }
-
-    if (!discarded) {
-        ASTARTE_LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256U), "Received payload:");
-
-        size_t topic_len = pub->message.topic.topic.size;
-        if (topic_len >= MAX_MQTT_TOPIC_SIZE) {
-            ASTARTE_LOG_ERR(
-                "MQTT topics longer than %d chars are not supported.", MAX_MQTT_TOPIC_SIZE - 1);
-            return -ENOTSUP;
-        }
-        char topic[MAX_MQTT_TOPIC_SIZE] = { 0 };
-        strncpy(topic, pub->message.topic.topic.utf8, MAX_MQTT_TOPIC_SIZE - 1);
-        on_incoming(device, topic, topic_len, msg_buffer, message_size);
-    }
-
-    return discarded ? -ENOMEM : (ssize_t) received;
-}
-
-static void on_incoming(astarte_device_handle_t device, const char *topic, size_t topic_len,
+void on_incoming(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_len,
     const char *data, size_t data_len)
 {
+    struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
     if (strstr(topic, device->mqtt_client_id) != topic) {
         ASTARTE_LOG_ERR("Incoming message topic doesn't begin with MQTT client ID: %s", topic);
         return;
     }
 
-    char control_prefix[MAX_MQTT_TOPIC_SIZE] = { 0 };
-    int ret = snprintf(control_prefix, MAX_MQTT_TOPIC_SIZE, "%s/control", device->mqtt_client_id);
-    if ((ret < 0) || (ret >= MAX_MQTT_TOPIC_SIZE)) {
+    char control_prefix[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
+    int ret = snprintf(
+        control_prefix, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%s/control", device->mqtt_client_id);
+    if ((ret < 0) || (ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
         ASTARTE_LOG_ERR("Error encoding control prefix");
         return;
     }
@@ -820,9 +508,9 @@ static void on_incoming(astarte_device_handle_t device, const char *topic, size_
     }
 
     size_t path_len = topic_len - strlen(device->mqtt_client_id) - strlen("/") - interface_name_len;
-    char path[MAX_MQTT_TOPIC_SIZE] = { 0 };
-    ret = snprintf(path, MAX_MQTT_TOPIC_SIZE, "%.*s", path_len, path_begin);
-    if ((ret < 0) || (ret >= MAX_MQTT_TOPIC_SIZE)) {
+    char path[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
+    ret = snprintf(path, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%.*s", path_len, path_begin);
+    if ((ret < 0) || (ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
         ASTARTE_LOG_ERR("Error encoding path");
         return;
     }
@@ -940,7 +628,7 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
     // The base topic for this device is returned by Astarte in the common name of the certificate
     // It will be usually be in the format: <REALM>/<DEVICE ID>
     res = astarte_crypto_get_certificate_info(
-        device->crt_pem, device->mqtt_client_id, MAX_MQTT_CLIENT_ID_SIZE);
+        device->crt_pem, device->mqtt_client_id, ASTARTE_MQTT_MAX_CLIENT_ID_SIZE);
     if ((res != ASTARTE_RESULT_OK) || (strlen(device->mqtt_client_id) == 0)) {
         ASTARTE_LOG_ERR("Error in certificate common name extraction.");
         return res;
@@ -984,29 +672,17 @@ static astarte_result_t update_client_certificate(astarte_device_handle_t device
 
 static void setup_subscriptions(astarte_device_handle_t device)
 {
-    char topic_str[MAX_MQTT_TOPIC_SIZE] = { 0 };
-    int ret = snprintf(
-        topic_str, MAX_MQTT_TOPIC_SIZE, "%s/control/consumer/properties", device->mqtt_client_id);
-    if ((ret < 0) || (ret >= MAX_MQTT_TOPIC_SIZE)) {
+    char topic[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
+    int ret = snprintf(topic, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%s/control/consumer/properties",
+        device->mqtt_client_id);
+    if ((ret < 0) || (ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
         ASTARTE_LOG_ERR("Error encoding MQTT topic");
         return;
     }
 
-    struct mqtt_topic ctrl_topics[] = { {
-        .topic = { .utf8 = topic_str, .size = strlen(topic_str) },
-        .qos = 2,
-    } };
-    const struct mqtt_subscription_list ctrl_sub_list = {
-        .list = ctrl_topics,
-        .list_count = ARRAY_SIZE(ctrl_topics),
-        .message_id = device->mqtt_message_id++,
-    };
-
-    ASTARTE_LOG_DBG("Subscribing to %s", topic_str);
-
-    ret = mqtt_subscribe(&device->mqtt_client, &ctrl_sub_list);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("Failed to subscribe to control topic: %d", ret);
+    astarte_result_t mqtt_res = astarte_mqtt_subscribe(&device->astarte_mqtt, topic);
+    if (mqtt_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
         return;
     }
 
@@ -1016,28 +692,16 @@ static void setup_subscriptions(astarte_device_handle_t device)
 
         if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
             // Subscribe to server interface subtopics
-            ret = snprintf(
-                topic_str, MAX_MQTT_TOPIC_SIZE, "%s/%s/#", device->mqtt_client_id, interface->name);
-            if ((ret < 0) || (ret >= MAX_MQTT_TOPIC_SIZE)) {
+            ret = snprintf(topic, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%s/%s/#", device->mqtt_client_id,
+                interface->name);
+            if ((ret < 0) || (ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
                 ASTARTE_LOG_ERR("Error encoding MQTT topic");
                 continue;
             }
 
-            struct mqtt_topic topics[] = { {
-                .topic = { .utf8 = topic_str, .size = strlen(topic_str) },
-                .qos = 2,
-            } };
-            const struct mqtt_subscription_list sub_list = {
-                .list = topics,
-                .list_count = ARRAY_SIZE(topics),
-                .message_id = device->mqtt_message_id++,
-            };
-
-            ASTARTE_LOG_DBG("Subscribing to %s", topic_str);
-
-            ret = mqtt_subscribe(&device->mqtt_client, &sub_list);
-            if (ret != 0) {
-                ASTARTE_LOG_ERR("Failed to subscribe to %s: %d", topic_str, ret);
+            astarte_result_t mqtt_res = astarte_mqtt_subscribe(&device->astarte_mqtt, topic);
+            if (mqtt_res != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
                 return;
             }
         }
@@ -1063,17 +727,11 @@ static void send_introspection(astarte_device_handle_t device)
 
     ASTARTE_LOG_DBG("Publishing introspection: %s", introspection_str);
 
-    struct mqtt_publish_param msg;
-    msg.retain_flag = 0U;
-    msg.message.topic.topic.utf8 = device->mqtt_client_id;
-    msg.message.topic.topic.size = strlen(device->mqtt_client_id);
-    msg.message.topic.qos = 2;
-    msg.message.payload.data = introspection_str;
-    msg.message.payload.len = strlen(introspection_str);
-    msg.message_id = device->mqtt_message_id++;
-    int res = mqtt_publish(&device->mqtt_client, &msg);
-    if (res != 0) {
-        ASTARTE_LOG_ERR("MQTT publish failed during send_introspection.");
+    astarte_result_t mqtt_res = astarte_mqtt_publish(&device->astarte_mqtt, device->mqtt_client_id,
+        introspection_str, strlen(introspection_str), 2);
+    if (mqtt_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error publishing introspection.");
+        return;
     }
 
     free(introspection_str);
@@ -1081,26 +739,21 @@ static void send_introspection(astarte_device_handle_t device)
 
 static void send_emptycache(astarte_device_handle_t device)
 {
-    char topic[MAX_MQTT_TOPIC_SIZE] = { 0 };
-    int ret = snprintf(topic, MAX_MQTT_TOPIC_SIZE, "%s/control/emptyCache", device->mqtt_client_id);
-    if ((ret < 0) || (ret >= MAX_MQTT_TOPIC_SIZE)) {
+    char topic[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
+    int ret = snprintf(
+        topic, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%s/control/emptyCache", device->mqtt_client_id);
+    if ((ret < 0) || (ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
         ASTARTE_LOG_ERR("Error encoding topic");
         return;
     }
 
     ASTARTE_LOG_DBG("Sending emptyCache to %s", topic);
 
-    struct mqtt_publish_param msg;
-    msg.retain_flag = 0U;
-    msg.message.topic.topic.utf8 = topic;
-    msg.message.topic.topic.size = strlen(topic);
-    msg.message.topic.qos = 2;
-    msg.message.payload.data = "1";
-    msg.message.payload.len = strlen("1");
-    msg.message_id = device->mqtt_message_id++;
-    int res = mqtt_publish(&device->mqtt_client, &msg);
-    if (res != 0) {
-        ASTARTE_LOG_ERR("MQTT publish failed during send_introspection.");
+    astarte_result_t mqtt_res
+        = astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2);
+    if (mqtt_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error publishing empty cache.");
+        return;
     }
 }
 
@@ -1117,32 +770,20 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    char topic[MAX_MQTT_TOPIC_SIZE] = { 0 };
-    int print_ret = snprintf(
-        topic, MAX_MQTT_TOPIC_SIZE, "%s/%s%s", device->mqtt_client_id, interface_name, path);
-    if ((print_ret < 0) || (print_ret >= MAX_MQTT_TOPIC_SIZE)) {
+    char topic[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
+    int print_ret = snprintf(topic, ASTARTE_MQTT_MAX_TOPIC_SIZE, "%s/%s%s", device->mqtt_client_id,
+        interface_name, path);
+    if ((print_ret < 0) || (print_ret >= ASTARTE_MQTT_MAX_TOPIC_SIZE)) {
         ASTARTE_LOG_ERR("Error encoding topic");
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    struct mqtt_publish_param msg;
-    msg.retain_flag = 0U;
-    msg.message.topic.topic.utf8 = topic;
-    msg.message.topic.topic.size = strlen(topic);
-    msg.message.topic.qos = qos;
-    msg.message.payload.data = data;
-    msg.message.payload.len = data_size;
-    msg.message_id = device->mqtt_message_id++;
-
-    int ret = mqtt_publish(&device->mqtt_client, &msg);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("Failed to publish message: %d", ret);
-        return ASTARTE_RESULT_MQTT_ERROR;
+    astarte_result_t mqtt_res
+        = astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos);
+    if (mqtt_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error publishing empty cache.");
+        return mqtt_res;
     }
-
-    ASTARTE_LOG_INF("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
-        msg.message_id, msg.message.topic.qos, data_size);
-    ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
 
     return ASTARTE_RESULT_OK;
 }

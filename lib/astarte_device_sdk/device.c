@@ -30,6 +30,10 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
 #define MQTT_MAX_BROKER_HOSTNAME_LEN 253
 /** @brief Max allowed port number is 65535 */
 #define MQTT_MAX_BROKER_PORT_LEN 5
+/** @brief The total MQTT topic length should never match this size. */
+#define ASTARTE_MQTT_MAX_TOPIC_SIZE 512
+/** @brief The base MQTT topic length should never match this size. */
+#define ASTARTE_MQTT_MAX_CLIENT_ID_SIZE 128
 
 /**
  * @brief Internal struct for an instance of an Astarte device.
@@ -286,8 +290,8 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
         }
     }
 
-    return astarte_mqtt_connect(&device->astarte_mqtt, device->broker_hostname, device->broker_port,
-        device->mqtt_client_id);
+    return astarte_mqtt_connect(&device->astarte_mqtt, device->mqtt_client_id, device->broker_hostname, device->broker_port
+        );
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)

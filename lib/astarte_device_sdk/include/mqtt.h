@@ -16,11 +16,6 @@
 
 #include <zephyr/net/mqtt.h>
 
-/** @brief The total MQTT topic length should never match this size. */
-#define ASTARTE_MQTT_MAX_TOPIC_SIZE 512
-/** @brief The base MQTT topic length should never match this size. */
-#define ASTARTE_MQTT_MAX_CLIENT_ID_SIZE 128
-
 /**
  * @brief Contains all the data related to a single MQTT client.
  */
@@ -60,13 +55,13 @@ void astarte_mqtt_init(
  * Connection success should also be checked using the #on_connected callback.
  *
  * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
+ * @param[in] client_id Unique client identifier to use for this connection.
  * @param[in] broker_hostname MQTT broker hostname.
  * @param[in] broker_port MQTT broker port.
- * @param[in] client_id Client ID to use for this connection.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *broker_hostname,
-    const char *broker_port, const char *client_id);
+astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *client_id,
+    const char *broker_hostname, const char *broker_port);
 
 /**
  * @brief Disconnect the MQTT client from the broker.

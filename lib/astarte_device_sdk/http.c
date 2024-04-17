@@ -90,8 +90,7 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
         return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
-    struct http_request req;
-    memset(&req, 0, sizeof(req));
+    struct http_request req = { 0 };
     memset(&http_recv_buf, 0, sizeof(http_recv_buf));
 
     req.method = HTTP_POST;
@@ -156,8 +155,7 @@ astarte_result_t astarte_http_get(const char *url, const char **header_fields, i
         return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
-    struct http_request req;
-    memset(&req, 0, sizeof(req));
+    struct http_request req = { 0 };
     memset(&http_recv_buf, 0, sizeof(http_recv_buf));
 
     req.method = HTTP_GET;
@@ -227,10 +225,12 @@ static int create_and_connect_socket(void)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     struct zsock_addrinfo *broker_addrinfo = NULL;
-    int sock_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
-    if (sock_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve address %d", sock_rc);
-        ASTARTE_LOG_ERR("Errno: %s\n", strerror(errno));
+    int getaddrinfo_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
+    if (getaddrinfo_rc != 0) {
+        ASTARTE_LOG_ERR("Unable to resolve address %s", gai_strerror(getaddrinfo_rc));
+        if (getaddrinfo_rc == EAI_SYSTEM) {
+            ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
+        }
         return -1;
     }
 

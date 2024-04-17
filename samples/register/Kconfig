@@ -15,6 +15,12 @@ rsource "../../Kconfig"
 
 menu "Sample application"
 
+config DEVICE_ID
+	string "Astarte device ID"
+    default ""
+	help
+	  Device ID to be used to connect to Astarte.
+
 config DEVICE_OPERATIONAL_TIME_SECONDS
     int "Device operational time (s)"
     default 60

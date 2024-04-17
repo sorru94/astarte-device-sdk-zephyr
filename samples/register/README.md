@@ -28,13 +28,14 @@ tutorial.
 
 The following entries should be modified in the `proj.conf` file.
 ```conf
-CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID="<DEVICE_ID>"
 CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME="<HOSTNAME>"
 CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP=y
 CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT=y
 CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="<JWT>"
 CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
+
+CONFIG_DEVICE_ID="<DEVICE_ID>"
 ```
 Where `<DEVICE_ID>` is the device ID of the new device you would like to register, `<HOSTNAME>` is
 the hostname for your Astarte instance, `<JWT>` is a valid pairing JWT for the Astarte instance and
@@ -46,13 +47,14 @@ This option assumes you are using a fully deployed Astarte instance with valid c
 an official certificate authority.
 
 ```conf
-CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID="<DEVICE_ID>"
 CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME="<HOSTNAME>"
 CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=2
 CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="<JWT>"
 CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
+
+CONFIG_DEVICE_ID="<DEVICE_ID>"
 ```
 Where `<DEVICE_ID>` is the device ID of the new device you would like to register, `<HOSTNAME>` is
 the hostname for your Astarte instance, `<JWT>` is a valid pairing JWT for the Astarte instance and

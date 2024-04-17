@@ -37,6 +37,13 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 #include "generated_interfaces.h"
 
 /************************************************
+ *       Checks over configuration values       *
+ ***********************************************/
+
+BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1,
+    "Missing device ID in datastreams example");
+
+/************************************************
  * Constants, static variables and defines
  ***********************************************/
 
@@ -136,8 +143,8 @@ int main(void)
             return -1;
         }
     } else {
-        res = astarte_pairing_register_device(
-            timeout_ms, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, cred_secr, sizeof(cred_secr));
+        char device_id[] = CONFIG_DEVICE_ID;
+        res = astarte_pairing_register_device(timeout_ms, device_id, cred_secr, sizeof(cred_secr));
         if (res != ASTARTE_RESULT_OK) {
             return -1;
         }
@@ -164,8 +171,7 @@ int main(void)
               &org_astarteplatform_zephyr_examples_ServerDatastream,
               &org_astarteplatform_zephyr_examples_ServerProperty };
 
-    astarte_device_config_t device_config;
-    memset(&device_config, 0, sizeof(device_config));
+    astarte_device_config_t device_config = { 0 };
     device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
     device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_FIRST_POLL_TIMEOUT_MS;
     device_config.mqtt_connected_timeout_ms = CONFIG_MQTT_SUBSEQUENT_POLL_TIMEOUT_MS;

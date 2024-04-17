@@ -11,6 +11,7 @@
 
 #include <zephyr/posix/arpa/inet.h>
 #include <zephyr/random/random.h>
+#include <zephyr/sys/base64.h>
 
 #include <mbedtls/md.h>
 
@@ -162,7 +163,7 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
     size_t min_out_size = ASTARTE_UUID_STR_LEN + sizeof(char);
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     struct uuid uuid_struct;
@@ -180,6 +181,58 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
         ASTARTE_LOG_ERR("Error converting UUID to string.");
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_uuid_to_base64(const astarte_uuid_t uuid, char *out, size_t out_size)
+{
+    size_t min_out_size = ASTARTE_UUID_BASE64_LEN + sizeof(char);
+    if (out_size < min_out_size) {
+        ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    size_t olen = 0;
+    int res = base64_encode(out, out_size, &olen, uuid, ASTARTE_UUID_SIZE);
+    if (res != 0) {
+        ASTARTE_LOG_ERR("Error converting UUID to base 64 string, rc: %d.", res);
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out, size_t out_size)
+{
+    size_t min_out_size = ASTARTE_UUID_BASE64URL_LEN + sizeof(char);
+    if (out_size < min_out_size) {
+        ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    // Convert UUID to RFC 3548/4648 base 64 notation
+    size_t olen = 0;
+    char uuid_base64[ASTARTE_UUID_BASE64_LEN + sizeof(char)] = { 0 };
+    int res = base64_encode(
+        uuid_base64, ASTARTE_UUID_BASE64_LEN + sizeof(char), &olen, uuid, ASTARTE_UUID_SIZE);
+    if (res != 0) {
+        ASTARTE_LOG_ERR("Error converting UUID to base 64 string, rc: %d.", res);
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    // Convert UUID to RFC 4648 sec. 5 URL and filename safe base 64 notation
+    for (size_t i = 0; i < ASTARTE_UUID_BASE64URL_LEN; i++) {
+        if (uuid_base64[i] == '+') {
+            uuid_base64[i] = '-';
+        }
+        if (uuid_base64[i] == '/') {
+            uuid_base64[i] = '_';
+        }
+    }
+
+    memcpy(out, uuid_base64, ASTARTE_UUID_BASE64URL_LEN);
+    out[ASTARTE_UUID_BASE64URL_LEN] = 0;
+
     return ASTARTE_RESULT_OK;
 }
 

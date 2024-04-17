@@ -13,6 +13,7 @@ config ASTARTE_DEVICE_SDK
 	select MQTT_LIB
 	select MQTT_LIB_TLS
 	select MQTT_CLEAN_SESSION
+	select BASE64
 	help
 	  This option enables the Astarte device SDK library
 

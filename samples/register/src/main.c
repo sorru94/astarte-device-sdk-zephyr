@@ -136,7 +136,8 @@ int main(void)
             return -1;
         }
     } else {
-        res = astarte_pairing_register_device(timeout_ms, cred_secr, sizeof(cred_secr));
+        res = astarte_pairing_register_device(
+            timeout_ms, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, cred_secr, sizeof(cred_secr));
         if (res != ASTARTE_RESULT_OK) {
             return -1;
         }

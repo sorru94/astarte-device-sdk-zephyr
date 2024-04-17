@@ -237,7 +237,8 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
     if ((strnlen(device->broker_hostname, MQTT_MAX_BROKER_HOSTNAME_LEN + 1) == 0)
         || (strnlen(device->broker_port, MQTT_MAX_BROKER_PORT_LEN + 1) == 0)) {
         char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
-        res = astarte_pairing_get_broker_url(device->http_timeout_ms, device->cred_secr, broker_url,
+        res = astarte_pairing_get_broker_url(device->http_timeout_ms,
+            CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, device->cred_secr, broker_url,
             ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
@@ -271,8 +272,8 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
             return res;
         }
     } else {
-        astarte_result_t res = astarte_pairing_verify_client_certificate(
-            device->http_timeout_ms, device->cred_secr, device->crt_pem);
+        astarte_result_t res = astarte_pairing_verify_client_certificate(device->http_timeout_ms,
+            CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, device->cred_secr, device->crt_pem);
         if (res == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
             res = update_client_certificate(device);
             if (res != ASTARTE_RESULT_OK) {
@@ -619,8 +620,8 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
 static astarte_result_t get_new_client_certificate(astarte_device_handle_t device)
 {
     astarte_result_t res = astarte_pairing_get_client_certificate(device->http_timeout_ms,
-        device->cred_secr, device->privkey_pem, sizeof(device->privkey_pem), device->crt_pem,
-        sizeof(device->crt_pem));
+        CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID, device->cred_secr, device->privkey_pem,
+        sizeof(device->privkey_pem), device->crt_pem, sizeof(device->crt_pem));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }

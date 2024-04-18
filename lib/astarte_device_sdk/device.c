@@ -26,11 +26,6 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
  *        Defines, constants and typedef        *
  ***********************************************/
 
-/** @brief Max allowed hostname characters are 253 */
-#define MQTT_MAX_BROKER_HOSTNAME_LEN 253
-/** @brief Max allowed port number is 65535 */
-#define MQTT_MAX_BROKER_PORT_LEN 5
-
 /**
  * @brief Internal struct for an instance of an Astarte device.
  *
@@ -50,10 +45,6 @@ struct astarte_device
 #endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
     /** @brief Device's credential secret. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
-    /** @brief MQTT broker hostname. */
-    char broker_hostname[MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
-    /** @brief MQTT broker port. */
-    char broker_port[MQTT_MAX_BROKER_PORT_LEN + 1];
     /** @brief MQTT client handle. */
     astarte_mqtt_t astarte_mqtt;
     /** @brief Device introspection. */
@@ -78,6 +69,20 @@ struct astarte_device
  *         Static functions declaration         *
  ***********************************************/
 
+/**
+ * @brief Parse an MQTT broker URL into broker hostname and broker port.
+ *
+ * @param[in] http_timeout_ms HTTP timeout value.
+ * @param[in] device_id Device ID to use to obtain the MQTT broker URL.
+ * @param[in] cred_secr Credential secret to use to obtain the MQTT broker URL.
+ * @param[out] broker_hostname Static struct used to store the broker hostname.
+ * @param[out] broker_port Static struct used to store the broker port.
+ * @return ASTARTE_RESULT_OK if publish has been successful, an error code otherwise.
+ */
+static astarte_result_t get_mqtt_broker_hostname_and_port(int32_t http_timeout_ms,
+    const char *device_id, const char *cred_secr,
+    char broker_hostname[static ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1],
+    char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1]);
 /**
  * @brief Calls the correct callback for the received type, also deserializes the BSON payload.
  *
@@ -153,6 +158,16 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
+    ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
+    char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1] = { 0 };
+    char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1] = { 0 };
+    res = get_mqtt_broker_hostname_and_port(
+        cfg->http_timeout_ms, cfg->device_id, cfg->cred_secr, broker_hostname, broker_port);
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in parsing the MQTT broker URL");
+        goto failure;
+    }
+
     ASTARTE_LOG_DBG("Initializing introspection");
     res = introspection_init(&handle->introspection);
     if (res != ASTARTE_RESULT_OK) {
@@ -181,8 +196,17 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
 
-    astarte_mqtt_init(
-        &handle->astarte_mqtt, cfg->mqtt_connection_timeout_ms, cfg->mqtt_connected_timeout_ms);
+    char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + sizeof(char)] = { 0 };
+    int snprintf_rc = snprintf(client_id, sizeof(client_id),
+        CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s", handle->device_id);
+    if (snprintf_rc != ASTARTE_MQTT_CLIENT_ID_LEN) {
+        ASTARTE_LOG_ERR("Error encoding MQTT client ID.");
+        res = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto failure;
+    }
+
+    astarte_mqtt_init(&handle->astarte_mqtt, cfg->mqtt_connection_timeout_ms,
+        cfg->mqtt_connected_timeout_ms, broker_hostname, broker_port, client_id);
 
     *device = handle;
 
@@ -228,39 +252,6 @@ astarte_result_t astarte_device_add_interface(
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
-
-    // Get MQTT broker URL if not already present
-    if ((strnlen(device->broker_hostname, MQTT_MAX_BROKER_HOSTNAME_LEN + 1) == 0)
-        || (strnlen(device->broker_port, MQTT_MAX_BROKER_PORT_LEN + 1) == 0)) {
-        char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1];
-        res = astarte_pairing_get_broker_url(device->http_timeout_ms, device->device_id,
-            device->cred_secr, broker_url, ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1);
-        if (res != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
-            return res;
-        }
-
-        int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
-        if (strncmp_rc != 0) {
-            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        }
-        char *saveptr = NULL;
-        char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
-        if (!broker_url_token) {
-            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        }
-        strncpy(device->broker_hostname, broker_url_token, MQTT_MAX_BROKER_HOSTNAME_LEN + 1);
-        broker_url_token = strtok_r(NULL, "/", &saveptr);
-        if (!broker_url_token) {
-            ASTARTE_LOG_ERR("MQTT broker URL is malformed");
-            return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
-        }
-        strncpy(device->broker_port, broker_url_token, MQTT_MAX_BROKER_PORT_LEN + 1);
-    }
-
     // Check if certificate is valid
     if (strlen(device->crt_pem) == 0) {
         astarte_result_t res = get_new_client_certificate(device);
@@ -282,25 +273,7 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
         }
     }
 
-    char client_id_prefix[] = CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/";
-    const size_t client_id_len = strlen(client_id_prefix) + ASTARTE_PAIRING_DEVICE_ID_LEN;
-    char *client_id = calloc(client_id_len + sizeof(char), sizeof(char));
-    if (!client_id) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return ASTARTE_RESULT_OUT_OF_MEMORY;
-    }
-    int snprintf_rc = snprintf(
-        client_id, client_id_len + sizeof(char), "%s%s", client_id_prefix, device->device_id);
-    if (snprintf_rc != client_id_len) {
-        ASTARTE_LOG_ERR("Error encoding MQTT client ID.");
-        free(client_id);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    res = astarte_mqtt_connect(
-        &device->astarte_mqtt, client_id, device->broker_hostname, device->broker_port);
-    free(client_id);
-    return res;
+    return astarte_mqtt_connect(&device->astarte_mqtt);
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
@@ -428,10 +401,6 @@ astarte_result_t astarte_device_unset_property(
     return publish_data(device, interface_name, path, "", 0, 2);
 }
 
-/************************************************
- *         Static functions definitions         *
- ***********************************************/
-
 void on_connected(astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connack_param)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
@@ -548,6 +517,52 @@ void on_incoming(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_l
     }
 
     trigger_data_callback(device, interface_name, path_start, data, data_len);
+}
+
+/************************************************
+ *         Static functions definitions         *
+ ***********************************************/
+
+static astarte_result_t get_mqtt_broker_hostname_and_port(int32_t http_timeout_ms,
+    const char *device_id, const char *cred_secr,
+    char broker_hostname[static ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1],
+    char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1])
+{
+    char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1] = { 0 };
+    astarte_result_t astarte_res = astarte_pairing_get_broker_url(
+        http_timeout_ms, device_id, cred_secr, broker_url, sizeof(broker_url));
+    if (astarte_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
+        return astarte_res;
+    }
+    int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
+    if (strncmp_rc != 0) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    char *saveptr = NULL;
+    char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
+    if (!broker_url_token) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    int ret = snprintf(
+        broker_hostname, ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1, "%s", broker_url_token);
+    if ((ret <= 0) || (ret > ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN)) {
+        ASTARTE_LOG_ERR("Error encoding broker hostname.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+    broker_url_token = strtok_r(NULL, "/", &saveptr);
+    if (!broker_url_token) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    ret = snprintf(broker_port, ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1, "%s", broker_url_token);
+    if ((ret <= 0) || (ret > ASTARTE_MQTT_MAX_BROKER_PORT_LEN)) {
+        ASTARTE_LOG_ERR("Error encoding broker port.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+    return ASTARTE_RESULT_OK;
 }
 
 // This function is borderline hard to read. However splitting it would create duplicated code.

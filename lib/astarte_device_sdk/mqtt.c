@@ -176,7 +176,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *
 {
     // Get broker address info
     struct zsock_addrinfo *broker_addrinfo = NULL;
-    struct zsock_addrinfo hints;
+    struct zsock_addrinfo hints = { 0 };
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     int sock = zsock_getaddrinfo(broker_hostname, broker_port, &hints, &broker_addrinfo);

@@ -223,7 +223,7 @@ static int create_and_connect_socket(void)
 #else
     char port[] = "443";
 #endif
-    static struct zsock_addrinfo hints;
+    struct zsock_addrinfo hints = { 0 };
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     struct zsock_addrinfo *broker_addrinfo = NULL;

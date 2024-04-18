@@ -27,6 +27,21 @@
     (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
         + ASTARTE_PAIRING_DEVICE_ID_LEN)
 
+/** @brief Configuration struct for the MQTT client. */
+typedef struct
+{
+    /** @brief Timeout for socket polls before connection to an MQTT broker. */
+    int32_t connecting_timeout_ms;
+    /** @brief Timeout for socket polls of MQTT broker. */
+    int32_t connected_timeout_ms;
+    /** @brief Broker hostname */
+    char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
+    /** @brief Broker port */
+    char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1];
+    /** @brief Client ID */
+    char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
+} astarte_mqtt_config_t;
+
 /**
  * @brief Contains all the data related to a single MQTT client.
  */
@@ -57,15 +72,10 @@ extern "C" {
 /**
  * @brief Initialize an instance of the Astarte MQTT client.
  *
+ * @param[in] cfg Handle to the configuration for the Astarte MQTT client instance.
  * @param[out] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @param[in] connecting_timeout_ms Timeout to use for socket polls when the device is connecting.
- * @param[in] connected_timeout_ms Timeout to use for socket polls when the device is connected.
- * @param[in] broker_hostname MQTT broker hostname.
- * @param[in] broker_port MQTT broker port.
  */
-void astarte_mqtt_init(astarte_mqtt_t *astarte_mqtt, int32_t connecting_timeout_ms,
-    int32_t connected_timeout_ms, const char *broker_hostname, const char *broker_port,
-    const char *client_id);
+void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt);
 
 /**
  * @brief Start the connection procedure for the client to the MQTT broker.

@@ -162,18 +162,17 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
  *         Global functions definitions         *
  ***********************************************/
 
-void astarte_mqtt_init(astarte_mqtt_t *astarte_mqtt, int32_t connecting_timeout_ms,
-    int32_t connected_timeout_ms, const char *broker_hostname, const char *broker_port,
-    const char *client_id)
+void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt)
 {
     *astarte_mqtt = (astarte_mqtt_t){ 0 };
-    astarte_mqtt->connecting_timeout_ms = connecting_timeout_ms;
-    astarte_mqtt->connected_timeout_ms = connected_timeout_ms;
+    astarte_mqtt->connecting_timeout_ms = cfg->connecting_timeout_ms;
+    astarte_mqtt->connected_timeout_ms = cfg->connected_timeout_ms;
     astarte_mqtt->message_id = 1U;
     astarte_mqtt->is_connected = false;
-    memcpy(astarte_mqtt->broker_hostname, broker_hostname, sizeof(astarte_mqtt->broker_hostname));
-    memcpy(astarte_mqtt->broker_port, broker_port, sizeof(astarte_mqtt->broker_port));
-    memcpy(astarte_mqtt->client_id, client_id, sizeof(astarte_mqtt->client_id));
+    memcpy(
+        astarte_mqtt->broker_hostname, cfg->broker_hostname, sizeof(astarte_mqtt->broker_hostname));
+    memcpy(astarte_mqtt->broker_port, cfg->broker_port, sizeof(astarte_mqtt->broker_port));
+    memcpy(astarte_mqtt->client_id, cfg->client_id, sizeof(astarte_mqtt->client_id));
 }
 
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)

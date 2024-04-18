@@ -39,10 +39,8 @@ struct astarte_device
     char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
     /** @brief Device certificate in the PEM format. */
     char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE];
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
     /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
     char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];
-#endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
     /** @brief Device's credential secret. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT client handle. */
@@ -158,15 +156,18 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
-    ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
-    char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1] = { 0 };
-    char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1] = { 0 };
-    res = get_mqtt_broker_hostname_and_port(
-        cfg->http_timeout_ms, cfg->device_id, cfg->cred_secr, broker_hostname, broker_port);
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed in parsing the MQTT broker URL");
-        goto failure;
-    }
+    handle->http_timeout_ms = cfg->http_timeout_ms;
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
+    memcpy(handle->device_id, cfg->device_id, ASTARTE_PAIRING_DEVICE_ID_LEN + 1);
+#endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
+    memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
+    handle->connection_cbk = cfg->connection_cbk;
+    handle->disconnection_cbk = cfg->disconnection_cbk;
+    handle->datastream_individual_cbk = cfg->datastream_individual_cbk;
+    handle->datastream_object_cbk = cfg->datastream_object_cbk;
+    handle->property_set_cbk = cfg->property_set_cbk;
+    handle->property_unset_cbk = cfg->property_unset_cbk;
+    handle->cbk_user_data = cfg->cbk_user_data;
 
     ASTARTE_LOG_DBG("Initializing introspection");
     res = introspection_init(&handle->introspection);
@@ -185,19 +186,21 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         }
     }
 
-    handle->http_timeout_ms = cfg->http_timeout_ms;
-    memcpy(handle->device_id, cfg->device_id, ASTARTE_PAIRING_DEVICE_ID_LEN + 1);
-    memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
-    handle->connection_cbk = cfg->connection_cbk;
-    handle->disconnection_cbk = cfg->disconnection_cbk;
-    handle->datastream_individual_cbk = cfg->datastream_individual_cbk;
-    handle->datastream_object_cbk = cfg->datastream_object_cbk;
-    handle->property_set_cbk = cfg->property_set_cbk;
-    handle->property_unset_cbk = cfg->property_unset_cbk;
-    handle->cbk_user_data = cfg->cbk_user_data;
+    ASTARTE_LOG_DBG("Initializing Astarte MQTT client.");
+    astarte_mqtt_config_t astarte_mqtt_config = { 0 };
+    astarte_mqtt_config.connecting_timeout_ms = cfg->mqtt_connection_timeout_ms;
+    astarte_mqtt_config.connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
 
-    char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + sizeof(char)] = { 0 };
-    int snprintf_rc = snprintf(client_id, sizeof(client_id),
+    ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
+    res = get_mqtt_broker_hostname_and_port(handle->http_timeout_ms, handle->device_id,
+        handle->cred_secr, astarte_mqtt_config.broker_hostname, astarte_mqtt_config.broker_port);
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in parsing the MQTT broker URL");
+        goto failure;
+    }
+
+    ASTARTE_LOG_DBG("Getting MQTT broker client ID");
+    int snprintf_rc = snprintf(astarte_mqtt_config.client_id, sizeof(astarte_mqtt_config.client_id),
         CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s", handle->device_id);
     if (snprintf_rc != ASTARTE_MQTT_CLIENT_ID_LEN) {
         ASTARTE_LOG_ERR("Error encoding MQTT client ID.");
@@ -205,8 +208,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
-    astarte_mqtt_init(&handle->astarte_mqtt, cfg->mqtt_connection_timeout_ms,
-        cfg->mqtt_connected_timeout_ms, broker_hostname, broker_port, client_id);
+    astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
 
     *device = handle;
 

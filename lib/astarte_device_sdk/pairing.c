@@ -51,7 +51,7 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 #define REGISTER_DEVICE_RESPONSE_MAX_SIZE (50 + ASTARTE_PAIRING_CRED_SECR_LEN)
 
 // Correct response will be a json like: {"data":{"protocols":{"astarte_mqtt_v1":"<BROKER_URL>"}}}
-#define GET_BROKER_URL_RESPONSE_MAX_SIZE (50 + ASTARTE_PAIRING_MAX_BROKER_URL_LEN)
+#define GET_BROKER_INFO_RESPONSE_MAX_SIZE (50 + ASTARTE_PAIRING_MAX_BROKER_URL_LEN)
 
 // Payload will be a json like: {"data":{"csr":"<CSR>"}}
 #define GET_CLIENT_CRT_PAYLOAD_MAX_SIZE (25 + ASTARTE_CRYPTO_CSR_BUFFER_SIZE)
@@ -78,6 +78,37 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 #define AUTH_HEADER_CRED_SECRET_SIZE                                                               \
     (sizeof(AUTH_HEADER_BEARER_STR_START) + ASTARTE_PAIRING_CRED_SECR_LEN                          \
         + sizeof(AUTH_HEADER_BEARER_STR_END) - 1)
+
+/** @brief Generic URL prefix to be used for all https calls to the pairing APIs. */
+#define PAIRING_URL_PREFIX "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME
+/** @brief URL for https calls to the device registration utility of the pairing APIs. */
+#define PAIRING_REGISTRATION_URL PAIRING_URL_PREFIX "/agent/devices"
+/** @brief Generic URL prefix for https calls to the device mgmt utility of the pairing APIs. */
+#define PAIRING_DEVICE_MGMT_URL_PREFIX PAIRING_URL_PREFIX "/devices/"
+/** @brief URL suffix for the https call to the device certificate generation utility of the
+ * pairing APIs. */
+#define PAIRING_DEVICE_CERT_URL_SUFFIX "/protocols/astarte_mqtt_v1/credentials"
+/** @brief URL suffix for the https call to the device certificate verification utility of the
+ * pairing APIs. */
+#define PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX PAIRING_DEVICE_CERT_URL_SUFFIX "/verify"
+
+/** @brief Size in chars of the #PAIRING_DEVICE_MGMT_URL_PREFIX string. */
+#define PAIRING_DEVICE_MGMT_URL_PREFIX_LEN (sizeof(PAIRING_DEVICE_MGMT_URL_PREFIX) - 1)
+/** @brief Size in chars of the URL for a 'get broker info' HTTPs request to the pairing APIs. */
+#define PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN                                                     \
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN)
+/** @brief Size in chars of the #PAIRING_DEVICE_CERT_URL_SUFFIX string. */
+#define PAIRING_DEVICE_CERT_URL_SUFFIX_LEN (sizeof(PAIRING_DEVICE_CERT_URL_SUFFIX) - 1)
+/** @brief Size in chars of the URL for a 'get device cert' HTTPs request to the pairing APIs. */
+#define PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN                                                     \
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN                            \
+        + PAIRING_DEVICE_CERT_URL_SUFFIX_LEN)
+/** @brief Size in chars of the #PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX string. */
+#define PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX_LEN (sizeof(PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX) - 1)
+/** @brief Size in chars of the URL for a 'verify device cert' HTTPs request to the pairing APIs. */
+#define PAIRING_DEVICE_CERT_CHECK_URL_LEN                                                          \
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN                            \
+        + PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX_LEN)
 
 /************************************************
  *         Static functions declaration         *
@@ -181,7 +212,7 @@ astarte_result_t astarte_pairing_register_device(
     }
 
     // Step 2: register the device and get the credential secret
-    char url[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/agent/devices";
+    char url[] = PAIRING_REGISTRATION_URL;
     char auth_header[] = { AUTH_HEADER_BEARER_STR_START CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT
             AUTH_HEADER_BEARER_STR_END };
     const char *header_fields[] = { auth_header, NULL };
@@ -200,22 +231,19 @@ astarte_result_t astarte_pairing_register_device(
     return parse_register_device_response(resp_buf, out_cred_secr, out_cred_secr_size);
 }
 
-astarte_result_t astarte_pairing_get_broker_url(int32_t timeout_ms, const char *device_id,
+astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char *device_id,
     const char *cred_secr, char *out_url, size_t out_url_size)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    char *url = NULL;
     // Step 1: check the input parameters
     if (out_url_size <= ASTARTE_PAIRING_MAX_BROKER_URL_LEN) {
         ASTARTE_LOG_ERR("Insufficient output buffer size for broker URL.");
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Step 2: Get the MQTT broker URL
@@ -224,38 +252,26 @@ astarte_result_t astarte_pairing_get_broker_url(int32_t timeout_ms, const char *
         AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
         ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     const char *header_fields[] = { auth_header, NULL };
 
-    char url_prefix[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/devices/";
-    const size_t url_len = strlen(url_prefix) + ASTARTE_PAIRING_DEVICE_ID_LEN;
-    url = calloc(url_len + sizeof(char), sizeof(char));
-    if (!url) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        res = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
-    }
-    snprintf_rc = snprintf(url, url_len + sizeof(char), "%s%s", url_prefix, device_id);
-    if (snprintf_rc != url_len) {
+    char url[PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1] = { 0 };
+    snprintf_rc = snprintf(url, PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1,
+        PAIRING_DEVICE_MGMT_URL_PREFIX "%s", device_id);
+    if (snprintf_rc != PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        res = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    char resp_buf[GET_BROKER_URL_RESPONSE_MAX_SIZE] = { 0 };
+    char resp_buf[GET_BROKER_INFO_RESPONSE_MAX_SIZE] = { 0 };
     res = astarte_http_get(url, header_fields, timeout_ms, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
 
     // Step 3: process the result
-    res = parse_get_borker_url_response(resp_buf, out_url, out_url_size);
-
-exit:
-    free(url);
-    return res;
+    return parse_get_borker_url_response(resp_buf, out_url, out_url_size);
 }
 
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
@@ -263,32 +279,29 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     size_t crt_pem_size)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    char *url = NULL;
     // Step 1: check the configuration and input parameters
     if (crt_pem_size < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
         ASTARTE_LOG_ERR("Insufficient output buffer size for client certificate.");
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Step 2: create a private key and a CSR
     res = astarte_crypto_create_key(privkey_pem, privkey_pem_size);
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
-        goto exit;
+        return res;
     }
 
     unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
     res = astarte_crypto_create_csr(privkey_pem, csr_buf, sizeof(csr_buf));
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
-        goto exit;
+        return res;
     }
 
     // Step 3: get the client certificate from the server
@@ -297,43 +310,33 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
         ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     const char *header_fields[] = { auth_header, NULL };
     char payload[GET_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
     res = encode_get_client_certificate_payload(csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
     char resp_buf[GET_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
 
-    char url_prefix[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/devices/";
-    char url_suffix[] = "/protocols/astarte_mqtt_v1/credentials";
-    const size_t url_len = strlen(url_prefix) + ASTARTE_PAIRING_DEVICE_ID_LEN + strlen(url_suffix);
-    url = calloc(url_len + sizeof(char), sizeof(char));
-    if (!url) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        res = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
-    }
-    snprintf_rc
-        = snprintf(url, url_len + sizeof(char), "%s%s%s", url_prefix, device_id, url_suffix);
-    if (snprintf_rc != url_len) {
+    char url[PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN + 1] = { 0 };
+    snprintf_rc = snprintf(url, PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN + 1,
+        PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_URL_SUFFIX, device_id);
+    if (snprintf_rc != PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        res = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     res = astarte_http_post(url, header_fields, payload, timeout_ms, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
 
     // Step 4: process the result
     res = parse_get_client_certificate_response(resp_buf, crt_pem, crt_pem_size);
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
 
     // Step 5: convert the received certificate to a valid PEM certificate
@@ -345,23 +348,18 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     ASTARTE_LOG_DBG("Received client certificate: %s", crt_pem);
-
-exit:
-    free(url);
-    return res;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *device_id, const char *cred_secr, const char *crt_pem)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    char *url = NULL;
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Step 2: register the device and get the credential secret
@@ -370,46 +368,32 @@ astarte_result_t astarte_pairing_verify_client_certificate(
         AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
         ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        res = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     const char *header_fields[] = { auth_header, NULL };
     char payload[VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
     res = encode_verify_client_certificate_payload(
         crt_pem, payload, VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
 
-    char url_prefix[] = "/pairing/v1/" CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/devices/";
-    char url_suffix[] = "/protocols/astarte_mqtt_v1/credentials/verify";
-    const size_t url_len = strlen(url_prefix) + ASTARTE_PAIRING_DEVICE_ID_LEN + strlen(url_suffix);
-    url = calloc(url_len + sizeof(char), sizeof(char));
-    if (!url) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        res = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
-    }
-    snprintf_rc
-        = snprintf(url, url_len + sizeof(char), "%s%s%s", url_prefix, device_id, url_suffix);
-    if (snprintf_rc != url_len) {
-        ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        res = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+    char url[PAIRING_DEVICE_CERT_CHECK_URL_LEN + 1] = { 0 };
+    snprintf_rc = snprintf(url, PAIRING_DEVICE_CERT_CHECK_URL_LEN + 1,
+        PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX, device_id);
+    if (snprintf_rc != PAIRING_DEVICE_CERT_CHECK_URL_LEN) {
+        ASTARTE_LOG_ERR("Error encoding URL for verify client certificate request.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     char resp_buf[VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
     res = astarte_http_post(url, header_fields, payload, timeout_ms, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
-        goto exit;
+        return res;
     }
 
     // Step 3: process the result
-    res = parse_verify_client_certificate_response(resp_buf);
-
-exit:
-    free(url);
-    return res;
+    return parse_verify_client_certificate_response(resp_buf);
 }
 
 /************************************************

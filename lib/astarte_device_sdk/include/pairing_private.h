@@ -42,7 +42,7 @@ extern "C" {
  * @param[in] out_url_size Size of the output buffer for the URL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_pairing_get_broker_url(int32_t timeout_ms, const char *device_id,
+astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char *device_id,
     const char *cred_secr, char *out_url, size_t out_url_size);
 
 /**

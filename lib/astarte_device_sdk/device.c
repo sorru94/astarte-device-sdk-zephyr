@@ -531,7 +531,7 @@ static astarte_result_t get_mqtt_broker_hostname_and_port(int32_t http_timeout_m
     char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1])
 {
     char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1] = { 0 };
-    astarte_result_t astarte_res = astarte_pairing_get_broker_url(
+    astarte_result_t astarte_res = astarte_pairing_get_broker_info(
         http_timeout_ms, device_id, cred_secr, broker_url, sizeof(broker_url));
     if (astarte_res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");

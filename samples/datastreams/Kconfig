@@ -40,17 +40,26 @@ config DEVICE_TRANSMISSION_DELAY_SECONDS
         Use this setting to change how long after connection the device will transmit some data
         to Astarte.
 
-config DEVICE_THREAD_STACK_SIZE
-    int "Device thread stack size (Bytes)"
+config DEVICE_RX_THREAD_STACK_SIZE
+    int "Device reception thread stack size (Bytes)"
     default 32768
     help
-        Use this setting to change the size of the stack for the thread running the Astarte device.
+        Use this setting to change the size of the stack for the thread running the Astarte device
+        receiving functionality.
+
+config DEVICE_TX_THREAD_STACK_SIZE
+    int "Device transmission thread stack size (Bytes)"
+    default 8192
+    help
+        Use this setting to change the size of the stack for the thread running the Astarte device
+        transmitting functionality.
 
 config DEVICE_THREAD_PRIORITY
-    int "Device thread priority"
+    int "Device thread(s) priority"
     default 0
     help
-        Use this setting to change the priority of the thread running the Astarte device.
+        Use this setting to change the priority of the receive and transmit threads running the
+        Astarte device.
 
 config DEVICE_POLL_PERIOD_MS
     int "Device thread polling period (ms)"

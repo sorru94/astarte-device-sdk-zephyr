@@ -1,0 +1,117 @@
+# (C) Copyright 2024, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# This file is the application Kconfig entry point. All application Kconfig
+# options can be defined here or included via other application Kconfig files.
+# You can browse these options using the west targets menuconfig (terminal) or
+# guiconfig (GUI).
+
+menu "Zephyr"
+source "Kconfig.zephyr"
+endmenu
+
+rsource "../Kconfig"
+
+menu "E2E test"
+
+config DEVICE_ID
+	string "Astarte device ID"
+    default ""
+	help
+	  Device ID to be used to connect to Astarte.
+
+config CREDENTIAL_SECRET
+    string "Astarte credential secret"
+    default ""
+    help
+        The credential secret to be used to connect to Astarte.
+
+config E2E_APPENGINE_TOKEN
+	string "Token to access appengine APIs"
+    default ""
+	help
+	  Token used to access the Astarte appengine APIs.
+
+config E2E_APPENGINE_URL
+    string "Url of the appengine APIs"
+    default ""
+    help
+        Url of the appengine APIs exposed by astarte
+
+config DEVICE_THREAD_STACK_SIZE
+    int "Device thread stack size (Bytes)"
+    default 16384
+    help
+        Use this setting to change the size of the stack for the thread running the Astarte device.
+
+config DEVICE_THREAD_PRIORITY
+    int "Device thread priority"
+    default 0
+    help
+        Use this setting to change the priority of the thread running the Astarte device.
+
+config DEVICE_POLL_PERIOD_MS
+    int "Device thread polling period (ms)"
+    default 100
+    help
+        Use this setting to change the polling period for the Astarte device.
+
+config ETH_POLL_PERIOD_MS
+    int "Device thread polling period (ms)"
+    default 100
+    help
+        Use this setting to change the polling period for the ethernet connection.
+
+config MQTT_CONNECTION_TIMEOUT_MS
+    int "MQTT connection timeout (ms)"
+    default 3000
+    help
+        Use this setting to change the MQTT connection timeout.
+
+config MQTT_POLL_TIMEOUT_MS
+    int "MQTT subsequent polling timeout (ms)"
+    default 200
+    help
+        Use this setting to change the MQTT polling timeout.
+
+config HTTP_TIMEOUT_MS
+    int "HTTP operations timeout (ms)"
+    default 3000
+    help
+        Use this setting to change the timeout for HTTP requests.
+
+menu "Logging options"
+
+module = APP
+module-str = APP
+source "subsys/logging/Kconfig.template.log_config"
+
+module = E2E_SETUP
+module-str = Log level for e2e main loop functions
+module-help = Sets log level for e2e main loop functions
+source "subsys/logging/Kconfig.template.log_config"
+
+module = E2E_UTILITIES
+module-str = Log level for e2e utilities functions
+module-help = Sets log level for e2e utilities functions
+source "subsys/logging/Kconfig.template.log_config"
+
+module = INDIVIDUAL
+module-str = Log level for datastream device test
+module-help = Sets log level for datastream device test
+source "subsys/logging/Kconfig.template.log_config"
+
+module = OBJECT
+module-str = Log level for aggregates device test
+module-help = Sets log level for aggregates device test
+source "subsys/logging/Kconfig.template.log_config"
+
+module = PROPERTY
+module-str = Log level for properties device test
+module-help = Sets log level for properties device test
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu
+
+endmenu

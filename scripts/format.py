@@ -82,6 +82,8 @@ class WestCommandFormat(WestCommand):
         samples_sources = [str(f) for f in Path(module_path).glob("samples/**/src/*.c")]
         unittest_headers = [str(f) for f in Path(module_path).glob("tests/**/include/*.h")]
         unittest_sources = [str(f) for f in Path(module_path).glob("tests/**/src/*.c")]
+        e2etest_headers = [str(f) for f in Path(module_path).glob("e2e/include/*.h")]
+        e2etest_sources = [str(f) for f in Path(module_path).glob("e2e/src/*.c")]
         cmd = (
             ["clang-format", "--style=file", "--dry-run -Werror" if args.dry_run else "-i"]
             + library_headers
@@ -91,5 +93,7 @@ class WestCommandFormat(WestCommand):
             + samples_sources
             + unittest_headers
             + unittest_sources
+            + e2etest_headers
+            + e2etest_sources
         )
         subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=60, check=True)

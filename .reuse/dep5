@@ -13,3 +13,11 @@ License: Apache-2.0
 Files: samples/common/interfaces/generated_interfaces.h
 Copyright: SECO Mind Srl
 License: Apache-2.0
+
+Files: e2e/interfaces/generated_interfaces.c
+Copyright: SECO Mind Srl
+License: Apache-2.0
+
+Files: e2e/interfaces/generated_interfaces.h
+Copyright: SECO Mind Srl
+License: Apache-2.0

@@ -16,10 +16,31 @@
 
 #include <zephyr/net/mqtt.h>
 
-/** @brief The total MQTT topic length should never match this size. */
-#define ASTARTE_MQTT_MAX_TOPIC_SIZE 512
-/** @brief The base MQTT topic length should never match this size. */
-#define ASTARTE_MQTT_MAX_CLIENT_ID_SIZE 128
+#include "astarte_device_sdk/pairing.h"
+
+/** @brief Max allowed hostname characters are 253 */
+#define ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN 253
+/** @brief Max allowed port number is 65535 */
+#define ASTARTE_MQTT_MAX_BROKER_PORT_LEN 5
+/** @brief Exact length in chars for the MQTT client ID */
+#define ASTARTE_MQTT_CLIENT_ID_LEN                                                                 \
+    (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
+        + ASTARTE_PAIRING_DEVICE_ID_LEN)
+
+/** @brief Configuration struct for the MQTT client. */
+typedef struct
+{
+    /** @brief Timeout for socket polls before connection to an MQTT broker. */
+    int32_t connecting_timeout_ms;
+    /** @brief Timeout for socket polls of MQTT broker. */
+    int32_t connected_timeout_ms;
+    /** @brief Broker hostname */
+    char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
+    /** @brief Broker port */
+    char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1];
+    /** @brief Client ID */
+    char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
+} astarte_mqtt_config_t;
 
 /**
  * @brief Contains all the data related to a single MQTT client.
@@ -36,6 +57,12 @@ typedef struct
     int32_t connecting_timeout_ms;
     /** @brief Timeout for socket polls on an already connected MQTT broker. */
     int32_t connected_timeout_ms;
+    /** @brief MQTT broker hostname. */
+    char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
+    /** @brief MQTT broker port. */
+    char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1];
+    /** @brief MQTT client ID. */
+    char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
 } astarte_mqtt_t;
 
 #ifdef __cplusplus
@@ -45,12 +72,10 @@ extern "C" {
 /**
  * @brief Initialize an instance of the Astarte MQTT client.
  *
+ * @param[in] cfg Handle to the configuration for the Astarte MQTT client instance.
  * @param[out] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @param[in] connecting_timeout_ms Timeout to use for socket polls when the device is connecting.
- * @param[in] connected_timeout_ms Timeout to use for socket polls when the device is connected.
  */
-void astarte_mqtt_init(
-    astarte_mqtt_t *astarte_mqtt, int32_t connecting_timeout_ms, int32_t connected_timeout_ms);
+void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt);
 
 /**
  * @brief Start the connection procedure for the client to the MQTT broker.
@@ -60,13 +85,9 @@ void astarte_mqtt_init(
  * Connection success should also be checked using the #on_connected callback.
  *
  * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @param[in] broker_hostname MQTT broker hostname.
- * @param[in] broker_port MQTT broker port.
- * @param[in] client_id Client ID to use for this connection.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *broker_hostname,
-    const char *broker_port, const char *client_id);
+astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt);
 
 /**
  * @brief Disconnect the MQTT client from the broker.

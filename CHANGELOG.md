@@ -10,6 +10,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - Unreleased
+### Added
+- Device ID is now a field in the `astarte_device_config_t` and a parameter of the
+  `astarte_pairing_register_device` function. This makes it possible to specify a device ID at
+  runtime.
+- Utilities functions to convert an UUID to a base64 and base64 url and filename safe string.
+
+### Removed
+- Kconfig option `CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID`. Device ID should be defined using the
+  `astarte_device_config_t` struct during device initialization.
+
 ## [0.5.0] - 2024-04-10
 ### Added
 - Method to stream device owned object aggregated datastreams.

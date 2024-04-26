@@ -5,6 +5,7 @@
  */
 
 #include <astarte_device_sdk/uuid.h>
+
 #include <zephyr/ztest.h>
 
 #include <string.h>
@@ -99,4 +100,70 @@ ZTEST(astarte_device_sdk_uuid, test_uuid_to_string)
     const char *expected_first_uuid_v5_string = "0575a569-51eb-575c-afe4-ce7fc03bcdc5";
     zassert_true(strcmp(expected_first_uuid_v5_string, first_uuid_v5_byte_array) == 0,
         "expected 0575a569-51eb-575c-afe4-ce7fc03bcdc5");
+}
+
+ZTEST(astarte_device_sdk_uuid, test_uuid_to_base64)
+{
+    char first_uuid_v4_base64[ASTARTE_UUID_BASE64_LEN + 1] = { 0 };
+    const astarte_uuid_t first_uuid_v4 = { 0x44, 0xb3, 0x5f, 0x73, 0xcf, 0xbd, 0x43, 0xb4, 0x8f,
+        0xef, 0xca, 0x7b, 0xae, 0xa1, 0x37, 0x5f };
+    int err
+        = astarte_uuid_to_base64(first_uuid_v4, first_uuid_v4_base64, ASTARTE_UUID_BASE64_LEN + 1);
+    zassert_equal(0, err, "%s", astarte_result_to_name(err));
+    const char expected_first_uuid_v4_base64[] = "RLNfc8+9Q7SP78p7rqE3Xw==";
+    zassert_true(strcmp(expected_first_uuid_v4_base64, first_uuid_v4_base64) == 0,
+        "expected: '%s', gotten: '%s'", expected_first_uuid_v4_base64, first_uuid_v4_base64);
+
+    char second_uuid_v4_base64[ASTARTE_UUID_BASE64_LEN + 1];
+    const astarte_uuid_t second_uuid_v4 = { 0x6f, 0x2f, 0xd4, 0xcb, 0x94, 0xa0, 0x41, 0xc7, 0x8d,
+        0x27, 0x86, 0x4c, 0x6b, 0x13, 0xb8, 0xc0 };
+    err = astarte_uuid_to_base64(
+        second_uuid_v4, second_uuid_v4_base64, ASTARTE_UUID_BASE64_LEN + 1);
+    zassert_equal(0, err, "astarte_uuid_to_string returned an error");
+    const char expected_second_uuid_v4_base64[] = "by/Uy5SgQceNJ4ZMaxO4wA==";
+    zassert_true(strcmp(expected_second_uuid_v4_base64, second_uuid_v4_base64) == 0,
+        "expected: '%s', gotten: '%s'", expected_second_uuid_v4_base64, second_uuid_v4_base64);
+
+    char first_uuid_v5_base64[ASTARTE_UUID_BASE64_LEN + 1];
+    const astarte_uuid_t first_uuid_v5 = { 0x05, 0x75, 0xa5, 0x69, 0x51, 0xeb, 0x57, 0x5c, 0xaf,
+        0xe4, 0xce, 0x7f, 0xc0, 0x3b, 0xcd, 0xc5 };
+    err = astarte_uuid_to_base64(first_uuid_v5, first_uuid_v5_base64, ASTARTE_UUID_BASE64_LEN + 1);
+    zassert_equal(0, err, "astarte_uuid_to_string returned an error");
+    const char expected_first_uuid_v5_base64[] = "BXWlaVHrV1yv5M5/wDvNxQ==";
+    zassert_true(strcmp(expected_first_uuid_v5_base64, first_uuid_v5_base64) == 0,
+        "expected: '%s', gotten: '%s'", expected_first_uuid_v5_base64, first_uuid_v5_base64);
+}
+
+ZTEST(astarte_device_sdk_uuid, test_uuid_to_base64url)
+{
+    char first_uuid_v4_base64url[ASTARTE_UUID_BASE64URL_LEN + 1] = { 0 };
+    const astarte_uuid_t first_uuid_v4 = { 0x44, 0xb3, 0x5f, 0x73, 0xcf, 0xbd, 0x43, 0xb4, 0x8f,
+        0xef, 0xca, 0x7b, 0xae, 0xa1, 0x37, 0x5f };
+    int err = astarte_uuid_to_base64url(
+        first_uuid_v4, first_uuid_v4_base64url, ASTARTE_UUID_BASE64URL_LEN + 1);
+    zassert_equal(0, err, "%s", astarte_result_to_name(err));
+    const char expected_first_uuid_v4_base64url[] = "RLNfc8-9Q7SP78p7rqE3Xw";
+    zassert_true(strcmp(expected_first_uuid_v4_base64url, first_uuid_v4_base64url) == 0,
+        "expected: '%s', gotten: '%s'", expected_first_uuid_v4_base64url, first_uuid_v4_base64url);
+
+    char second_uuid_v4_base64url[ASTARTE_UUID_BASE64URL_LEN + 1];
+    const astarte_uuid_t second_uuid_v4 = { 0x6f, 0x2f, 0xd4, 0xcb, 0x94, 0xa0, 0x41, 0xc7, 0x8d,
+        0x27, 0x86, 0x4c, 0x6b, 0x13, 0xb8, 0xc0 };
+    err = astarte_uuid_to_base64url(
+        second_uuid_v4, second_uuid_v4_base64url, ASTARTE_UUID_BASE64URL_LEN + 1);
+    zassert_equal(0, err, "astarte_uuid_to_string returned an error");
+    const char expected_second_uuid_v4_base64url[] = "by_Uy5SgQceNJ4ZMaxO4wA";
+    zassert_true(strcmp(expected_second_uuid_v4_base64url, second_uuid_v4_base64url) == 0,
+        "expected: '%s', gotten: '%s'", expected_second_uuid_v4_base64url,
+        second_uuid_v4_base64url);
+
+    char first_uuid_v5_base64url[ASTARTE_UUID_BASE64URL_LEN + 1];
+    const astarte_uuid_t first_uuid_v5 = { 0x05, 0x75, 0xa5, 0x69, 0x51, 0xeb, 0x57, 0x5c, 0xaf,
+        0xe4, 0xce, 0x7f, 0xc0, 0x3b, 0xcd, 0xc5 };
+    err = astarte_uuid_to_base64url(
+        first_uuid_v5, first_uuid_v5_base64url, ASTARTE_UUID_BASE64URL_LEN + 1);
+    zassert_equal(0, err, "astarte_uuid_to_string returned an error");
+    const char expected_first_uuid_v5_base64url[] = "BXWlaVHrV1yv5M5_wDvNxQ";
+    zassert_true(strcmp(expected_first_uuid_v5_base64url, first_uuid_v5_base64url) == 0,
+        "expected: '%s', gotten: '%s'", expected_first_uuid_v5_base64url, first_uuid_v5_base64url);
 }

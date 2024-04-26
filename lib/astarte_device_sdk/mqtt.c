@@ -162,27 +162,33 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
  *         Global functions definitions         *
  ***********************************************/
 
-void astarte_mqtt_init(
-    astarte_mqtt_t *astarte_mqtt, int32_t connecting_timeout_ms, int32_t connected_timeout_ms)
+void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_mqtt->connecting_timeout_ms = connecting_timeout_ms;
-    astarte_mqtt->connected_timeout_ms = connected_timeout_ms;
+    *astarte_mqtt = (astarte_mqtt_t){ 0 };
+    astarte_mqtt->connecting_timeout_ms = cfg->connecting_timeout_ms;
+    astarte_mqtt->connected_timeout_ms = cfg->connected_timeout_ms;
     astarte_mqtt->message_id = 1U;
     astarte_mqtt->is_connected = false;
+    memcpy(
+        astarte_mqtt->broker_hostname, cfg->broker_hostname, sizeof(astarte_mqtt->broker_hostname));
+    memcpy(astarte_mqtt->broker_port, cfg->broker_port, sizeof(astarte_mqtt->broker_port));
+    memcpy(astarte_mqtt->client_id, cfg->client_id, sizeof(astarte_mqtt->client_id));
 }
 
-astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *broker_hostname,
-    const char *broker_port, const char *client_id)
+astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 {
     // Get broker address info
     struct zsock_addrinfo *broker_addrinfo = NULL;
-    struct zsock_addrinfo hints;
+    struct zsock_addrinfo hints = { 0 };
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    int sock = zsock_getaddrinfo(broker_hostname, broker_port, &hints, &broker_addrinfo);
-    if (sock != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve broker address %d", sock);
-        ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
+    int getaddrinfo_rc = zsock_getaddrinfo(
+        astarte_mqtt->broker_hostname, astarte_mqtt->broker_port, &hints, &broker_addrinfo);
+    if (getaddrinfo_rc != 0) {
+        ASTARTE_LOG_ERR("Unable to resolve broker address %s", gai_strerror(getaddrinfo_rc));
+        if (getaddrinfo_rc == EAI_SYSTEM) {
+            ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
+        }
         return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
@@ -190,8 +196,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *
     mqtt_client_init(&astarte_mqtt->client);
     astarte_mqtt->client.broker = broker_addrinfo->ai_addr;
     astarte_mqtt->client.evt_cb = mqtt_evt_handler;
-    astarte_mqtt->client.client_id.utf8 = (uint8_t *) client_id;
-    astarte_mqtt->client.client_id.size = strnlen(client_id, ASTARTE_MQTT_MAX_CLIENT_ID_SIZE);
+    astarte_mqtt->client.client_id.utf8 = (uint8_t *) astarte_mqtt->client_id;
+    astarte_mqtt->client.client_id.size = strlen(astarte_mqtt->client_id);
     astarte_mqtt->client.password = NULL;
     astarte_mqtt->client.user_name = NULL;
     astarte_mqtt->client.protocol_version = MQTT_VERSION_3_1_1;
@@ -207,7 +213,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *
     tls_config->cipher_list = NULL;
     tls_config->sec_tag_list = sec_tag_list;
     tls_config->sec_tag_count = ARRAY_SIZE(sec_tag_list);
-    tls_config->hostname = broker_hostname;
+    tls_config->hostname = astarte_mqtt->broker_hostname;
 
     // MQTT buffers configuration
     astarte_mqtt->client.rx_buf = mqtt_rx_buffer;
@@ -219,10 +225,11 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt, const char *
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);
     if (mqtt_rc != 0) {
         ASTARTE_LOG_ERR("MQTT connection error (%d)", mqtt_rc);
-        zsock_close(sock);
+        zsock_freeaddrinfo(broker_addrinfo);
         return ASTARTE_RESULT_MQTT_ERROR;
     }
 
+    zsock_freeaddrinfo(broker_addrinfo);
     return ASTARTE_RESULT_OK;
 }
 
@@ -274,7 +281,7 @@ astarte_result_t astarte_mqtt_publish(
     msg.message_id = astarte_mqtt->message_id++;
     int res = mqtt_publish(&astarte_mqtt->client, &msg);
     if (res != 0) {
-        ASTARTE_LOG_ERR("MQTT publish failed during send_introspection.");
+        ASTARTE_LOG_ERR("MQTT publish failed during astarte_mqtt_publish.");
         return ASTARTE_RESULT_MQTT_ERROR;
     }
 
@@ -363,15 +370,16 @@ static ssize_t handle_published_message(
     if (!discarded) {
         ASTARTE_LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256U), "Received payload:");
 
+        // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
         size_t topic_len = pub->message.topic.topic.size;
-        if (topic_len >= ASTARTE_MQTT_MAX_TOPIC_SIZE) {
-            ASTARTE_LOG_ERR("MQTT topics longer than %d chars are not supported.",
-                ASTARTE_MQTT_MAX_TOPIC_SIZE - 1);
-            return -ENOTSUP;
+        char *topic = calloc(topic_len + sizeof(char), sizeof(char));
+        if (!topic) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            return -ENOMEM;
         }
-        char topic[ASTARTE_MQTT_MAX_TOPIC_SIZE] = { 0 };
-        strncpy(topic, pub->message.topic.topic.utf8, ASTARTE_MQTT_MAX_TOPIC_SIZE - 1);
+        memcpy(topic, pub->message.topic.topic.utf8, topic_len);
         on_incoming(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
+        free(topic);
     }
 
     return discarded ? -ENOMEM : (ssize_t) received;

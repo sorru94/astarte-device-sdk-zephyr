@@ -112,6 +112,10 @@ typedef struct
     int32_t mqtt_connection_timeout_ms;
     /** @brief Polling timeout for MQTT operation. */
     int32_t mqtt_connected_timeout_ms;
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
+    /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
+    char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];
+#endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
     /** @brief Credential secret to be used for connecting to Astarte. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief Optional callback for a connection event. */

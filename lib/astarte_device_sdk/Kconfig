@@ -13,6 +13,7 @@ config ASTARTE_DEVICE_SDK
 	select MQTT_LIB
 	select MQTT_LIB_TLS
 	select MQTT_CLEAN_SESSION
+	select BASE64
 	help
 	  This option enables the Astarte device SDK library
 
@@ -61,13 +62,6 @@ config ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
 	help
 	  This option enables the dynamic generation of device IDs using hardware information or
 	  starting from a provided namespace.
-
-config ASTARTE_DEVICE_SDK_DEVICE_ID
-	string "Device ID"
-	depends on ASTARTE_DEVICE_SDK
-	depends on !ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
-	help
-	  Device ID to be used for registration on Astarte.
 
 config ASTARTE_DEVICE_SDK_REALM_NAME
 	string "Realm name"

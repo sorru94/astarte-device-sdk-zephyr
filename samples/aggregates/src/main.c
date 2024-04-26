@@ -40,6 +40,8 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
  *       Checks over configuration values       *
  ***********************************************/
 
+BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1,
+    "Missing device ID in datastreams example");
 BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
     "Missing credential secret in aggregates example");
 
@@ -118,14 +120,14 @@ int main(void)
 #endif
 
     // Create a new instance of an Astarte device
+    char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[]
         = { &org_astarteplatform_zephyr_examples_DeviceAggregate,
               &org_astarteplatform_zephyr_examples_ServerAggregate };
 
-    astarte_device_config_t device_config;
-    memset(&device_config, 0, sizeof(device_config));
+    astarte_device_config_t device_config = { 0 };
     device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
     device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_FIRST_POLL_TIMEOUT_MS;
     device_config.mqtt_connected_timeout_ms = CONFIG_MQTT_SUBSEQUENT_POLL_TIMEOUT_MS;
@@ -134,6 +136,7 @@ int main(void)
     device_config.datastream_object_cbk = datastream_object_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
+    memcpy(device_config.device_id, device_id, sizeof(device_id));
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;

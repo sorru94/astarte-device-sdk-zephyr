@@ -688,6 +688,8 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
         TLS_CREDENTIAL_SERVER_CERTIFICATE, device->crt_pem, strlen(device->crt_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client crt to credentials %d.", tls_rc);
+        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
+        memset(device->crt_pem, 0, sizeof(device->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;
     }
 
@@ -695,6 +697,10 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
         TLS_CREDENTIAL_PRIVATE_KEY, device->privkey_pem, strlen(device->privkey_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client private key to credentials %d.", tls_rc);
+        tls_credential_delete(
+            CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
+        memset(device->crt_pem, 0, sizeof(device->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;
     }
 

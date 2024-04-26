@@ -111,7 +111,7 @@ bool astarte_bson_deserializer_check_validity(const void *buffer, size_t buffer_
 
 astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer)
 {
-    astarte_bson_document_t document;
+    astarte_bson_document_t document = { 0 };
     document.size = read_uint32(buffer);
     document.list = (uint8_t *) buffer + sizeof(document.size);
     document.list_size = document.size - sizeof(document.size) - NULL_TERM_SIZE;
@@ -122,7 +122,7 @@ astarte_result_t astarte_bson_deserializer_doc_count_elements(
     astarte_bson_document_t document, size_t *count)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    astarte_bson_element_t element;
+    astarte_bson_element_t element = { 0 };
     res = astarte_bson_deserializer_first_element(document, &element);
     if (res == ASTARTE_RESULT_NOT_FOUND) {
         *count = 0;
@@ -227,7 +227,7 @@ astarte_result_t astarte_bson_deserializer_next_element(astarte_bson_document_t 
 astarte_result_t astarte_bson_deserializer_element_lookup(
     astarte_bson_document_t document, const char *key, astarte_bson_element_t *element)
 {
-    astarte_bson_element_t candidate_element;
+    astarte_bson_element_t candidate_element = { 0 };
     astarte_result_t ret = astarte_bson_deserializer_first_element(document, &candidate_element);
     if (ret != ASTARTE_RESULT_OK) {
         return ret;

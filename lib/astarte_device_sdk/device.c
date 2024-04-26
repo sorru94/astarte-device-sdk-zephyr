@@ -607,7 +607,7 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
     }
 
     astarte_bson_document_t full_document = astarte_bson_deserializer_init_doc(data);
-    astarte_bson_element_t v_elem;
+    astarte_bson_element_t v_elem = { 0 };
     if (astarte_bson_deserializer_element_lookup(full_document, "v", &v_elem)
         != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Cannot retrieve BSON value from data");

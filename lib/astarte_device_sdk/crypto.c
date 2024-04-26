@@ -50,9 +50,9 @@ astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t pr
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    mbedtls_pk_context key;
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_pk_context key = { 0 };
+    mbedtls_entropy_context entropy = { 0 };
+    mbedtls_ctr_drbg_context ctr_drbg = { 0 };
     const char *pers = "astarte_credentials_create_key";
 
     mbedtls_ctr_drbg_init(&ctr_drbg);
@@ -112,10 +112,10 @@ astarte_result_t astarte_crypto_create_csr(
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    mbedtls_pk_context key;
-    mbedtls_x509write_csr req;
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_pk_context key = { 0 };
+    mbedtls_x509write_csr req = { 0 };
+    mbedtls_entropy_context entropy = { 0 };
+    mbedtls_ctr_drbg_context ctr_drbg = { 0 };
     const char *pers = "astarte_credentials_create_csr";
 
     mbedtls_x509write_csr_init(&req);
@@ -179,7 +179,7 @@ astarte_result_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size)
 {
     astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
-    mbedtls_x509_crt crt;
+    mbedtls_x509_crt crt = { 0 };
     mbedtls_x509_crt_init(&crt);
 
     size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation

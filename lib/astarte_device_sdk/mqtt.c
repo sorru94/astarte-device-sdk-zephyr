@@ -271,7 +271,7 @@ astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char
 astarte_result_t astarte_mqtt_publish(
     astarte_mqtt_t *astarte_mqtt, const char *topic, void *data, size_t data_size, int qos)
 {
-    struct mqtt_publish_param msg;
+    struct mqtt_publish_param msg = { 0 };
     msg.retain_flag = 0U;
     msg.message.topic.topic.utf8 = topic;
     msg.message.topic.topic.size = strlen(topic);

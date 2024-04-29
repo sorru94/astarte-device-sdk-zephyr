@@ -48,6 +48,13 @@ config ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG
 	  A CA certificate should be added by the user with the tls_credential_add function.
 	  Set this option to the tag used when adding the CA certificate.
 
+config ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE
+	int "Maximum message size for MQTT message"
+	depends on ASTARTE_DEVICE_SDK
+	default 4096
+	help
+	  Change this value to enable longer MQTT messages to be transmitted and received.
+
 config ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG
 	int "TLS security tag for client certificate"
 	depends on ASTARTE_DEVICE_SDK
@@ -68,6 +75,21 @@ config ASTARTE_DEVICE_SDK_REALM_NAME
 	depends on ASTARTE_DEVICE_SDK
 	help
 	  Astarte realm name where to connect the device.
+
+config ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS
+	int "Reconnection backoff initial delay (ms)"
+	depends on ASTARTE_DEVICE_SDK
+	default 1000
+	help
+	  This configuration setting will define an initial delay for the reconnection backoff strategy.
+
+config ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS
+	int "Reconnection backoff maximum delay (ms)"
+	depends on ASTARTE_DEVICE_SDK
+	default 60000
+	help
+	  This configuration setting will define the maximum delay for the reconnection backoff
+	  strategy.
 
 menu "Development options"
 

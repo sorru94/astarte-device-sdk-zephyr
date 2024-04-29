@@ -108,10 +108,14 @@ typedef struct
 {
     /** @brief Timeout for HTTP requests. */
     int32_t http_timeout_ms;
-    /** @brief Polling timeout for MQTT connection. */
+    /** @brief Connection timeout period.
+     *
+     * @details This is the maximum amount of time that the device will wait for a MQTT connack
+     * message. After this timeout has elapsed the device will attempt a reconnection.
+     */
     int32_t mqtt_connection_timeout_ms;
-    /** @brief Polling timeout for MQTT operation. */
-    int32_t mqtt_connected_timeout_ms;
+    /** @brief Polling timeout for the MQTT client. */
+    int32_t mqtt_poll_timeout_ms;
 #if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
     /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
     char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];

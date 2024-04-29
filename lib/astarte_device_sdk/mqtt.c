@@ -37,9 +37,6 @@ static sec_tag_t sec_tag_list[] = {
     CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
 };
 
-/** @brief Size for the application message buffer, used to store incoming messages */
-#define MQTT_MAX_MSG_SIZE 4096U
-
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -107,6 +104,17 @@ static void handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_suback
 static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt_evt *evt)
 {
     astarte_mqtt_t *astarte_mqtt = CONTAINER_OF(client, astarte_mqtt_t, client);
+
+    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
+        && (evt->type != MQTT_EVT_CONNACK) && (evt->type != MQTT_EVT_DISCONNECT)) {
+        ASTARTE_LOG_ERR("Received MQTT packet before CONNACK during connection.");
+        return;
+    }
+    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_DISCONNECTING)
+        && (evt->type != MQTT_EVT_DISCONNECT)) {
+        ASTARTE_LOG_ERR("Received MQTT packet before disconnection event during disconnection.");
+        return;
+    }
 
     switch (evt->type) {
         case MQTT_EVT_CONNACK:
@@ -184,20 +192,46 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
 void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt)
 {
     *astarte_mqtt = (astarte_mqtt_t){ 0 };
-    astarte_mqtt->connecting_timeout_ms = cfg->connecting_timeout_ms;
-    astarte_mqtt->connected_timeout_ms = cfg->connected_timeout_ms;
+    astarte_mqtt->connection_timeout_ms = cfg->connection_timeout_ms;
+    astarte_mqtt->poll_timeout_ms = cfg->poll_timeout_ms;
     astarte_mqtt->message_id = 1U;
-    astarte_mqtt->is_connected = false;
     memcpy(
         astarte_mqtt->broker_hostname, cfg->broker_hostname, sizeof(astarte_mqtt->broker_hostname));
     memcpy(astarte_mqtt->broker_port, cfg->broker_port, sizeof(astarte_mqtt->broker_port));
     memcpy(astarte_mqtt->client_id, cfg->client_id, sizeof(astarte_mqtt->client_id));
+    astarte_mqtt->refresh_client_cert_cbk = cfg->refresh_client_cert_cbk;
+
+    // Initialize the timepoint to an infinite future date
+    astarte_mqtt->connection_timepoint = sys_timepoint_calc(K_FOREVER);
+
+    // Initialize the backoff context
+    backoff_context_init(&astarte_mqtt->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, false);
+
+    // Initialize the reconnection timepoint
+    astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
 }
 
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 {
-    // Get broker address info
+    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
     struct zsock_addrinfo *broker_addrinfo = NULL;
+
+    if ((astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)
+        && (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)) {
+        ASTARTE_LOG_ERR("Connection request while the client is non idle will be ignored.");
+        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        goto exit;
+    }
+
+    astarte_res = astarte_mqtt->refresh_client_cert_cbk(astarte_mqtt);
+    if (astarte_res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Refreshing client certificate failed");
+        goto exit;
+    }
+
+    // Get broker address info
     struct zsock_addrinfo hints = { 0 };
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -208,7 +242,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
         if (getaddrinfo_rc == EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
-        return ASTARTE_RESULT_SOCKET_ERROR;
+        astarte_res = ASTARTE_RESULT_SOCKET_ERROR;
+        goto exit;
     }
 
     // MQTT client configuration
@@ -244,28 +279,69 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);
     if (mqtt_rc != 0) {
         ASTARTE_LOG_ERR("MQTT connection error (%d)", mqtt_rc);
-        zsock_freeaddrinfo(broker_addrinfo);
-        return ASTARTE_RESULT_MQTT_ERROR;
+        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        goto exit;
     }
 
-    zsock_freeaddrinfo(broker_addrinfo);
-    return ASTARTE_RESULT_OK;
+    // Set a timepoint to be used to check if the connection timeout will have elapsed
+    astarte_mqtt->connection_timepoint
+        = sys_timepoint_calc(K_MSEC(astarte_mqtt->connection_timeout_ms));
+
+    // Set connecting flag
+    astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTING;
+
+exit:
+    // Free the broker address info
+    if (broker_addrinfo) {
+        zsock_freeaddrinfo(broker_addrinfo);
+    }
+
+
+    return astarte_res;
 }
 
 astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
 {
-    if (astarte_mqtt->is_connected) {
-        int res = mqtt_disconnect(&astarte_mqtt->client);
-        if (res < 0) {
-            ASTARTE_LOG_ERR("Device disconnection failure %d", res);
-            return ASTARTE_RESULT_MQTT_ERROR;
-        }
+    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+
+    if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTION_ERROR) {
+        astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTED;
+        goto exit;
     }
-    return ASTARTE_RESULT_OK;
+    if (astarte_mqtt->connection_state == ASTARTE_MQTT_DISCONNECTED) {
+        ASTARTE_LOG_ERR("Disconnection request while the client is disconnected will be ignored.");
+        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        goto exit;
+    }
+    if (astarte_mqtt->connection_state == ASTARTE_MQTT_DISCONNECTING) {
+        ASTARTE_LOG_ERR("Disconnection request while the client is disconnecting will be ignored.");
+        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        goto exit;
+    }
+
+    // The only case in which a disconnection request is allowed is if the client is connected.
+    int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client);
+    if (mqtt_rc < 0) {
+        ASTARTE_LOG_ERR("Device disconnection failure %d", mqtt_rc);
+        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        goto exit;
+    }
+    astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTING;
+
+exit:
+    return astarte_res;
 }
 
 astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char *topic)
 {
+    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+
+    if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
+        ASTARTE_LOG_ERR("Subscription to a topic is not allowed when the client is not connected.");
+        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        goto exit;
+    }
+
     ASTARTE_LOG_DBG("Subscribing to %s", topic);
 
     struct mqtt_topic topics[] = { {
@@ -281,15 +357,25 @@ astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char
     int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
     if (ret != 0) {
         ASTARTE_LOG_ERR("Failed to subscribe to control topic: %d", ret);
-        return ASTARTE_RESULT_MQTT_ERROR;
+        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        goto exit;
     }
 
-    return ASTARTE_RESULT_OK;
+exit:
+    return astarte_res;
 }
 
 astarte_result_t astarte_mqtt_publish(
     astarte_mqtt_t *astarte_mqtt, const char *topic, void *data, size_t data_size, int qos)
 {
+    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+
+    if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
+        ASTARTE_LOG_ERR("Publish to a topic is not allowed when the client is not connected.");
+        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        goto exit;
+    }
+
     struct mqtt_publish_param msg = { 0 };
     msg.retain_flag = 0U;
     msg.message.topic.topic.utf8 = topic;
@@ -298,49 +384,89 @@ astarte_result_t astarte_mqtt_publish(
     msg.message.payload.data = data;
     msg.message.payload.len = data_size;
     msg.message_id = astarte_mqtt->message_id++;
-    int res = mqtt_publish(&astarte_mqtt->client, &msg);
-    if (res != 0) {
-        ASTARTE_LOG_ERR("MQTT publish failed during astarte_mqtt_publish.");
-        return ASTARTE_RESULT_MQTT_ERROR;
+    int ret = mqtt_publish(&astarte_mqtt->client, &msg);
+    if (ret != 0) {
+        ASTARTE_LOG_ERR("MQTT publish failed: %s, %d", strerror(-ret), ret);
+        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        goto exit;
     }
 
     ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
         msg.message_id, msg.message.topic.qos, data_size);
     ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
 
-    return ASTARTE_RESULT_OK;
+exit:
+    return astarte_res;
 }
 
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 {
-    // Poll the socket
-    struct zsock_pollfd socket_fds[1];
-    int socket_nfds = 1;
-    socket_fds[0].fd = astarte_mqtt->client.transport.tls.sock;
-    socket_fds[0].events = ZSOCK_POLLIN;
-    int32_t timeout = (astarte_mqtt->is_connected) ? astarte_mqtt->connected_timeout_ms
-                                                   : astarte_mqtt->connecting_timeout_ms;
-    int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
-    int socket_rc = zsock_poll(socket_fds, socket_nfds, MIN(timeout, keepalive));
-    if (socket_rc < 0) {
-        ASTARTE_LOG_ERR("Poll error: %d", errno);
-        return ASTARTE_RESULT_SOCKET_ERROR;
+    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+
+
+    // If in the connecting phase check that the connection timeout has not elapsed
+    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
+        && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->connection_timepoint), K_NO_WAIT)) {
+        astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
+        mqtt_disconnect(&astarte_mqtt->client);
+        ASTARTE_LOG_ERR("Connection attempt has timed out!");
+        goto exit;
     }
-    if (socket_rc != 0) {
-        // Process the MQTT response
-        int mqtt_rc = mqtt_input(&astarte_mqtt->client);
-        if (mqtt_rc != 0) {
-            ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_rc);
-            return ASTARTE_RESULT_MQTT_ERROR;
+
+    // If the device is recovering from an unexpected disconnection and backoff time has elapsed
+    // try to reconnect
+    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTION_ERROR)
+        && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->reconnection_timepoint), K_NO_WAIT)) {
+
+        // Update reconnection timepoint to the next backoff value
+        uint32_t next_backoff_ms = 0;
+        backoff_get_next(&astarte_mqtt->backoff_ctx, &next_backoff_ms);
+        astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
+
+        // Attempt reconnection
+        ASTARTE_LOG_INF("Attempting a reconnection");
+        astarte_result_t conn_rc = astarte_mqtt_connect(astarte_mqtt);
+        if (conn_rc != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed establishing a new connection!");
+            goto exit;
         }
     }
-    // Keep alive the connection
-    int mqtt_rc = mqtt_live(&astarte_mqtt->client);
-    if ((mqtt_rc != 0) && (mqtt_rc != -EAGAIN)) {
-        ASTARTE_LOG_ERR("Failed to keep alive MQTT: %d", mqtt_rc);
-        return ASTARTE_RESULT_MQTT_ERROR;
+
+    // Only poll if device is connecting, disconnecting or connected
+    if ((astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)
+        && (astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)) {
+
+        // Check connection and ensure to periodically ping the broker using mqtt_live
+        int mqtt_rc = mqtt_live(&astarte_mqtt->client);
+        if ((mqtt_rc != 0) && (mqtt_rc != -EAGAIN)) {
+            ASTARTE_LOG_WRN("Fail keep alive MQTT connection: %s, %d", strerror(-mqtt_rc), mqtt_rc);
+        }
+
+        // Poll the socket
+        struct zsock_pollfd socket_fd
+            = { .fd = astarte_mqtt->client.transport.tls.sock, .events = ZSOCK_POLLIN };
+        int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
+        int32_t timeout = MIN(astarte_mqtt->poll_timeout_ms, keepalive);
+        int socket_rc = zsock_poll(&socket_fd, 1, timeout);
+        if (socket_rc < 0) {
+            ASTARTE_LOG_ERR("Poll error: %d", errno);
+            astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
+            astarte_res = ASTARTE_RESULT_SOCKET_ERROR;
+            goto exit;
+        }
+        if (socket_rc != 0) {
+            // Process the MQTT response
+            int mqtt_rc = mqtt_input(&astarte_mqtt->client);
+            if ((mqtt_rc != 0) && (mqtt_rc != -ENOTCONN)) {
+                ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_rc);
+                astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+                goto exit;
+            }
+        }
     }
-    return (socket_rc == 0) ? ASTARTE_RESULT_TIMEOUT : ASTARTE_RESULT_OK;
+
+exit:
+    return astarte_res;
 }
 
 /************************************************
@@ -352,14 +478,26 @@ static void handle_connack_event(
     astarte_mqtt_t *astarte_mqtt, const struct mqtt_connack_param connack)
 {
     ASTARTE_LOG_DBG("Received CONNACK packet");
-    astarte_mqtt->is_connected = true;
+    // Reset the backoff context for the next connection failure
+    backoff_context_init(&astarte_mqtt->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, true);
+    if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
+        astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;
+    }
     on_connected(astarte_mqtt, connack);
 }
 // NOLINTNEXTLINE(misc-unused-parameters)
 static void handle_disconnection_event(astarte_mqtt_t *astarte_mqtt)
 {
     ASTARTE_LOG_DBG("MQTT client disconnected");
-    astarte_mqtt->is_connected = false;
+    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
+        || (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTED)) {
+        astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
+    }
+    if (astarte_mqtt->connection_state == ASTARTE_MQTT_DISCONNECTING) {
+        astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTED;
+    }
     on_disconnected(astarte_mqtt);
 }
 // NOLINTNEXTLINE(misc-unused-parameters)
@@ -370,17 +508,19 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
     int ret = 0U;
     size_t received = 0U;
     uint32_t message_size = publish.message.payload.len;
-    char msg_buffer[MQTT_MAX_MSG_SIZE] = { 0 };
-    const bool discarded = message_size > MQTT_MAX_MSG_SIZE;
+    char msg_buffer[CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE] = { 0 };
+    const bool discarded = message_size > CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE;
 
     ASTARTE_LOG_DBG("RECEIVED on topic \"%.*s\" [ id: %u qos: %u ] payload: %u / %u B",
         publish.message.topic.topic.size, (const char *) publish.message.topic.topic.utf8,
-        message_id, publish.message.topic.qos, message_size, MQTT_MAX_MSG_SIZE);
+        message_id, publish.message.topic.qos, message_size,
+        CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE);
 
     while (received < message_size) {
         char *pkt = discarded ? msg_buffer : &msg_buffer[received];
 
-        ret = mqtt_read_publish_payload_blocking(&astarte_mqtt->client, pkt, MQTT_MAX_MSG_SIZE);
+        ret = mqtt_read_publish_payload_blocking(
+            &astarte_mqtt->client, pkt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE);
         if (ret < 0) {
             ASTARTE_LOG_ERR("Error reading payload of PUBLISH packet %s", strerror(ret));
             return;

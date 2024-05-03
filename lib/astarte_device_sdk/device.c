@@ -172,6 +172,35 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
     const char *path, void *data, int data_size, int qos);
 
 /************************************************
+ *       Callbacks declaration/definition       *
+ ***********************************************/
+
+astarte_result_t refresh_client_cert_cbk(astarte_mqtt_t *astarte_mqtt)
+{
+    struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
+    // Obtain new client certificate if no cached one exists
+    if (strlen(device->crt_pem) == 0) {
+        astarte_result_t res = get_new_client_certificate(device);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Client certificate get failed: %s.", astarte_result_to_name(res));
+        }
+        return res;
+    }
+    // Verify cached certificate
+    astarte_result_t res = astarte_pairing_verify_client_certificate(
+        device->http_timeout_ms, device->device_id, device->cred_secr, device->crt_pem);
+    if (res == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
+        res = update_client_certificate(device);
+        if (res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Client crt update failed: %s.", astarte_result_to_name(res));
+        }
+    } else if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Verify client certificate failed: %s.", astarte_result_to_name(res));
+    }
+    return res;
+}
+
+/************************************************
  *         Global functions definitions         *
  ***********************************************/
 
@@ -218,8 +247,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
 
     ASTARTE_LOG_DBG("Initializing Astarte MQTT client.");
     astarte_mqtt_config_t astarte_mqtt_config = { 0 };
-    astarte_mqtt_config.connecting_timeout_ms = cfg->mqtt_connection_timeout_ms;
-    astarte_mqtt_config.connected_timeout_ms = cfg->mqtt_connected_timeout_ms;
+    astarte_mqtt_config.connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
+    astarte_mqtt_config.poll_timeout_ms = cfg->mqtt_poll_timeout_ms;
+    astarte_mqtt_config.refresh_client_cert_cbk = refresh_client_cert_cbk;
 
     ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
     res = get_mqtt_broker_hostname_and_port(handle->http_timeout_ms, handle->device_id,
@@ -284,27 +314,6 @@ astarte_result_t astarte_device_add_interface(
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 {
-    // Check if certificate is valid
-    if (strlen(device->crt_pem) == 0) {
-        astarte_result_t res = get_new_client_certificate(device);
-        if (res != ASTARTE_RESULT_OK) {
-            return res;
-        }
-    } else {
-        astarte_result_t res = astarte_pairing_verify_client_certificate(
-            device->http_timeout_ms, device->device_id, device->cred_secr, device->crt_pem);
-        if (res == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
-            res = update_client_certificate(device);
-            if (res != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Client crt update failed: %s.", astarte_result_to_name(res));
-                return res;
-            }
-        }
-        if (res != ASTARTE_RESULT_OK) {
-            return res;
-        }
-    }
-
     return astarte_mqtt_connect(&device->astarte_mqtt);
 }
 
@@ -607,7 +616,7 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
     }
 
     astarte_bson_document_t full_document = astarte_bson_deserializer_init_doc(data);
-    astarte_bson_element_t v_elem;
+    astarte_bson_element_t v_elem = { 0 };
     if (astarte_bson_deserializer_element_lookup(full_document, "v", &v_elem)
         != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Cannot retrieve BSON value from data");
@@ -688,6 +697,8 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
         TLS_CREDENTIAL_SERVER_CERTIFICATE, device->crt_pem, strlen(device->crt_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client crt to credentials %d.", tls_rc);
+        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
+        memset(device->crt_pem, 0, sizeof(device->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;
     }
 
@@ -695,6 +706,10 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
         TLS_CREDENTIAL_PRIVATE_KEY, device->privkey_pem, strlen(device->privkey_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client private key to credentials %d.", tls_rc);
+        tls_credential_delete(
+            CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
+        memset(device->crt_pem, 0, sizeof(device->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;
     }
 

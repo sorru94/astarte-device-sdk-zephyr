@@ -216,3 +216,9 @@ This means that for a zephyr workspace, that by default does not have any of suc
 events, the extension does not load and when opening a terminal the venv does not activate.
 To fix this you can create an empty `mspythonconfig.json` file that will serve as an activation
 event. However, note that this file might interfere when using Pyright in your project.
+
+## Architectural documentation
+
+Some additional documentation for the library architecture is available.
+- [Astarte MQTT client](doc/architecture/astarte_mqtt_client.md) is a soft wrapper around the MQTT
+  client library from Zephyr. It extends the functionality of the standard MQTT client.

@@ -14,6 +14,8 @@
 
 #include <zephyr/logging/log.h>
 
+// clang-format off
+
 /** @brief Wrapper for the LOG_MODULE_REGISTER macro. */
 #define ASTARTE_LOG_MODULE_REGISTER(...) LOG_MODULE_REGISTER(__VA_ARGS__) // NOLINT
 
@@ -29,7 +31,12 @@
 /** @brief Wrapper for the LOG_ERR macro. */
 #define ASTARTE_LOG_ERR(...) LOG_ERR(__VA_ARGS__) // NOLINT
 
+/** @brief Conditional logging macro (wraps the LOG_ERR macro). */
+#define ASTARTE_LOG_COND_ERR(cond, ...) if(cond) {LOG_ERR(__VA_ARGS__);} // NOLINT
+
 /** @brief Wrapper for the LOG_HEXDUMP_DBG macro. */
 #define ASTARTE_LOG_HEXDUMP_DBG(...) LOG_HEXDUMP_DBG(__VA_ARGS__) // NOLINT
+
+// clang-format on
 
 #endif // LOG_H

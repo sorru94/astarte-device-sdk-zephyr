@@ -336,7 +336,7 @@ astarte_result_t astarte_value_pair_deserialize(astarte_bson_element_t bson_elem
     }
 
     // Step 3: Fill the allocated memory
-    astarte_bson_element_t inner_elem;
+    astarte_bson_element_t inner_elem = { 0 };
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (res != ASTARTE_RESULT_OK) {
         goto failure;
@@ -571,7 +571,7 @@ static astarte_result_t astarte_value_deserialize_array(
     astarte_bson_document_t bson_doc = astarte_bson_deserializer_element_to_array(bson_elem);
 
     // Step 1: figure out the size and type of the array
-    astarte_bson_element_t inner_elem;
+    astarte_bson_element_t inner_elem = { 0 };
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (res != ASTARTE_RESULT_OK) {
         return astarte_value_empty_array(type, value);
@@ -651,7 +651,7 @@ static astarte_result_t astarte_value_deserialize_array_##NAME(                 
         goto failure;                                                                              \
     }                                                                                              \
                                                                                                    \
-    astarte_bson_element_t inner_elem;                                                             \
+    astarte_bson_element_t inner_elem = {0};                                                       \
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);                          \
     if (res != ASTARTE_RESULT_OK) {                                                                \
         goto failure;                                                                              \
@@ -698,7 +698,7 @@ static astarte_result_t astarte_value_deserialize_array_int64(
         goto failure;
     }
 
-    astarte_bson_element_t inner_elem;
+    astarte_bson_element_t inner_elem = { 0 };
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (res != ASTARTE_RESULT_OK) {
         goto failure;
@@ -746,7 +746,7 @@ static astarte_result_t astarte_value_deserialize_array_string(
     }
 
     // Step 2: fill in the array with data
-    astarte_bson_element_t inner_elem;
+    astarte_bson_element_t inner_elem = { 0 };
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (res != ASTARTE_RESULT_OK) {
         goto failure;
@@ -794,7 +794,7 @@ static astarte_result_t astarte_value_deserialize_array_binblob(
     }
 
     // Step 2: fill in the array with data
-    astarte_bson_element_t inner_elem;
+    astarte_bson_element_t inner_elem = { 0 };
     res = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (res != ASTARTE_RESULT_OK) {
         goto failure;

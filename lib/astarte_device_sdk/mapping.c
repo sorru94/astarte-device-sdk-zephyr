@@ -54,7 +54,7 @@ astarte_result_t astarte_mapping_array_to_scalar_type(
 astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const char *path)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    regex_t preg;
+    regex_t preg = { 0 };
     if (regcomp(&preg, mapping.regex_endpoint, REG_EXTENDED) != 0) {
         ASTARTE_LOG_ERR("Compilation command FAILED.");
         return ASTARTE_RESULT_INTERNAL_ERROR;

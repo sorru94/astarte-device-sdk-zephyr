@@ -126,7 +126,7 @@ astarte_result_t astarte_uuid_generate_v5(
     const size_t sha_256_bytes = 32;
     uint8_t sha_result[sha_256_bytes];
 
-    mbedtls_md_context_t ctx;
+    mbedtls_md_context_t ctx = { 0 };
     const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA1);
 
     mbedtls_md_init(&ctx);
@@ -143,7 +143,7 @@ astarte_result_t astarte_uuid_generate_v5(
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    struct uuid sha_uuid_struct;
+    struct uuid sha_uuid_struct = { 0 };
     // This will use the first 16 bytes of the SHA-256
     uuid_to_struct(sha_result, &sha_uuid_struct);
 
@@ -166,7 +166,7 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    struct uuid uuid_struct;
+    struct uuid uuid_struct = { 0 };
 
     uuid_to_struct(uuid, &uuid_struct);
 
@@ -265,7 +265,7 @@ astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
 
     // Will be used to contain the string representation of a uint16_t (plus the NULL terminator)
     char tmp[sizeof(uint16_t) + sizeof(uint8_t)] = { 0 };
-    struct uuid uuid_struct;
+    struct uuid uuid_struct = { 0 };
     const int strtoul_base = 16;
 
     uuid_struct.time_low = strtoul(input + UUID_STR_OFFSET_TIME_LOW, NULL, strtoul_base);
@@ -296,7 +296,7 @@ void astarte_uuid_generate_v4(astarte_uuid_t out)
     uint8_t random_result[ASTARTE_UUID_SIZE];
     sys_rand_get(random_result, ASTARTE_UUID_SIZE);
 
-    struct uuid random_uuid_struct;
+    struct uuid random_uuid_struct = { 0 };
     uuid_to_struct(random_result, &random_uuid_struct);
 
     const unsigned int version = 4U;

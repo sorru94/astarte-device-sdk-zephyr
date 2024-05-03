@@ -195,7 +195,7 @@ void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_hand
 {
     byte_array_append_byte(bson, '\0');
 
-    uint8_t size_buf[4];
+    uint8_t size_buf[4] = { 0 };
     uint32_to_bytes(bson->size, size_buf);
 
     byte_array_replace(bson, 0, sizeof(int32_t), size_buf);
@@ -204,7 +204,7 @@ void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_hand
 void astarte_bson_serializer_append_double(
     astarte_bson_serializer_handle_t bson, const char *name, double value)
 {
-    uint8_t val_buf[sizeof(double)];
+    uint8_t val_buf[sizeof(double)] = { 0 };
     double_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOUBLE);
@@ -215,7 +215,7 @@ void astarte_bson_serializer_append_double(
 void astarte_bson_serializer_append_int32(
     astarte_bson_serializer_handle_t bson, const char *name, int32_t value)
 {
-    uint8_t val_buf[4];
+    uint8_t val_buf[4] = { 0 };
     int32_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT32);
@@ -226,7 +226,7 @@ void astarte_bson_serializer_append_int32(
 void astarte_bson_serializer_append_int64(
     astarte_bson_serializer_handle_t bson, const char *name, int64_t value)
 {
-    uint8_t val_buf[sizeof(int64_t)];
+    uint8_t val_buf[sizeof(int64_t)] = { 0 };
     int64_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT64);
@@ -237,7 +237,7 @@ void astarte_bson_serializer_append_int64(
 void astarte_bson_serializer_append_binary(
     astarte_bson_serializer_handle_t bson, const char *name, const void *value, size_t size)
 {
-    uint8_t len_buf[4];
+    uint8_t len_buf[4] = { 0 };
     uint32_to_bytes(size, len_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BINARY);
@@ -252,7 +252,7 @@ void astarte_bson_serializer_append_string(
 {
     size_t string_len = strlen(string);
 
-    uint8_t len_buf[4];
+    uint8_t len_buf[4] = { 0 };
     uint32_to_bytes(string_len + 1, len_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_STRING);
@@ -264,7 +264,7 @@ void astarte_bson_serializer_append_string(
 void astarte_bson_serializer_append_datetime(
     astarte_bson_serializer_handle_t bson, const char *name, uint64_t epoch_millis)
 {
-    uint8_t val_buf[sizeof(uint64_t)];
+    uint8_t val_buf[sizeof(uint64_t)] = { 0 };
     uint64_to_bytes(epoch_millis, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DATETIME);

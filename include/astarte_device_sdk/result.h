@@ -77,7 +77,9 @@ typedef enum
     /** @brief The provided path does not match the mapping endpoint. */
     ASTARTE_RESULT_MAPPING_PATH_MISMATCH = 23,
     /** @brief Could not find the mapping corresponding to a path in an interface. */
-    ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 24
+    ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 24,
+    /** @brief Calling an MQTT API while the client is not ready. */
+    ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 25
 } astarte_result_t;
 
 #ifdef __cplusplus

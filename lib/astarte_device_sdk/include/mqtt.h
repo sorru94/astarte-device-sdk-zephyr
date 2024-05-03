@@ -18,6 +18,8 @@
 
 #include "astarte_device_sdk/pairing.h"
 
+#include "backoff.h"
+
 /** @brief Max allowed hostname characters are 253 */
 #define ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN 253
 /** @brief Max allowed port number is 65535 */
@@ -27,43 +29,78 @@
     (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
         + ASTARTE_PAIRING_DEVICE_ID_LEN)
 
+/**
+ * @brief Contains all the data related to a single MQTT client.
+ */
+typedef struct astarte_mqtt astarte_mqtt_t;
+
+/** @brief Function pointer to be used for client certificate refresh. */
+typedef astarte_result_t (*astarte_mqtt_refresh_client_cert_cbk_t)(astarte_mqtt_t *astarte_mqtt);
+
+/** @brief Connection statuses for the Astarte MQTT client. */
+typedef enum
+{
+    /** @brief The MQTT client has never been connected or has been gracefully disconnected. */
+    ASTARTE_MQTT_DISCONNECTED = 0U,
+    /** @brief The MQTT client has established a connection and is waiting for a CONNACK message. */
+    ASTARTE_MQTT_CONNECTING,
+    /** @brief The MQTT client has completed the connection procedure successfully. */
+    ASTARTE_MQTT_CONNECTED,
+    /** @brief The MQTT client has been requested to disconnect from Astarte. */
+    ASTARTE_MQTT_DISCONNECTING,
+    /** @brief The MQTT client has encountred an unexpected connection error. */
+    ASTARTE_MQTT_CONNECTION_ERROR,
+} astarte_mqtt_connection_states_t;
+
 /** @brief Configuration struct for the MQTT client. */
 typedef struct
 {
     /** @brief Timeout for socket polls before connection to an MQTT broker. */
-    int32_t connecting_timeout_ms;
+    int32_t connection_timeout_ms;
     /** @brief Timeout for socket polls of MQTT broker. */
-    int32_t connected_timeout_ms;
+    int32_t poll_timeout_ms;
     /** @brief Broker hostname */
     char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
     /** @brief Broker port */
     char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1];
     /** @brief Client ID */
     char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
+    /** @brief Callback used to check if the client certificate is valid. */
+    astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
 } astarte_mqtt_config_t;
 
 /**
  * @brief Contains all the data related to a single MQTT client.
  */
-typedef struct
+struct astarte_mqtt
 {
+    /** Mutex to protect access to the client instance. */
+    struct sys_mutex mutex;
     /** @brief Zephyr MQTT client handle. */
     struct mqtt_client client;
     /** @brief Last transmitted message ID. */
     uint16_t message_id;
-    /** @brief Flag representing if the client is connected to the MQTT broker. */
-    bool is_connected;
+    /** @brief Timepoint to be used to check a connection timeout. */
+    k_timepoint_t connection_timepoint;
     /** @brief Timeout for socket polls before connection to an MQTT broker. */
-    int32_t connecting_timeout_ms;
-    /** @brief Timeout for socket polls on an already connected MQTT broker. */
-    int32_t connected_timeout_ms;
-    /** @brief MQTT broker hostname. */
+    int32_t connection_timeout_ms;
+    /** @brief Timeout for socket polls of MQTT broker. */
+    int32_t poll_timeout_ms;
+    /** @brief Broker hostname */
     char broker_hostname[ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1];
-    /** @brief MQTT broker port. */
+    /** @brief Broker port */
     char broker_port[ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1];
-    /** @brief MQTT client ID. */
+    /** @brief Client ID */
     char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
-} astarte_mqtt_t;
+    /** @brief Backoff context for the MQTT reconnection */
+    struct backoff_context backoff_ctx;
+    /** @brief Reconnection timepoint. */
+    k_timepoint_t reconnection_timepoint;
+    /** @brief Connection state. */
+    astarte_mqtt_connection_states_t connection_state;
+    /** @brief Callback used to check if the client certificate is valid. */
+    astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
+};
 
 #ifdef __cplusplus
 extern "C" {

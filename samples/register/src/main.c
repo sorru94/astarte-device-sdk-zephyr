@@ -173,8 +173,8 @@ int main(void)
 
     astarte_device_config_t device_config = { 0 };
     device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
-    device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_FIRST_POLL_TIMEOUT_MS;
-    device_config.mqtt_connected_timeout_ms = CONFIG_MQTT_SUBSEQUENT_POLL_TIMEOUT_MS;
+    device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_CONNECTION_TIMEOUT_MS;
+    device_config.mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = connection_callback;
     device_config.disconnection_cbk = disconnection_callback;
     device_config.datastream_individual_cbk = datastream_individual_callback;
@@ -246,7 +246,7 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
 
         res = astarte_device_poll(device);
-        if ((res != ASTARTE_RESULT_TIMEOUT) && (res != ASTARTE_RESULT_OK)) {
+        if (res != ASTARTE_RESULT_OK) {
             LOG_ERR("Astarte device poll failure."); // NOLINT
             return;
         }

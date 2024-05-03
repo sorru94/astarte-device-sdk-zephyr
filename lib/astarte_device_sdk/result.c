@@ -46,6 +46,7 @@ static const astarte_res_msg_t astarte_res_msg_table[] = {
     RES_TBL_IT(ASTARTE_RESULT_CLIENT_CERT_INVALID),
     RES_TBL_IT(ASTARTE_RESULT_MAPPING_PATH_MISMATCH),
     RES_TBL_IT(ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE),
+    RES_TBL_IT(ASTARTE_RESULT_MQTT_CLIENT_NOT_READY),
 };
 
 static const char astarte_unknown_msg[] = "UNKNOWN RESULT CODE";

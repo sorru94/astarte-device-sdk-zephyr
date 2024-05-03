@@ -114,7 +114,7 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
 
     int http_rc = http_client_req(sock, &req, timeout_ms, &post_ok);
     if ((http_rc < 0) || !post_ok) {
-        ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
+        ASTARTE_LOG_ERR("HTTP post request failed: %d", http_rc);
         ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
         zsock_close(sock);
         return ASTARTE_RESULT_HTTP_REQUEST_ERROR;

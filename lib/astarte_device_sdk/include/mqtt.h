@@ -74,6 +74,8 @@ typedef struct
  */
 struct astarte_mqtt
 {
+    /** Mutex to protect access to the client instance. */
+    struct sys_mutex mutex;
     /** @brief Zephyr MQTT client handle. */
     struct mqtt_client client;
     /** @brief Last transmitted message ID. */

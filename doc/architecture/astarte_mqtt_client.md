@@ -32,3 +32,105 @@ flowchart TD
     CONNECTION_ERROR --> |Connection request / backoff period finished| CONNECTING
     CONNECTION_ERROR --> |Disconnection request| DISCONNECTED
 ```
+
+## Subscription retry procedure
+
+The Astarte MQTT client implements a retry mechanism to ensure subscription messages are properly
+retransmitted.
+
+```mermaid
+flowchart TD
+    classDef globStructs stroke:#A52A2A
+
+    subgraph Retain message
+    S(Send subscription msg)
+    W(Waiting for SUBACK)
+    R(Resend subscription msg)
+    end
+    E(End)
+
+    S --> W
+    W --> |Timeout| R
+    R --> W
+    W --> |Received SUBACK| E
+```
+
+## Publish retry procedure
+
+The Astarte MQTT client implements a retry mechanism to ensure publish messages with QoS > 0 are
+properly retransmitted.
+
+### QoS 1
+
+```mermaid
+flowchart TD
+    classDef globStructs stroke:#A52A2A
+
+    subgraph Retain message
+    S(Send publish msg)
+    W(Waiting for PUBACK)
+    R(Resend publish msg)
+    end
+    E(End)
+
+    S --> W
+    W --> |Timeout| R
+    R --> W
+    W --> |Received PUBACK| E
+```
+
+### QoS 2
+
+```mermaid
+flowchart TD
+    classDef globStructs stroke:#A52A2A
+
+    subgraph Retain message
+    SPUBLISH(Send publish msg)
+    WPUBREC(Waiting for PUBREC)
+    RPUBLISH(Resend publish msg)
+    end
+    SPUBREL(Send PUBREL msg)
+    WPUBCOMP(Waiting for PUBCOMP)
+    RPUBREL(Resend PUBREL msg)
+    E(End)
+
+    SPUBLISH --> WPUBREC
+    WPUBREC --> |Timeout| RPUBLISH
+    RPUBLISH --> WPUBREC
+    WPUBREC --> |Received PUBREC| SPUBREL
+    SPUBREL --> WPUBCOMP
+    WPUBCOMP --> |Timeout| RPUBREL
+    RPUBREL --> WPUBCOMP
+    WPUBCOMP --> |Received PUBCOMP| E
+```
+
+## Reception of QoS 1 publishes
+
+Upon the reception of a QoS 1 publish message the Astarte MQTT driver automatically transmit a
+PUBACK message back to the MQTT broker.
+
+## Reception of QoS 2 messages
+
+QoS 2 publishes require a more complex control flow in the receiver compared to lower QoS levels.
+
+```mermaid
+flowchart TD
+    classDef globStructs stroke:#A52A2A
+
+    subgraph Retain message
+    START(Start)
+    SPUBREC(Send PUBREC msg)
+    end
+    WPUBREL(Waiting for PUBREL)
+    RPUBREC(Resend PUBREC msg)
+    SPUBCOMP(Send PUBCOMP msg)
+    E(End)
+
+    START --> |Received publish| SPUBREC
+    SPUBREC --> WPUBREL
+    WPUBREL --> |Timeout| RPUBREC
+    RPUBREC --> WPUBREL
+    WPUBREL --> |Received PUBREC| SPUBCOMP
+    SPUBCOMP --> E
+```

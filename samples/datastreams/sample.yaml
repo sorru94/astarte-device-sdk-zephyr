@@ -13,6 +13,7 @@ tests:
     build_only: true
     integration_platforms:
       - mimxrt1060_evkb
+      - mimxrt1064_evk
       - stm32h573i_dk
       - esp_wrover_kit
       - native_sim

@@ -223,7 +223,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
     if ((astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)
@@ -305,7 +305,7 @@ exit:
     }
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
     return astarte_res;
 }
@@ -316,7 +316,7 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
     switch (astarte_mqtt->connection_state) {
@@ -347,7 +347,7 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
 exit:
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
     return astarte_res;
 }
@@ -358,7 +358,7 @@ astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
     if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
@@ -389,7 +389,7 @@ astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char
 exit:
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
     return astarte_res;
 }
@@ -401,7 +401,7 @@ astarte_result_t astarte_mqtt_publish(
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
     if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
@@ -432,7 +432,7 @@ astarte_result_t astarte_mqtt_publish(
 exit:
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
     return astarte_res;
 }
@@ -444,7 +444,7 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
     // If in the connecting phase check that the connection timeout has not elapsed
@@ -491,11 +491,11 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
         int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
         int32_t timeout = MIN(astarte_mqtt->poll_timeout_ms, keepalive);
         mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-        ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+        ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
         __ASSERT_NO_MSG(mutex_rc == 0);
         int socket_rc = zsock_poll(&socket_fd, 1, timeout);
         mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-        ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex lock failed with %d", mutex_rc);
+        ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
         __ASSERT_NO_MSG(mutex_rc == 0);
         if (socket_rc < 0) {
             ASTARTE_LOG_ERR("Poll error: %d", errno);
@@ -517,7 +517,7 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 exit:
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc == 0, "System mutex unlock failed with %d", mutex_rc);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
     return astarte_res;
 }

@@ -26,6 +26,17 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
  *        Defines, constants and typedef        *
  ***********************************************/
 
+/** @brief Connection statuses for the Astarte device. */
+enum connection_states
+{
+    /** @brief The device has never been connected or has been disconnected. */
+    DEVICE_DISCONNECTED = 0U,
+    /** @brief The device is connecting to Astarte. */
+    DEVICE_CONNECTING,
+    /** @brief The device has fully connected to Astarte. */
+    DEVICE_CONNECTED,
+};
+
 /**
  * @brief Internal struct for an instance of an Astarte device.
  *
@@ -61,6 +72,8 @@ struct astarte_device
     astarte_device_property_unset_cbk_t property_unset_cbk;
     /** @brief (optional) User data to pass to all the set callbacks. */
     void *cbk_user_data;
+    /** @brief Connection state of the Astarte device. */
+    enum connection_states connection_state;
 };
 
 /** @brief Generic prefix to be used for all MQTT topics. */
@@ -228,6 +241,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
 
+    // Initializing the connection hashmap and status flags
+    handle->connection_state = DEVICE_DISCONNECTED;
+
     ASTARTE_LOG_DBG("Initializing introspection");
     res = introspection_init(&handle->introspection);
     if (res != ASTARTE_RESULT_OK) {
@@ -268,7 +284,10 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
-    astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
+    res = astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
+    if (res != ASTARTE_RESULT_OK) {
+        goto failure;
+    }
 
     *device = handle;
 
@@ -314,7 +333,22 @@ astarte_result_t astarte_device_add_interface(
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 {
-    return astarte_mqtt_connect(&device->astarte_mqtt);
+    switch (device->connection_state) {
+        case DEVICE_CONNECTING:
+            ASTARTE_LOG_WRN("Called connect function when device is connecting.");
+            return ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING;
+        case DEVICE_CONNECTED:
+            ASTARTE_LOG_WRN("Called connect function when device is already connected.");
+            return ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTED;
+        default: // Other states: (DEVICE_DISCONNECTED)
+            break;
+    }
+
+    astarte_result_t astarte_rc = astarte_mqtt_connect(&device->astarte_mqtt);
+    if (astarte_rc == ASTARTE_RESULT_OK) {
+        device->connection_state = DEVICE_CONNECTING;
+    }
+    return astarte_rc;
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
@@ -324,6 +358,21 @@ astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
 
 astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 {
+    if ((device->connection_state == DEVICE_CONNECTING)
+        && astarte_mqtt_is_connected(&device->astarte_mqtt)
+        && !astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+
+        if (device->connection_cbk) {
+            astarte_device_connection_event_t event = {
+                .device = device,
+                .user_data = device->cbk_user_data,
+            };
+
+            device->connection_cbk(event);
+        }
+        device->connection_state = DEVICE_CONNECTED;
+    }
+
     return astarte_mqtt_poll(&device->astarte_mqtt);
 }
 
@@ -331,6 +380,11 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_value_t value, const int64_t *timestamp,
     uint8_t qos)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     astarte_bson_serializer_handle_t bson = astarte_bson_serializer_new();
     if (!bson) {
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
@@ -373,6 +427,11 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_value_pair_t *values,
     size_t values_length, const int64_t *timestamp, uint8_t qos)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     astarte_bson_serializer_handle_t outer_bson = astarte_bson_serializer_new();
     astarte_bson_serializer_handle_t inner_bson = astarte_bson_serializer_new();
     if ((!outer_bson) || (!inner_bson)) {
@@ -433,28 +492,28 @@ exit:
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_value_t value)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_stream_individual(device, interface_name, path, value, NULL, 2);
 }
 
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called unset property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return publish_data(device, interface_name, path, "", 0, 2);
 }
 
 void on_connected(astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connack_param)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
-
-    if (device->connection_cbk) {
-        astarte_device_connection_event_t event = {
-            .device = device,
-            .session_present = connack_param.session_present_flag,
-            .user_data = device->cbk_user_data,
-        };
-
-        device->connection_cbk(event);
-    }
 
     if (connack_param.session_present_flag != 0) {
         return;
@@ -464,6 +523,8 @@ void on_connected(astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connac
     send_introspection(device);
     send_emptycache(device);
     // TODO: send device owned props
+
+    device->connection_state = DEVICE_CONNECTING;
 }
 
 void on_disconnected(astarte_mqtt_t *astarte_mqtt)
@@ -478,6 +539,8 @@ void on_disconnected(astarte_mqtt_t *astarte_mqtt)
 
         device->disconnection_cbk(event);
     }
+
+    device->connection_state = DEVICE_DISCONNECTED;
 }
 
 void on_incoming(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_len,
@@ -737,6 +800,7 @@ static astarte_result_t update_client_certificate(astarte_device_handle_t device
 
 static void setup_subscriptions(astarte_device_handle_t device)
 {
+    uint16_t message_id = 0;
     char prop_topic[MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN + 1] = { 0 };
     int snprintf_rc = snprintf(prop_topic, MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN + 1,
         MQTT_TOPIC_PREFIX "%s" MQTT_CONTROL_CONSUMER_PROP_TOPIC_SUFFIX, device->device_id);
@@ -744,7 +808,8 @@ static void setup_subscriptions(astarte_device_handle_t device)
         ASTARTE_LOG_ERR("Error encoding properties subscription topic.");
         return;
     }
-    astarte_result_t mqtt_res = astarte_mqtt_subscribe(&device->astarte_mqtt, prop_topic);
+    astarte_result_t mqtt_res
+        = astarte_mqtt_subscribe(&device->astarte_mqtt, prop_topic, 2, &message_id);
     if (mqtt_res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", prop_topic);
         return;
@@ -764,7 +829,8 @@ static void setup_subscriptions(astarte_device_handle_t device)
                 continue;
             }
 
-            astarte_result_t mqtt_res = astarte_mqtt_subscribe(&device->astarte_mqtt, topic);
+            astarte_result_t mqtt_res
+                = astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, &message_id);
             free(topic);
             if (mqtt_res != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
@@ -802,8 +868,9 @@ static void send_introspection(astarte_device_handle_t device)
 
     ASTARTE_LOG_DBG("Publishing introspection: %s", introspection_str);
 
+    uint16_t message_id = 0;
     astarte_result_t mqtt_res = astarte_mqtt_publish(
-        &device->astarte_mqtt, topic, introspection_str, strlen(introspection_str), 2);
+        &device->astarte_mqtt, topic, introspection_str, strlen(introspection_str), 2, &message_id);
     if (mqtt_res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing introspection.");
     }
@@ -823,8 +890,9 @@ static void send_emptycache(astarte_device_handle_t device)
     }
     ASTARTE_LOG_DBG("Sending emptyCache to %s", topic);
 
+    uint16_t message_id = 0;
     astarte_result_t mqtt_res
-        = astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2);
+        = astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2, &message_id);
     if (mqtt_res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing empty cache.");
     }
@@ -852,7 +920,8 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    astarte_result_t res = astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos);
+    astarte_result_t res
+        = astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos, NULL);
     free(topic);
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing data.");

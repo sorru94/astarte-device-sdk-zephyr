@@ -15,6 +15,7 @@
 #include "astarte_device_sdk/result.h"
 
 #include <zephyr/net/mqtt.h>
+#include <zephyr/sys/hash_map.h>
 
 #include "astarte_device_sdk/pairing.h"
 
@@ -36,6 +37,9 @@ typedef struct astarte_mqtt astarte_mqtt_t;
 
 /** @brief Function pointer to be used for client certificate refresh. */
 typedef astarte_result_t (*astarte_mqtt_refresh_client_cert_cbk_t)(astarte_mqtt_t *astarte_mqtt);
+
+/** @brief Function pointer to be used for signaling a message has been delivered. */
+typedef void (*astarte_mqtt_msg_delivered_cbk_t)(astarte_mqtt_t *astarte_mqtt, uint16_t message_id);
 
 /** @brief Connection statuses for the Astarte MQTT client. */
 typedef enum
@@ -67,6 +71,8 @@ typedef struct
     char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
     /** @brief Callback used to check if the client certificate is valid. */
     astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
+    /** @brief Callback used to check if transmitted messages have been delivered. */
+    astarte_mqtt_msg_delivered_cbk_t msg_delivered_cbk;
 } astarte_mqtt_config_t;
 
 /**
@@ -78,8 +84,6 @@ struct astarte_mqtt
     struct sys_mutex mutex;
     /** @brief Zephyr MQTT client handle. */
     struct mqtt_client client;
-    /** @brief Last transmitted message ID. */
-    uint16_t message_id;
     /** @brief Timepoint to be used to check a connection timeout. */
     k_timepoint_t connection_timepoint;
     /** @brief Timeout for socket polls before connection to an MQTT broker. */
@@ -100,6 +104,20 @@ struct astarte_mqtt
     astarte_mqtt_connection_states_t connection_state;
     /** @brief Callback used to check if the client certificate is valid. */
     astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
+    /** @brief Callback used to check if transmitted messages have been delivered. */
+    astarte_mqtt_msg_delivered_cbk_t msg_delivered_cbk;
+    /** @brief Configuration struct for the hashmap used to cache outgoing MQTT messages. */
+    struct sys_hashmap_config out_msg_map_config;
+    /** @brief Data struct for the hashmap used to cache outgoing MQTT messages. */
+    struct sys_hashmap_data out_msg_map_data;
+    /** @brief Main struct for the hashmap used to cache outgoing MQTT messages. */
+    struct sys_hashmap out_msg_map;
+    /** @brief Configuration struct for the hashmap used to cache incoming MQTT messages. */
+    struct sys_hashmap_config in_msg_map_config;
+    /** @brief Data struct for the hashmap used to cache incoming MQTT messages. */
+    struct sys_hashmap_data in_msg_map_data;
+    /** @brief Main struct for the hashmap used to cache incoming MQTT messages. */
+    struct sys_hashmap in_msg_map;
 };
 
 #ifdef __cplusplus
@@ -111,8 +129,9 @@ extern "C" {
  *
  * @param[in] cfg Handle to the configuration for the Astarte MQTT client instance.
  * @param[out] astarte_mqtt Handle to the Astarte MQTT client instance.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt);
+astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt);
 
 /**
  * @brief Start the connection procedure for the client to the MQTT broker.
@@ -125,6 +144,14 @@ void astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *astarte_mqtt)
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt);
+
+/**
+ * @brief Query the connection status of the MQTT client.
+ *
+ * @param[in] astarte_mqtt Handle to the Astarte MQTT client instance.
+ * @return True if MQTT client is connected, false otherwise.
+ */
+bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt);
 
 /**
  * @brief Disconnect the MQTT client from the broker.
@@ -142,9 +169,13 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt);
  *
  * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
  * @param[in] topic Topic to use for the subscription.
+ * @param[in] max_qos Maximum QoS level at which the server can send application messages.
+ * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
+ * message delivered callback to wait for delivery of messages.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char *topic);
+astarte_result_t astarte_mqtt_subscribe(
+    astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id);
 
 /**
  * @brief Publish data to an MQTT topic.
@@ -154,10 +185,12 @@ astarte_result_t astarte_mqtt_subscribe(astarte_mqtt_t *astarte_mqtt, const char
  * @param[in] data Buffer of data to publish.
  * @param[in] data_size Size of the buffer of data to publish in Bytes.
  * @param[in] qos QoS to be used for the publish.
+ * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
+ * message delivered callback to wait for delivery of messages.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_publish(
-    astarte_mqtt_t *astarte_mqtt, const char *topic, void *data, size_t data_size, int qos);
+astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
+    size_t data_size, int qos, uint16_t *out_message_id);
 
 /**
  * @brief Poll the MQTT client.
@@ -169,6 +202,14 @@ astarte_result_t astarte_mqtt_publish(
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt);
+
+/**
+ * @brief Check if the MQTT client has any outgoing messages with QoS > 0 pending an acknoledgment.
+ *
+ * @param[in] astarte_mqtt Handle to the Astarte MQTT client instance.
+ * @return True if messages are pending, false otherwise.
+ */
+bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt);
 
 #ifdef __cplusplus
 }

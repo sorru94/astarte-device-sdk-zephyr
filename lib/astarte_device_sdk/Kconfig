@@ -14,6 +14,8 @@ config ASTARTE_DEVICE_SDK
 	select MQTT_LIB_TLS
 	select MQTT_CLEAN_SESSION
 	select BASE64
+	select SYS_HASH_MAP
+	select SYS_HASH_FUNC32
 	help
 	  This option enables the Astarte device SDK library
 
@@ -133,6 +135,18 @@ config ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE
 	help
 	  Use this option to increase/decrease the buffer size where the TLS client certificate is
 	  stored.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE
+	int "Maximum size for the MQTT caching hashmaps"
+	depends on ASTARTE_DEVICE_SDK
+	default 50
+	help
+	  Sets the maximum size for the MQTT caching hashmaps. The caching hashmaps are used to retain
+	  messages for QoS higher than 0 in order to enable retransmission and avoid duplication.
+	  Three caching hashmaps are present, one for subscription messages, one for incoming publish
+	  messages and the last one for outgoing publish messages.
+	  Increase this value when sending/receiving large bursts of messages with high QoS on slow
+	  networks.
 
 endmenu
 

@@ -24,3 +24,5 @@ concat_if_exists(${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay EXTRA_DTC_OVE
 
 # conditional add specific board configuration file
 concat_if_exists(${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.conf EXTRA_CONF_FILE)
+
+include(${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.cmake OPTIONAL)

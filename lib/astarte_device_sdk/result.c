@@ -6,10 +6,12 @@
 
 #include "astarte_device_sdk/result.h"
 
+// clang-format off
 #define RES_TBL_IT(res)                                                                            \
     {                                                                                              \
         res, #res                                                                                  \
     }
+// clang-format on
 
 /** @brief Astarte result message struct. Matches a code to a string. */
 typedef struct

@@ -2,6 +2,5 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# Ethernet settings
-CONFIG_NET_L2_ETHERNET=y
-CONFIG_NET_L2_ETHERNET_MGMT=y
+set(BOARD_FLASH_RUNNER linkserver)
+set(BOARD_DEBUG_RUNNER linkserver)

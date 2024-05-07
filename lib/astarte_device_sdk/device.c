@@ -601,7 +601,7 @@ static void trigger_data_callback(astarte_device_handle_t device, const char *in
         .user_data = device->cbk_user_data,
     };
 
-    if ((interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) && (!data && data_len == 0)) {
+    if ((interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) && (data_len == 0)) {
         if (device->property_unset_cbk) {
             device->property_unset_cbk(data_event);
         } else {

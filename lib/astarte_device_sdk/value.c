@@ -146,7 +146,7 @@ static bool astarte_value_check_if_bson_type_is_mapping_type(
  ***********************************************/
 
 astarte_result_t astarte_value_serialize(
-    astarte_bson_serializer_handle_t bson, const char *key, astarte_value_t value)
+    astarte_bson_serializer_t *bson, const char *key, astarte_value_t value)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
 
@@ -225,7 +225,7 @@ astarte_result_t astarte_value_serialize(
 }
 
 astarte_result_t astarte_value_pair_serialize(
-    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_length)
+    astarte_bson_serializer_t *bson, astarte_value_pair_t *values, size_t values_length)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
     for (size_t i = 0; i < values_length; i++) {

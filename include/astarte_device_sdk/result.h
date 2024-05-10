@@ -79,7 +79,13 @@ typedef enum
     /** @brief Could not find the mapping corresponding to a path in an interface. */
     ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 24,
     /** @brief Calling an MQTT API while the client is not ready. */
-    ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 25
+    ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 25,
+    /** @brief Attempting to connect an MQTT client already connected. */
+    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTED = 26,
+    /** @brief Attempting to connect an MQTT client already connecting. */
+    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING = 27,
+    /** @brief Calling a device API while the device is not ready. */
+    ASTARTE_RESULT_DEVICE_NOT_READY = 28
 } astarte_result_t;
 
 #ifdef __cplusplus

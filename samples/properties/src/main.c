@@ -250,7 +250,8 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
 
 static void connection_callback(astarte_device_connection_event_t event)
 {
-    LOG_INF("Astarte device connected, session_present: %d", event.session_present); // NOLINT
+    (void) event;
+    LOG_INF("Astarte device connected."); // NOLINT
 }
 
 static void disconnection_callback(astarte_device_disconnection_event_t event)

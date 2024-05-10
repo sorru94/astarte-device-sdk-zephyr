@@ -19,6 +19,9 @@
 /** @brief Wrapper for the LOG_MODULE_REGISTER macro. */
 #define ASTARTE_LOG_MODULE_REGISTER(...) LOG_MODULE_REGISTER(__VA_ARGS__) // NOLINT
 
+/** @brief Wrapper for the LOG_MODULE_DECLARE macro. */
+#define ASTARTE_LOG_MODULE_DECLARE(...) LOG_MODULE_DECLARE(__VA_ARGS__) // NOLINT
+
 /** @brief Wrapper for the LOG_DBG macro. */
 #define ASTARTE_LOG_DBG(...) LOG_DBG(__VA_ARGS__) // NOLINT
 

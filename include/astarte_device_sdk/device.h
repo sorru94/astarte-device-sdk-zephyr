@@ -36,7 +36,6 @@ typedef struct astarte_device *astarte_device_handle_t;
 typedef struct
 {
     astarte_device_handle_t device; /**< Handle to the device triggering the event */
-    int session_present; /**< MQTT session present flag */
     void *user_data; /**< User data configured during device initialization */
 } astarte_device_connection_event_t;
 

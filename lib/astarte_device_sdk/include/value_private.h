@@ -31,7 +31,7 @@ extern "C" {
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_value_serialize(
-    astarte_bson_serializer_handle_t bson, const char *key, astarte_value_t value);
+    astarte_bson_serializer_t *bson, const char *key, astarte_value_t value);
 
 /**
  * @brief Appends the content of an array of #astarte_value_pair_t to a BSON document.
@@ -42,7 +42,7 @@ astarte_result_t astarte_value_serialize(
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_value_pair_serialize(
-    astarte_bson_serializer_handle_t bson, astarte_value_pair_t *values, size_t values_length);
+    astarte_bson_serializer_t *bson, astarte_value_pair_t *values, size_t values_length);
 
 /**
  * @brief Deserialize a BSON element to an #astarte_value_t.

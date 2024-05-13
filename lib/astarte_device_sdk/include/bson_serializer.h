@@ -14,35 +14,43 @@
 
 #include "astarte_device_sdk/result.h"
 
-/**
- * @brief Typedefined serializer handle.
- */
-typedef struct astarte_bson_serializer *astarte_bson_serializer_handle_t;
+/** @brief Data struct for a serializer instance. */
+typedef struct
+{
+    /** @brief Max capacity for the byte array containing the serialized data. */
+    size_t capacity;
+    /** @brief Size of the serialized data. */
+    size_t size;
+    /** @brief Byte array containing the serialized data. */
+    uint8_t *buf;
+} astarte_bson_serializer_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief create a new instance of the BSON serializer.
+ * @brief Initialize an instance of the BSON serializer.
  *
- * @details This function has to be called to initialize and allocate memory for an instance of the
- * BSON serializer.
- * @return The handle to the initialized BSON serializer instance.
+ * @note This function dynamically allocates memory. Ensure #astarte_bson_serializer_destroy
+ * is always called once the serializer utility has ended.
+ *
+ * @param[in] bson An uninitialized serializer data struct that will be initialized.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error.
  */
-astarte_bson_serializer_handle_t astarte_bson_serializer_new(void);
+astarte_result_t astarte_bson_serializer_init(astarte_bson_serializer_t *bson);
 
 /**
- * @brief destroy given BSON serializer instance.
+ * @brief Destroy given BSON serializer instance.
  *
- * @details This function has to be called to destroy and free the memory used by a serializer
- * instance.
- * @param[in] bson a valid handle for the serializer instance that will be destroyed.
+ * @note This function will free the dynamic memory used by a serializer instance.
+ *
+ * @param[in, out] bson a valid handle for the serializer instance that will be destroyed.
  */
-void astarte_bson_serializer_destroy(astarte_bson_serializer_handle_t bson);
+void astarte_bson_serializer_destroy(astarte_bson_serializer_t *bson);
 
 /**
- * @brief getter for the BSON serializer internal buffer.
+ * @brief Getter for the BSON serializer internal buffer.
  *
  * @details This function might be used to get internal buffer without any data copy. The returned
  * buffer will be invalid after serializer destruction.
@@ -50,10 +58,10 @@ void astarte_bson_serializer_destroy(astarte_bson_serializer_handle_t bson);
  * @param[out] size the size of the internal buffer. Optional, pass NULL if not used.
  * @return Reference to the internal buffer.
  */
-const void *astarte_bson_serializer_get_document(astarte_bson_serializer_handle_t bson, int *size);
+const void *astarte_bson_serializer_get_serialized(astarte_bson_serializer_t bson, int *size);
 
 /**
- * @brief copy BSON serializer internal buffer to a different buffer.
+ * @brief Copy and return the BSON serializer internal buffer.
  *
  * @details This function should be used to get a copy of the BSON document data. The document
  * should be terminated by calling the append end of document function before calling this function.
@@ -64,8 +72,8 @@ const void *astarte_bson_serializer_get_document(astarte_bson_serializer_handle_
  * Optional, pass NULL if not used.
  * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
  */
-astarte_result_t astarte_bson_serializer_serialize_document(
-    astarte_bson_serializer_handle_t bson, void *out_buf, int out_buf_size, int *out_doc_size);
+astarte_result_t astarte_bson_serializer_get_serialized_copy(
+    astarte_bson_serializer_t bson, void *out_buf, int out_buf_size, int *out_doc_size);
 
 /**
  * @brief return the document size
@@ -74,7 +82,7 @@ astarte_result_t astarte_bson_serializer_serialize_document(
  * @param[in] bson a valid handle for the serializer instance.
  * @return Size in bytes for the serialized document.
  */
-size_t astarte_bson_serializer_document_size(astarte_bson_serializer_handle_t bson);
+size_t astarte_bson_serializer_get_serialized_size(astarte_bson_serializer_t bson);
 
 /**
  * @brief append end of document marker.
@@ -82,7 +90,7 @@ size_t astarte_bson_serializer_document_size(astarte_bson_serializer_handle_t bs
  * @details BSON document MUST be manually terminated with an end of document marker.
  * @param[in,out] bson a valid handle for the serializer instance.
  */
-void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_handle_t bson);
+void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson);
 
 /**
  * @brief append a double value
@@ -93,7 +101,7 @@ void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_hand
  * @param[in] value a double floating point value.
  */
 void astarte_bson_serializer_append_double(
-    astarte_bson_serializer_handle_t bson, const char *name, double value);
+    astarte_bson_serializer_t *bson, const char *name, double value);
 
 /**
  * @brief append an int32 value
@@ -104,7 +112,7 @@ void astarte_bson_serializer_append_double(
  * @param[in] value a 32 bits signed integer value.
  */
 void astarte_bson_serializer_append_int32(
-    astarte_bson_serializer_handle_t bson, const char *name, int32_t value);
+    astarte_bson_serializer_t *bson, const char *name, int32_t value);
 
 /**
  * @brief append an int64 value
@@ -115,7 +123,7 @@ void astarte_bson_serializer_append_int32(
  * @param[in] value a 64 bits signed integer value.
  */
 void astarte_bson_serializer_append_int64(
-    astarte_bson_serializer_handle_t bson, const char *name, int64_t value);
+    astarte_bson_serializer_t *bson, const char *name, int64_t value);
 
 /**
  * @brief append a binary blob value
@@ -127,7 +135,7 @@ void astarte_bson_serializer_append_int64(
  * @param[in] size blob size in bytes.
  */
 void astarte_bson_serializer_append_binary(
-    astarte_bson_serializer_handle_t bson, const char *name, const void *value, size_t size);
+    astarte_bson_serializer_t *bson, const char *name, const void *value, size_t size);
 
 /**
  * @brief append an UTF-8 string
@@ -138,7 +146,7 @@ void astarte_bson_serializer_append_binary(
  * @param[in] string a 0 terminated UTF-8 string.
  */
 void astarte_bson_serializer_append_string(
-    astarte_bson_serializer_handle_t bson, const char *name, const char *string);
+    astarte_bson_serializer_t *bson, const char *name, const char *string);
 
 /**
  * @brief append a date time value
@@ -149,7 +157,7 @@ void astarte_bson_serializer_append_string(
  * @param[in] epoch_millis a 64 bits unsigned integer storing date time in milliseconds since epoch.
  */
 void astarte_bson_serializer_append_datetime(
-    astarte_bson_serializer_handle_t bson, const char *name, uint64_t epoch_millis);
+    astarte_bson_serializer_t *bson, const char *name, uint64_t epoch_millis);
 
 /**
  * @brief append a boolean value
@@ -160,7 +168,7 @@ void astarte_bson_serializer_append_datetime(
  * @param[in] value 0 as false value, not 0 as true value.
  */
 void astarte_bson_serializer_append_boolean(
-    astarte_bson_serializer_handle_t bson, const char *name, bool value);
+    astarte_bson_serializer_t *bson, const char *name, bool value);
 
 /**
  * @brief append a sub-BSON document.
@@ -171,7 +179,7 @@ void astarte_bson_serializer_append_boolean(
  * @param[in] document a valid BSON document (that has been already terminated).
  */
 void astarte_bson_serializer_append_document(
-    astarte_bson_serializer_handle_t bson, const char *name, const void *document);
+    astarte_bson_serializer_t *bson, const char *name, const void *document);
 
 /**
  * @brief append a double array
@@ -184,7 +192,7 @@ void astarte_bson_serializer_append_document(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_double_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const double *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const double *arr, int count);
 
 /**
  * @brief append an int32 array
@@ -197,7 +205,7 @@ astarte_result_t astarte_bson_serializer_append_double_array(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_int32_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const int32_t *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const int32_t *arr, int count);
 
 /**
  * @brief append an int64 array
@@ -210,7 +218,7 @@ astarte_result_t astarte_bson_serializer_append_int32_array(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_int64_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const int64_t *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const int64_t *arr, int count);
 
 /**
  * @brief append a string array
@@ -223,7 +231,7 @@ astarte_result_t astarte_bson_serializer_append_int64_array(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_string_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const char *const *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const char *const *arr, int count);
 
 /**
  * @brief append a binary blob array
@@ -236,7 +244,7 @@ astarte_result_t astarte_bson_serializer_append_string_array(
  * @param[in] count the number of items stored in binary_array.
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
-astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_handle_t bson,
+astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serializer_t *bson,
     const char *name, const void *const *arr, const size_t *sizes, int count);
 
 /**
@@ -251,7 +259,7 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_datetime_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const int64_t *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const int64_t *arr, int count);
 
 /**
  * @brief append a boolean array
@@ -264,7 +272,7 @@ astarte_result_t astarte_bson_serializer_append_datetime_array(
  * @return ASTARTE_RESULT_INTERNAL_ERROR upon serialization failure. ASTARTE_RESULT_OK otherwise.
  */
 astarte_result_t astarte_bson_serializer_append_boolean_array(
-    astarte_bson_serializer_handle_t bson, const char *name, const bool *arr, int count);
+    astarte_bson_serializer_t *bson, const char *name, const bool *arr, int count);
 
 #ifdef __cplusplus
 }

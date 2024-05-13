@@ -175,7 +175,7 @@ mapping_definition_template = Template(
     r"""
     {
         .endpoint = "${endpoint}",
-        .regex_endpoint = "${regex_endpoint}",
+        .regex_endpoint = "^${regex_endpoint}$$",
         .type = ${type},
         .reliability = ${reliability},
         .explicit_timestamp = ${explicit_timestamp},

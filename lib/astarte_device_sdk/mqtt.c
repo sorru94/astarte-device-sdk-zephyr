@@ -9,7 +9,6 @@
 #include <zephyr/net/socket.h>
 #include <zephyr/net/tls_credentials.h>
 
-#include "device_private.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEVEL);
@@ -258,6 +257,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
     memcpy(astarte_mqtt->client_id, cfg->client_id, sizeof(astarte_mqtt->client_id));
     astarte_mqtt->refresh_client_cert_cbk = cfg->refresh_client_cert_cbk;
     astarte_mqtt->msg_delivered_cbk = cfg->msg_delivered_cbk;
+    astarte_mqtt->on_connected_cbk = cfg->on_connected_cbk;
+    astarte_mqtt->on_disconnected_cbk = cfg->on_disconnected_cbk;
+    astarte_mqtt->on_incoming_cbk = cfg->on_incoming_cbk;
 
     // Initialize the timepoint to an infinite future date
     astarte_mqtt->connection_timepoint = sys_timepoint_calc(K_FOREVER);
@@ -673,7 +675,7 @@ static void handle_connack_event(
     if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;
     }
-    on_connected(astarte_mqtt, connack);
+    astarte_mqtt->on_connected_cbk(astarte_mqtt, connack);
 }
 static void handle_disconnection_event(astarte_mqtt_t *astarte_mqtt)
 {
@@ -693,7 +695,7 @@ static void handle_disconnection_event(astarte_mqtt_t *astarte_mqtt)
         default:
             break;
     }
-    on_disconnected(astarte_mqtt);
+    astarte_mqtt->on_disconnected_cbk(astarte_mqtt);
 }
 static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publish_param publish)
 {
@@ -773,7 +775,7 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
         return;
     }
     memcpy(topic, publish.message.topic.topic.utf8, topic_len);
-    on_incoming(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
+    astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
     free(topic);
 }
 static void handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)

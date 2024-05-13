@@ -244,7 +244,6 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
     LOG_INF("Transmitting some data using the Astarte device."); // NOLINT
 
     const char *interface_name = org_astarteplatform_zephyr_examples_DeviceDatastream.name;
-    const int qos = 0;
 
     astarte_value_t values[UTILS_DATA_ELEMENTS]
         = { astarte_value_from_binaryblob(
@@ -286,12 +285,12 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
         "/string_endpoint",
         "/stringarray_endpoint",
     };
+    const int64_t tms = 1714748755;
 
     for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
         LOG_INF("Stream on %s:", paths[i]); // NOLINT
         utils_log_astarte_value(values[i]);
-        res = astarte_device_stream_individual(
-            device, interface_name, paths[i], values[i], NULL, qos);
+        res = astarte_device_stream_individual(device, interface_name, paths[i], values[i], &tms);
         if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Astarte device transmission failure."); // NOLINT
         }

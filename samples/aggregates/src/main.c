@@ -299,7 +299,7 @@ static void transmit_data(astarte_device_handle_t device)
 
     astarte_result_t res = astarte_device_stream_aggregated(device,
         org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", value_pairs,
-        ARRAY_SIZE(value_pairs), NULL, 0);
+        ARRAY_SIZE(value_pairs), NULL);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Error streaming the aggregate"); // NOLINT
     }

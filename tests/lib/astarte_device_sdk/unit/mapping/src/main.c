@@ -13,6 +13,7 @@
  * @note This should be run with the latest version of zephyr present on master (or 3.6.0)
  */
 
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -34,7 +35,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_no_pattern)
     astarte_result_t res = ASTARTE_RESULT_OK;
     astarte_mapping_t mapping = {
         .endpoint = "/binaryblob_endpoint",
-        .regex_endpoint = "/binaryblob_endpoint$",
+        .regex_endpoint = "^/binaryblob_endpoint$",
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
@@ -58,7 +59,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_no_pattern)
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 
     const char prefixed_path[] = "prefix/binaryblob_endpoint";
-    res = astarte_mapping_check_path(mapping, suffixed_path);
+    res = astarte_mapping_check_path(mapping, prefixed_path);
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 }
 
@@ -67,7 +68,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_single_pattern
     astarte_result_t res = ASTARTE_RESULT_OK;
     astarte_mapping_t mapping = {
         .endpoint = "/%{sensor_id}/double_endpoint",
-        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
+        .regex_endpoint = "^/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint$",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -96,8 +97,8 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_three_patterns
     astarte_result_t res = ASTARTE_RESULT_OK;
     astarte_mapping_t mapping = {
         .endpoint = "/%{sensor_1_id}/double/%{sensor_2_id}/endpoint/%{sensor_3_id}",
-        .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double/[a-zA-Z_]+[a-zA-Z0-9_]*/endpoint/"
-                          "[a-zA-Z_]+[a-zA-Z0-9_]*",
+        .regex_endpoint = "^/[a-zA-Z_]+[a-zA-Z0-9_]*/double/[a-zA-Z_]+[a-zA-Z0-9_]*/endpoint/"
+                          "[a-zA-Z_]+[a-zA-Z0-9_]*$",
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
         .explicit_timestamp = false,
@@ -127,4 +128,69 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_three_patterns
     const char incorrect_second_param_path[] = "/sensor_42/double/11/endpoint/subsensor_54";
     res = astarte_mapping_check_path(mapping, incorrect_second_param_path);
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
+}
+
+ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_value_double)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_mapping_t mapping = {
+        .endpoint = "/%{sensor_id}/double_endpoint",
+        .regex_endpoint = "^/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint$",
+        .type = ASTARTE_MAPPING_TYPE_DOUBLE,
+        .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
+        .explicit_timestamp = false,
+        .allow_unset = true,
+    };
+
+    astarte_value_t double_value_ok = astarte_value_from_double(42.3);
+    res = astarte_mapping_check_value(&mapping, double_value_ok);
+    zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
+
+    astarte_value_t double_value_nan = astarte_value_from_double(NAN);
+    res = astarte_mapping_check_value(&mapping, double_value_nan);
+    zassert_equal(
+        res, ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+
+    astarte_value_t double_value_inf = astarte_value_from_double(INFINITY);
+    res = astarte_mapping_check_value(&mapping, double_value_inf);
+    zassert_equal(
+        res, ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+
+    astarte_value_t integer_value = astarte_value_from_integer(42);
+    res = astarte_mapping_check_value(&mapping, integer_value);
+    zassert_equal(
+        res, ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+}
+
+ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_value_doublearray)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_mapping_t mapping = {
+        .endpoint = "/%{sensor_id}/doublearray_endpoint",
+        .regex_endpoint = "^/[a-zA-Z_]+[a-zA-Z0-9_]*/doublearray_endpoint$",
+        .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
+        .reliability = ASTARTE_MAPPING_RELIABILITY_UNIQUE,
+        .explicit_timestamp = false,
+        .allow_unset = true,
+    };
+
+    double doublearray_ok[] = { 12.4, 23.4 };
+    astarte_value_t doublearray_value_ok
+        = astarte_value_from_double_array(doublearray_ok, ARRAY_SIZE(doublearray_ok));
+    res = astarte_mapping_check_value(&mapping, doublearray_value_ok);
+    zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
+
+    double doublearray_nan[] = { 12.4, NAN, 23.4 };
+    astarte_value_t doublearray_value_nan
+        = astarte_value_from_double_array(doublearray_nan, ARRAY_SIZE(doublearray_nan));
+    res = astarte_mapping_check_value(&mapping, doublearray_value_nan);
+    zassert_equal(
+        res, ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+
+    double doublearray_inf[] = { 12.4, INFINITY, 23.4 };
+    astarte_value_t doublearray_value_inf
+        = astarte_value_from_double_array(doublearray_inf, ARRAY_SIZE(doublearray_inf));
+    res = astarte_mapping_check_value(&mapping, doublearray_value_inf);
+    zassert_equal(
+        res, ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 }

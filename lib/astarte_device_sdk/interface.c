@@ -75,3 +75,30 @@ exit:
     free(fullpath);
     return res;
 }
+
+astarte_result_t astarte_interface_get_qos(
+    const astarte_interface_t *interface, const char *path, int *qos)
+{
+    astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
+    if (!qos) {
+        ASTARTE_LOG_ERR("Missing QoS parameter in introspection_get_qos.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    const astarte_mapping_t *mapping = NULL;
+    if (interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
+        astarte_rc = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+        if (astarte_rc != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Couldn't find mapping in interface %s for path %s.", interface->name, path);
+            return astarte_rc;
+        }
+    } else {
+        // All the QoS are the same in an aggregated interface, as such taking any of them works.
+        mapping = interface->mappings;
+    }
+
+    *qos = mapping->reliability;
+
+    return ASTARTE_RESULT_OK;
+}

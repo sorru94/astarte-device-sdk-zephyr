@@ -14,7 +14,7 @@
 #include "astarte_device_sdk/result.h"
 #include "astarte_device_sdk/value.h"
 #include "crypto.h"
-#include "device_checks.h"
+#include "data_validation.h"
 #include "interface_private.h"
 #include "introspection.h"
 #include "log.h"
@@ -253,6 +253,7 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
     }
     return res;
 }
+
 static void on_connected_handler(
     astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connack_param)
 {
@@ -269,6 +270,7 @@ static void on_connected_handler(
 
     device->connection_state = DEVICE_CONNECTING;
 }
+
 static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
@@ -284,6 +286,7 @@ static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 
     device->connection_state = DEVICE_DISCONNECTED;
 }
+
 static void on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_len,
     const char *data, size_t data_len)
 {
@@ -522,11 +525,24 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
         goto exit;
     }
 
-    int qos = 0;
-    astarte_rc = device_checks_individual_datastream(
-        &device->introspection, interface_name, path, value, timestamp, &qos);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
+        astarte_rc = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        goto exit;
+    }
+
+    astarte_rc = data_validation_individual_datastream(interface, path, value, timestamp);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device individual data validation failed.");
+        goto exit;
+    }
+
+    int qos = 0;
+    astarte_rc = astarte_interface_get_qos(interface, path, &qos);
+    if (astarte_rc != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed getting QoS for individual data streaming.");
         goto exit;
     }
 
@@ -580,12 +596,26 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
         goto exit;
     }
 
-    int qos = 0;
-    astarte_rc = device_checks_aggregated_datastream(
-        &device->introspection, interface_name, path, values, values_length, timestamp, &qos);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
+        astarte_rc = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        goto exit;
+    }
+
+    astarte_rc
+        = data_validation_aggregated_datastream(interface, path, values, values_length, timestamp);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");
-        return astarte_rc;
+        goto exit;
+    }
+
+    int qos = 0;
+    astarte_rc = astarte_interface_get_qos(interface, NULL, &qos);
+    if (astarte_rc != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed getting QoS for aggregated data streaming.");
+        goto exit;
     }
 
     astarte_rc = astarte_bson_serializer_init(&outer_bson);
@@ -657,8 +687,14 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    astarte_result_t astarte_rc
-        = device_checks_set_property(&device->introspection, interface_name, path, value);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+    }
+
+    astarte_result_t astarte_rc = data_validation_set_property(interface, path, value);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Property data validation failed.");
         return astarte_rc;
@@ -675,8 +711,14 @@ astarte_result_t astarte_device_unset_property(
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    astarte_result_t astarte_rc
-        = device_checks_unset_property(&device->introspection, interface_name, path);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+    }
+
+    astarte_result_t astarte_rc = data_validation_unset_property(interface, path);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device property unset failed.");
         return astarte_rc;
@@ -804,8 +846,15 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
 
 static void on_unset_property(astarte_device_handle_t device, astarte_device_data_event_t event)
 {
-    astarte_result_t astarte_rc
-        = device_checks_unset_property(&device->introspection, event.interface_name, event.path);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, event.interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR(
+            "Could not find interface in device introspection (%s).", event.interface_name);
+        return;
+    }
+
+    astarte_result_t astarte_rc = data_validation_unset_property(interface, event.path);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property unset failed: %s.", astarte_result_to_name(astarte_rc));
         return;
@@ -821,8 +870,15 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
 static void on_set_property(
     astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value)
 {
-    astarte_result_t astarte_rc = device_checks_set_property(
-        &device->introspection, data_event.interface_name, data_event.path, value);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, data_event.interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR(
+            "Could not find interface in device introspection (%s).", data_event.interface_name);
+        return;
+    }
+
+    astarte_result_t astarte_rc = data_validation_set_property(interface, data_event.path, value);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property data validation failed.");
         return;
@@ -842,8 +898,16 @@ static void on_set_property(
 static void on_datastream_individual(
     astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value)
 {
-    astarte_result_t astarte_rc = device_checks_individual_datastream(
-        &device->introspection, data_event.interface_name, data_event.path, value, NULL, NULL);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, data_event.interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR(
+            "Couldn't find interface in device introspection (%s).", data_event.interface_name);
+        return;
+    }
+
+    astarte_result_t astarte_rc
+        = data_validation_individual_datastream(interface, data_event.path, value, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
     if (astarte_rc == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
@@ -867,8 +931,16 @@ static void on_datastream_individual(
 static void on_datastream_aggregated(astarte_device_handle_t device,
     astarte_device_data_event_t data_event, astarte_value_pair_t *values, size_t values_length)
 {
-    astarte_result_t astarte_rc = device_checks_aggregated_datastream(&device->introspection,
-        data_event.interface_name, data_event.path, values, values_length, NULL, NULL);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, data_event.interface_name);
+    if (!interface) {
+        ASTARTE_LOG_ERR(
+            "Couldn't find interface in device introspection (%s).", data_event.interface_name);
+        return;
+    }
+
+    astarte_result_t astarte_rc = data_validation_aggregated_datastream(
+        interface, data_event.path, values, values_length, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
     if (astarte_rc == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {

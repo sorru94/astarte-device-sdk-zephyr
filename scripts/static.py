@@ -99,8 +99,6 @@ class WestCommandStatic(WestCommand):
             "$PWD/skipfile.txt",
         ]
         codechecker_exports = ["json", args.export] if args.export else ["json"]
-        # TODO: there might be a way to avoid using the flag -DCONFIG_MINIMAL_LIBC=y
-        # See: https://github.com/zephyrproject-rtos/zephyr/issues/62278
         cmd = [
             "west build",
             f"-p {args.pristine}",
@@ -113,6 +111,8 @@ class WestCommandStatic(WestCommand):
         subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=180, check=True)
 
         has_reports = False
+        summary = {"UNSPECIFIED": 0, "STYLE": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+
         result_file = (
             module_path.joinpath("build")
             .joinpath("sca")
@@ -131,6 +131,8 @@ class WestCommandStatic(WestCommand):
                 file = report.get("file", {"path": None}).get("path", None)
                 line = report.get("line", None)
                 column = report.get("column", None)
+
+                summary[severity] += 1
 
                 pretty_msg += [
                     stylize(
@@ -151,4 +153,12 @@ class WestCommandStatic(WestCommand):
                 log.inf("\n" + "\n".join(pretty_msg))
 
         if has_reports:
+            final_message = ["\nSummary for the diagnosed issues: "] + [
+                stylize(f"{s}", severity_colours[s]) + f": {n} issues detected"
+                for s, n in summary.items()
+                if n
+            ]
+            log.inf("\n - ".join(final_message) + "\n")
             sys.exit(1)
+
+        log.inf(stylize("No issue detected.", fore("green")))

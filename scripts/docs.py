@@ -16,6 +16,8 @@ import os
 import subprocess
 from pathlib import Path
 
+from colored import fore, stylize
+from west import log  # use this for user output
 from west.commands import WestCommand  # your extension must subclass this
 
 # from west import log  # use this for user output
@@ -79,6 +81,7 @@ class WestCommandDocs(WestCommand):
         """
         module_path = Path(self.topdir).joinpath("astarte-device-sdk-zephyr")
         if args.clean:
+            log.inf(stylize("make -C doc clean", fore("cyan")))
             subprocess.run(
                 "make -C doc clean",
                 shell=True,
@@ -91,6 +94,7 @@ class WestCommandDocs(WestCommand):
                     ASTARTE_DEVICE_SDK_EXTENDED_DOCS="yes" if args.extended else "no",
                 ),
             )
+        log.inf(stylize("make -C doc doxygen", fore("cyan")))
         subprocess.run(
             "make -C doc doxygen",
             shell=True,

@@ -179,7 +179,7 @@ mapping_definition_template = Template(
         .type = ${type},
         .reliability = ${reliability},
         .explicit_timestamp = ${explicit_timestamp},
-        .allow_unset =  ${allow_unset},
+        .allow_unset = ${allow_unset},
     },"""
 )
 

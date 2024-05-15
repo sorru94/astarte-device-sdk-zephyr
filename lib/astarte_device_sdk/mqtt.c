@@ -183,6 +183,7 @@ static void mqtt_caching_retransmit_out_msg_handler(
             msg.message.payload.data = message.data;
             msg.message.payload.len = message.data_size;
             msg.message_id = message_id;
+            msg.dup_flag = 1U;
             ret = mqtt_publish(&astarte_mqtt->client, &msg);
             if (ret != 0) {
                 ASTARTE_LOG_ERR("MQTT publish failed (message ID %d), err: %d", message_id, ret);

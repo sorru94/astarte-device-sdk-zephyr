@@ -203,6 +203,13 @@ int main(void)
     k_timepoint_t disconnect_timepoint
         = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
     while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
+// Ensure the connectivity is still present
+#if defined(CONFIG_WIFI)
+        wifi_poll();
+#else
+        eth_poll();
+#endif
+
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 

@@ -166,6 +166,14 @@ int main(void)
             transmit_data(device);
             transmission_performed = true;
         }
+
+// Ensure the connectivity is still present
+#if defined(CONFIG_WIFI)
+        wifi_poll();
+#else
+        eth_poll();
+#endif
+
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 

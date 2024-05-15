@@ -51,11 +51,14 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 
 #define MAIN_THREAD_SLEEP_MS 500
 
-#define DEVICE_THREAD_FLAGS_TERMINATION 1U
+#define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static atomic_t device_thread_flags;
-K_THREAD_STACK_DEFINE(device_thread_stack_area, CONFIG_DEVICE_THREAD_STACK_SIZE);
-static struct k_thread device_thread_data;
+static atomic_t device_rx_thread_flags;
+K_THREAD_STACK_DEFINE(device_rx_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_rx_thread_data;
+
+K_THREAD_STACK_DEFINE(device_tx_thread_stack_area, CONFIG_DEVICE_TX_THREAD_STACK_SIZE);
+static struct k_thread device_tx_thread_data;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
@@ -63,13 +66,21 @@ static struct k_thread device_thread_data;
  ***********************************************/
 
 /**
- * @brief Entry point for the Astarte device thread.
+ * @brief Entry point for the Astarte device reception thread.
  *
  * @param device_handle Handle to the Astarte device.
  * @param unused1 Unused parameter.
  * @param unused2 Unused parameter.
  */
-static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+/**
+ * @brief Entry point for the Astarte device transmission thread.
+ *
+ * @param device_handle Handle to the Astarte device.
+ * @param unused1 Unused parameter.
+ * @param unused2 Unused parameter.
+ */
+static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
 /**
  * @brief Callback handler for Astarte connection events.
  *
@@ -94,14 +105,6 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
  * @param event Astarte device data event pointer.
  */
 static void properties_unset_events_handler(astarte_device_data_event_t event);
-/**
- * @brief Helper function used to set all the device properties.
- */
-static void set_all_properties(astarte_device_handle_t device);
-/**
- * @brief Helper function used to unset all the device properties.
- */
-static void unset_all_properties(astarte_device_handle_t device);
 
 /************************************************
  * Global functions definition
@@ -159,39 +162,32 @@ int main(void)
     }
 
     // Spawn a new thread for the Astarte device
-    k_thread_create(&device_thread_data, device_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_thread_stack_area), device_thread_entry_point, (void *) device,
-        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point,
+        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point,
+        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
     // Wait for a predefined operational time.
     k_timepoint_t disconnect_timepoint
         = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
-    k_timepoint_t set_timepoint
-        = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_SET_PROPERTIES_DELAY_SECONDS));
-    k_timepoint_t unset_timepoint
-        = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_UNSET_PROPERTIES_DELAY_SECONDS));
-    bool set_performed = false;
-    bool unset_performed = false;
     while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
-        if ((!set_performed) && (K_TIMEOUT_EQ(sys_timepoint_timeout(set_timepoint), K_NO_WAIT))) {
-            LOG_INF("Setting device properties."); // NOLINT
-            set_all_properties(device);
-            set_performed = true;
-        }
-        if ((!unset_performed)
-            && (K_TIMEOUT_EQ(sys_timepoint_timeout(unset_timepoint), K_NO_WAIT))) {
-            LOG_INF("Unsetting device properties."); // NOLINT
-            unset_all_properties(device);
-            unset_performed = true;
-        }
+// Ensure the connectivity is still present
+#if defined(CONFIG_WIFI)
+        wifi_poll();
+#else
+        eth_poll();
+#endif
+
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 
     // Signal to the Astarte thread that is should terminate.
-    atomic_set_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION);
+    atomic_set_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION);
 
     // Wait for the Astarte thread to terminate.
-    if (k_thread_join(&device_thread_data, K_FOREVER) != 0) {
+    if (k_thread_join(&device_rx_thread_data, K_FOREVER) != 0) {
         LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
     }
 
@@ -205,7 +201,7 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2)
+static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
     (void) unused1;
     (void) unused2;
@@ -225,7 +221,7 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
         return;
     }
 
-    while (!atomic_test_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION)) {
+    while (!atomic_test_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
 
         res = astarte_device_poll(device);
@@ -248,6 +244,89 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
     LOG_INF("Astarte thread will now be terminated."); // NOLINT
 
     k_sleep(K_MSEC(MSEC_PER_SEC));
+}
+
+static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
+{
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
+
+    (void) unused1;
+    (void) unused2;
+
+    const char *interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name;
+
+    const char *paths[UTILS_DATA_ELEMENTS] = {
+        "/sensor44/binaryblob_endpoint",
+        "/sensor44/binaryblobarray_endpoint",
+        "/sensor44/boolean_endpoint",
+        "/sensor44/booleanarray_endpoint",
+        "/sensor44/datetime_endpoint",
+        "/sensor44/datetimearray_endpoint",
+        "/sensor44/double_endpoint",
+        "/sensor44/doublearray_endpoint",
+        "/sensor44/integer_endpoint",
+        "/sensor44/integerarray_endpoint",
+        "/sensor44/longinteger_endpoint",
+        "/sensor44/longintegerarray_endpoint",
+        "/sensor44/string_endpoint",
+        "/sensor44/stringarray_endpoint",
+    };
+
+    // Wait for the predefined time
+    k_sleep(K_SECONDS(CONFIG_DEVICE_SET_PROPERTIES_DELAY_SECONDS));
+
+    LOG_INF("Setting some properties using the Astarte device."); // NOLINT
+
+    astarte_value_t values[UTILS_DATA_ELEMENTS]
+        = { astarte_value_from_binaryblob(
+                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
+              astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
+                  (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)),
+              astarte_value_from_boolean(utils_boolean_data),
+              astarte_value_from_boolean_array(
+                  (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)),
+              astarte_value_from_datetime(utils_unix_time_data),
+              astarte_value_from_datetime_array(
+                  (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data)),
+              astarte_value_from_double(utils_double_data),
+              astarte_value_from_double_array(
+                  (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)),
+              astarte_value_from_integer(utils_integer_data),
+              astarte_value_from_integer_array(
+                  (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)),
+              astarte_value_from_longinteger(utils_longinteger_data),
+              astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
+                  ARRAY_SIZE(utils_longinteger_array_data)),
+              astarte_value_from_string(utils_string_data),
+              astarte_value_from_string_array(
+                  (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
+
+    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
+        LOG_INF("Setting on %s:", paths[i]); // NOLINT
+        utils_log_astarte_value(values[i]);
+        res = astarte_device_set_property(device, interface_name, paths[i], values[i]);
+        if (res != ASTARTE_RESULT_OK) {
+            LOG_INF("Astarte device transmission failure."); // NOLINT
+        }
+    }
+
+    LOG_INF("Setting properties completed."); // NOLINT
+
+    // Wait for the predefined time
+    k_sleep(K_SECONDS(CONFIG_DEVICE_UNSET_PROPERTIES_DELAY_SECONDS));
+
+    LOG_INF("Unsetting some properties using the Astarte device."); // NOLINT
+
+    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
+        LOG_INF("Unsetting %s:", paths[i]); // NOLINT
+        res = astarte_device_unset_property(device, interface_name, paths[i]);
+        if (res != ASTARTE_RESULT_OK) {
+            LOG_INF("Astarte device transmission failure."); // NOLINT
+        }
+    }
+
+    LOG_INF("Unsetting properties completed."); // NOLINT
 }
 
 static void connection_callback(astarte_device_connection_event_t event)
@@ -281,91 +360,4 @@ static void properties_unset_events_handler(astarte_device_data_event_t event)
     const char *interface_name = event.interface_name;
     const char *path = event.path;
     LOG_INF("Property unset event, interface: %s, path: %s", interface_name, path); // NOLINT
-}
-
-static void set_all_properties(astarte_device_handle_t device)
-{
-    astarte_result_t res = ASTARTE_RESULT_OK;
-    const char *interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name;
-
-    astarte_value_t values[UTILS_DATA_ELEMENTS]
-        = { astarte_value_from_binaryblob(
-                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
-              astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
-                  (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)),
-              astarte_value_from_boolean(utils_boolean_data),
-              astarte_value_from_boolean_array(
-                  (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)),
-              astarte_value_from_datetime(utils_unix_time_data),
-              astarte_value_from_datetime_array(
-                  (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data)),
-              astarte_value_from_double(utils_double_data),
-              astarte_value_from_double_array(
-                  (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)),
-              astarte_value_from_integer(utils_integer_data),
-              astarte_value_from_integer_array(
-                  (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)),
-              astarte_value_from_longinteger(utils_longinteger_data),
-              astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
-                  ARRAY_SIZE(utils_longinteger_array_data)),
-              astarte_value_from_string(utils_string_data),
-              astarte_value_from_string_array(
-                  (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
-
-    const char *paths[UTILS_DATA_ELEMENTS] = {
-        "/sensor44/binaryblob_endpoint",
-        "/sensor44/binaryblobarray_endpoint",
-        "/sensor44/boolean_endpoint",
-        "/sensor44/booleanarray_endpoint",
-        "/sensor44/datetime_endpoint",
-        "/sensor44/datetimearray_endpoint",
-        "/sensor44/double_endpoint",
-        "/sensor44/doublearray_endpoint",
-        "/sensor44/integer_endpoint",
-        "/sensor44/integerarray_endpoint",
-        "/sensor44/longinteger_endpoint",
-        "/sensor44/longintegerarray_endpoint",
-        "/sensor44/string_endpoint",
-        "/sensor44/stringarray_endpoint",
-    };
-
-    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
-        LOG_INF("Setting on %s:", paths[i]); // NOLINT
-        utils_log_astarte_value(values[i]);
-        res = astarte_device_set_property(device, interface_name, paths[i], values[i]);
-        if (res != ASTARTE_RESULT_OK) {
-            LOG_INF("Astarte device transmission failure."); // NOLINT
-        }
-    }
-}
-
-static void unset_all_properties(astarte_device_handle_t device)
-{
-    astarte_result_t res = ASTARTE_RESULT_OK;
-    const char *interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name;
-
-    const char *paths[UTILS_DATA_ELEMENTS] = {
-        "/sensor44/binaryblob_endpoint",
-        "/sensor44/binaryblobarray_endpoint",
-        "/sensor44/boolean_endpoint",
-        "/sensor44/booleanarray_endpoint",
-        "/sensor44/datetime_endpoint",
-        "/sensor44/datetimearray_endpoint",
-        "/sensor44/double_endpoint",
-        "/sensor44/doublearray_endpoint",
-        "/sensor44/integer_endpoint",
-        "/sensor44/integerarray_endpoint",
-        "/sensor44/longinteger_endpoint",
-        "/sensor44/longintegerarray_endpoint",
-        "/sensor44/string_endpoint",
-        "/sensor44/stringarray_endpoint",
-    };
-
-    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
-        LOG_INF("Unsetting %s:", paths[i]); // NOLINT
-        res = astarte_device_unset_property(device, interface_name, paths[i]);
-        if (res != ASTARTE_RESULT_OK) {
-            LOG_INF("Astarte device transmission failure."); // NOLINT
-        }
-    }
 }

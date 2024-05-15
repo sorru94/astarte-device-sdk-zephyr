@@ -58,6 +58,22 @@ astarte_result_t astarte_interface_get_mapping_from_path(
 astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interface_t *interface,
     const char *path1, const char *path2, const astarte_mapping_t **mapping);
 
+/**
+ * @brief Retrieves the QoS for an interface's mapping.
+ *
+ * @details The QoS is a property of the mapping or interface depending on the interface type.
+ * For individual datastreams and properties the QoS is a property of each individual mapping, while
+ * for object datastreams the QoS is a property of the interface.
+ *
+ * @param[in] interface Interface to use for the operation.
+ * @param[in] path For the mapping for which the QoS will need to be extracted, can be NULL for
+ * aggregated interfaces.
+ * @param[out] qos The extracted QoS.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_interface_get_qos(
+    const astarte_interface_t *interface, const char *path, int *qos);
+
 #ifdef __cplusplus
 }
 #endif

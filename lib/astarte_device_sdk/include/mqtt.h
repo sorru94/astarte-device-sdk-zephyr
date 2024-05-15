@@ -30,9 +30,7 @@
     (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
         + ASTARTE_PAIRING_DEVICE_ID_LEN)
 
-/**
- * @brief Contains all the data related to a single MQTT client.
- */
+/** @brief Contains all the data related to a single MQTT client. */
 typedef struct astarte_mqtt astarte_mqtt_t;
 
 /** @brief Function pointer to be used for client certificate refresh. */
@@ -40,6 +38,17 @@ typedef astarte_result_t (*astarte_mqtt_refresh_client_cert_cbk_t)(astarte_mqtt_
 
 /** @brief Function pointer to be used for signaling a message has been delivered. */
 typedef void (*astarte_mqtt_msg_delivered_cbk_t)(astarte_mqtt_t *astarte_mqtt, uint16_t message_id);
+
+/** @brief Function pointer to notify the user that the MQTT connection has been established. */
+typedef void (*astarte_mqtt_on_connected_cbk_t)(
+    astarte_mqtt_t *astarte_mqtt, struct mqtt_connack_param connack_param);
+
+/** @brief Function pointer to notify the user that the MQTT connection has been terminated. */
+typedef void (*astarte_mqtt_on_disconnected_cbk_t)(astarte_mqtt_t *astarte_mqtt);
+
+/** @brief Function pointer to notify the user that an MQTT publish message has been received. */
+typedef void (*astarte_mqtt_on_incoming_cbk_t)(astarte_mqtt_t *astarte_mqtt, const char *topic,
+    size_t topic_len, const char *data, size_t data_len);
 
 /** @brief Connection statuses for the Astarte MQTT client. */
 typedef enum
@@ -73,6 +82,12 @@ typedef struct
     astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
     /** @brief Callback used to check if transmitted messages have been delivered. */
     astarte_mqtt_msg_delivered_cbk_t msg_delivered_cbk;
+    /** @brief Callback used to notify the user that MQTT connection has been established. */
+    astarte_mqtt_on_connected_cbk_t on_connected_cbk;
+    /** @brief Callback used to notify the user that MQTT connection has been terminated. */
+    astarte_mqtt_on_disconnected_cbk_t on_disconnected_cbk;
+    /** @brief Callback used to notify the user that an MQTT message has been received. */
+    astarte_mqtt_on_incoming_cbk_t on_incoming_cbk;
 } astarte_mqtt_config_t;
 
 /**
@@ -118,6 +133,12 @@ struct astarte_mqtt
     struct sys_hashmap_data in_msg_map_data;
     /** @brief Main struct for the hashmap used to cache incoming MQTT messages. */
     struct sys_hashmap in_msg_map;
+    /** @brief Callback used to notify the user that MQTT connection has been established. */
+    astarte_mqtt_on_connected_cbk_t on_connected_cbk;
+    /** @brief Callback used to notify the user that MQTT connection has been terminated. */
+    astarte_mqtt_on_disconnected_cbk_t on_disconnected_cbk;
+    /** @brief Callback used to notify the user that an MQTT message has been received. */
+    astarte_mqtt_on_incoming_cbk_t on_incoming_cbk;
 };
 
 #ifdef __cplusplus
@@ -138,7 +159,7 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
  *
  * @note This function will instantiate a network connection to the broker but will not wait for
  * a connack message to be received back from the broker.
- * Connection success should also be checked using the #on_connected callback.
+ * Connection success should be checked using the connected callback.
  *
  * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
@@ -157,7 +178,7 @@ bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt);
  * @brief Disconnect the MQTT client from the broker.
  *
  * @note This function will initiate a disconnection.
- * An actual disconnection success should also be checked using the #on_disconnected callback.
+ * An actual disconnection success should also be checked using the disconnected callback.
  *
  * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.

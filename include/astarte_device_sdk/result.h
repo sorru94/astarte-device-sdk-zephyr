@@ -76,16 +76,24 @@ typedef enum
     ASTARTE_RESULT_CLIENT_CERT_INVALID = 22,
     /** @brief The provided path does not match the mapping endpoint. */
     ASTARTE_RESULT_MAPPING_PATH_MISMATCH = 23,
+    /** @brief The provided Astarte value is not compatible with a mapping. */
+    ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE = 24,
     /** @brief Could not find the mapping corresponding to a path in an interface. */
-    ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 24,
+    ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE = 25,
+    /** @brief The specified mapping does not support properties unsetting. */
+    ASTARTE_RESULT_MAPPING_UNSET_NOT_ALLOWED = 26,
+    /** @brief The specified mapping requires an explicit timestamp. */
+    ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED = 27,
+    /** @brief The specified mapping does not support an explicit timestamp. */
+    ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_NOT_SUPPORTED = 28,
     /** @brief Calling an MQTT API while the client is not ready. */
-    ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 25,
+    ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 29,
     /** @brief Attempting to connect an MQTT client already connected. */
-    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTED = 26,
+    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTED = 30,
     /** @brief Attempting to connect an MQTT client already connecting. */
-    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING = 27,
+    ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING = 31,
     /** @brief Calling a device API while the device is not ready. */
-    ASTARTE_RESULT_DEVICE_NOT_READY = 28
+    ASTARTE_RESULT_DEVICE_NOT_READY = 32
 } astarte_result_t;
 
 #ifdef __cplusplus

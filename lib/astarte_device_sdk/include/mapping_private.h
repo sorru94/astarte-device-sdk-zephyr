@@ -14,6 +14,7 @@
 
 #include "astarte_device_sdk/mapping.h"
 #include "astarte_device_sdk/result.h"
+#include "astarte_device_sdk/value.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,18 @@ astarte_result_t astarte_mapping_array_to_scalar_type(
  * @retval ASTARTE_RESULT_INTERNAL_ERROR If an internal error took place.
  */
 astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const char *path);
+
+/**
+ * @brief Check if a value si compatible to the endpoint of a mapping.
+ *
+ * @param[in] mapping Mapping to use for the comparison.
+ * @param[in] value Astarte value to use for comparison.
+ * @retval ASTARTE_RESULT_OK On success.
+ * @retval ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE When the value is not compatible with the
+ * mapping.
+ */
+astarte_result_t astarte_mapping_check_value(
+    const astarte_mapping_t *mapping, astarte_value_t value);
 
 #ifdef __cplusplus
 }

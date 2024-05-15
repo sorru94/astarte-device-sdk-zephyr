@@ -7,35 +7,43 @@
     "mappings": [
         {
             "endpoint": "/binaryblob_endpoint",
-            "type": "binaryblob"
+            "type": "binaryblob",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/binaryblobarray_endpoint",
-            "type": "binaryblobarray"
+            "type": "binaryblobarray",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/boolean_endpoint",
-            "type": "boolean"
+            "type": "boolean",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/booleanarray_endpoint",
-            "type": "booleanarray"
+            "type": "booleanarray",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/datetime_endpoint",
-            "type": "datetime"
+            "type": "datetime",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/datetimearray_endpoint",
-            "type": "datetimearray"
+            "type": "datetimearray",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/double_endpoint",
-            "type": "double"
+            "type": "double",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/doublearray_endpoint",
-            "type": "doublearray"
+            "type": "doublearray",
+            "explicit_timestamp": true
         },
         {
             "endpoint": "/integer_endpoint",

@@ -872,7 +872,7 @@ static bool astarte_value_check_if_bson_type_is_mapping_type(
 
     if (bson_type != expected_bson_type) {
         ASTARTE_LOG_ERR(
-            "Mapping type (%d) and BSON type (%d) do not match.", mapping_type, bson_type);
+            "Mapping type (%d) and BSON type (0x%x) do not match.", mapping_type, bson_type);
         return false;
     }
 

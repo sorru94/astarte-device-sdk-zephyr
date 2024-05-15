@@ -7,6 +7,7 @@
 #include "astarte_device_sdk/mapping.h"
 #include "mapping_private.h"
 
+#include <math.h>
 #include <regex.h>
 
 #include "log.h"
@@ -66,4 +67,29 @@ astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const cha
 
     regfree(&preg);
     return res;
+}
+
+astarte_result_t astarte_mapping_check_value(
+    const astarte_mapping_t *mapping, astarte_value_t value)
+{
+    if (mapping->type != value.tag) {
+        ASTARTE_LOG_ERR("Astarte value type and mapping type do not match.");
+        return ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE;
+    }
+
+    if ((mapping->type == ASTARTE_MAPPING_TYPE_DOUBLE) && (isfinite(value.data.dbl) == 0)) {
+        ASTARTE_LOG_ERR("Astarte value double is not a number.");
+        return ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE;
+    }
+
+    if (mapping->type == ASTARTE_MAPPING_TYPE_DOUBLEARRAY) {
+        for (size_t i = 0; i < value.data.double_array.len; i++) {
+            if (isfinite(value.data.double_array.buf[i]) == 0) {
+                ASTARTE_LOG_ERR("Astarte value double is not a number.");
+                return ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE;
+            }
+        }
+    }
+
+    return ASTARTE_RESULT_OK;
 }

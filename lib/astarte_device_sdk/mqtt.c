@@ -508,7 +508,10 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         goto exit;
     }
 
-    uint16_t message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+    uint16_t message_id = 0;
+    if (qos > 0) {
+        message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+    }
 
     struct mqtt_publish_param msg = { 0 };
     msg.retain_flag = 0U;
@@ -532,7 +535,7 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         msg.message_id, msg.message.topic.qos, data_size);
     ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
 
-    if (qos >= 1) {
+    if (qos > 0) {
         mqtt_caching_message_t message = {
             .type = MQTT_CACHING_PUBLISH_ENTRY,
             .topic = (char *) topic,

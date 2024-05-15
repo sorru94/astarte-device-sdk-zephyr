@@ -18,7 +18,9 @@ LOG_MODULE_REGISTER(nvs, CONFIG_APP_LOG_LEVEL); // NOLINT
  *        Defines, constants and typedef        *
  ***********************************************/
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static struct nvs_fs file_system;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 #define NVS_PARTITION storage_partition
 #define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)

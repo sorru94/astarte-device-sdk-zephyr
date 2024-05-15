@@ -96,7 +96,6 @@ static void byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             abort();
         }
-        // NOLINTNEXTLINE(clang-analyzer-unix.cstring.NullArg)
         memcpy(new_buf, bson->buf, bson->size);
         free(bson->buf);
         bson->buf = new_buf;

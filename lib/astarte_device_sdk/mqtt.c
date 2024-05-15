@@ -278,9 +278,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
         SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
     astarte_mqtt->out_msg_map = (struct sys_hashmap){
-        .api = (const struct sys_hashmap_api *) (&sys_hashmap_sc_api),
-        .config = (const struct sys_hashmap_config *) &astarte_mqtt->out_msg_map_config,
-        .data = (struct sys_hashmap_data *) &astarte_mqtt->out_msg_map_data,
+        .api = &sys_hashmap_sc_api,
+        .config = &astarte_mqtt->out_msg_map_config,
+        .data = &astarte_mqtt->out_msg_map_data,
         .hash_func = sys_hash32,
         .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
     };
@@ -289,9 +289,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
         SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
     astarte_mqtt->in_msg_map = (struct sys_hashmap){
-        .api = (const struct sys_hashmap_api *) (&sys_hashmap_sc_api),
-        .config = (const struct sys_hashmap_config *) &astarte_mqtt->in_msg_map_config,
-        .data = (struct sys_hashmap_data *) &astarte_mqtt->in_msg_map_data,
+        .api = &sys_hashmap_sc_api,
+        .config = &astarte_mqtt->in_msg_map_config,
+        .data = &astarte_mqtt->in_msg_map_data,
         .hash_func = sys_hash32,
         .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
     };

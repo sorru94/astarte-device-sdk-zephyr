@@ -44,7 +44,6 @@ const char *const utils_string_array_data[2] = { "Hello ", "world!" };
  * Global functions definition
  ***********************************************/
 
-// Long, but simple switch.
 // NOLINTNEXTLINE(hicpp-function-size)
 void utils_log_astarte_value(astarte_value_t value)
 {

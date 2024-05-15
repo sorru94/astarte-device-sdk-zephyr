@@ -50,9 +50,11 @@ BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1,
 #define MAIN_THREAD_SLEEP_MS 500
 
 #define DEVICE_THREAD_FLAGS_TERMINATION 1U
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static atomic_t device_thread_flags;
 K_THREAD_STACK_DEFINE(device_thread_stack_area, CONFIG_DEVICE_THREAD_STACK_SIZE);
 static struct k_thread device_thread_data;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
  * Static functions declaration

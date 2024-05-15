@@ -170,13 +170,13 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
 
     uuid_to_struct(uuid, &uuid_struct);
 
+    // NOLINTBEGIN(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
     int res = snprintf(out, min_out_size,
         "%08" PRIx32 "-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x", uuid_struct.time_low,
         uuid_struct.time_mid, uuid_struct.time_hi_and_version, uuid_struct.clock_seq_hi_res,
         uuid_struct.clock_seq_low, uuid_struct.node[0], uuid_struct.node[1], uuid_struct.node[2],
-        uuid_struct.node[3], uuid_struct.node[4],
-        uuid_struct
-            .node[5]); // NOLINT(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
+        uuid_struct.node[3], uuid_struct.node[4], uuid_struct.node[5]);
+    // NOLINTEND(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
     if ((res < 0) || (res >= min_out_size)) {
         ASTARTE_LOG_ERR("Error converting UUID to string.");
         return ASTARTE_RESULT_INTERNAL_ERROR;

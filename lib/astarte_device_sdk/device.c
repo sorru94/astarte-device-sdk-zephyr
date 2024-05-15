@@ -21,6 +21,7 @@
 #include "mapping_private.h"
 #include "mqtt.h"
 #include "pairing_private.h"
+#include "tls_credentials.h"
 #include "value_private.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
@@ -49,10 +50,8 @@ struct astarte_device
 {
     /** @brief Timeout for http requests. */
     int32_t http_timeout_ms;
-    /** @brief Private key for the device in the PEM format. */
-    char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
-    /** @brief Device certificate in the PEM format. */
-    char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE];
+    /** @brief Private client key and certificate for mutual TLS authentication (PEM format). */
+    astarte_tls_credentials_client_crt_t client_crt;
     /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
     char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];
     /** @brief Device's credential secret. */
@@ -232,8 +231,9 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
 static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
+    astarte_tls_credentials_client_crt_t *client_crt = &device->client_crt;
     // Obtain new client certificate if no cached one exists
-    if (strlen(device->crt_pem) == 0) {
+    if (strlen(client_crt->crt_pem) == 0) {
         astarte_result_t res = get_new_client_certificate(device);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Client certificate get failed: %s.", astarte_result_to_name(res));
@@ -242,7 +242,7 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
     }
     // Verify cached certificate
     astarte_result_t res = astarte_pairing_verify_client_certificate(
-        device->http_timeout_ms, device->device_id, device->cred_secr, device->crt_pem);
+        device->http_timeout_ms, device->device_id, device->cred_secr, client_crt->crt_pem);
     if (res == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
         res = update_client_certificate(device);
         if (res != ASTARTE_RESULT_OK) {
@@ -444,18 +444,10 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 
     // TODO: the following two operations should only be performed if the certificate/key have
     // been added as credentials
-    int tls_rc = tls_credential_delete(
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed removing the client certificate from credentials %d.", tls_rc);
-        return ASTARTE_RESULT_TLS_ERROR;
-    }
-
-    tls_rc = tls_credential_delete(
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PRIVATE_KEY);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed removing the client private key from credentials %d.", tls_rc);
-        return ASTARTE_RESULT_TLS_ERROR;
+    res = astarte_tls_credential_delete();
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(res));
+        return res;
     }
 
     free(device);
@@ -964,31 +956,19 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
 
 static astarte_result_t get_new_client_certificate(astarte_device_handle_t device)
 {
-    astarte_result_t res = astarte_pairing_get_client_certificate(device->http_timeout_ms,
-        device->device_id, device->cred_secr, device->privkey_pem, sizeof(device->privkey_pem),
-        device->crt_pem, sizeof(device->crt_pem));
+    astarte_tls_credentials_client_crt_t *client_crt = &device->client_crt;
+
+    astarte_result_t res = astarte_pairing_get_client_certificate(
+        device->http_timeout_ms, device->device_id, device->cred_secr, client_crt);
     if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed getting the client TLS cert: %s.", astarte_result_to_name(res));
         return res;
     }
 
-    int tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-        TLS_CREDENTIAL_SERVER_CERTIFICATE, device->crt_pem, strlen(device->crt_pem) + 1);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed adding client crt to credentials %d.", tls_rc);
-        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
-        memset(device->crt_pem, 0, sizeof(device->crt_pem));
-        return ASTARTE_RESULT_TLS_ERROR;
-    }
-
-    tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-        TLS_CREDENTIAL_PRIVATE_KEY, device->privkey_pem, strlen(device->privkey_pem) + 1);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed adding client private key to credentials %d.", tls_rc);
-        tls_credential_delete(
-            CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
-        memset(device->privkey_pem, 0, sizeof(device->privkey_pem));
-        memset(device->crt_pem, 0, sizeof(device->crt_pem));
-        return ASTARTE_RESULT_TLS_ERROR;
+    res = astarte_tls_credential_add(client_crt);
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed adding the client TLS cert: %s.", astarte_result_to_name(res));
+        return res;
     }
 
     return res;
@@ -996,18 +976,10 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
 
 static astarte_result_t update_client_certificate(astarte_device_handle_t device)
 {
-    int tls_rc = tls_credential_delete(
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed removing the client certificate from credentials %d.", tls_rc);
-        return ASTARTE_RESULT_TLS_ERROR;
-    }
-
-    tls_rc = tls_credential_delete(
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PRIVATE_KEY);
-    if (tls_rc != 0) {
-        ASTARTE_LOG_ERR("Failed removing the client private key from credentials %d.", tls_rc);
-        return ASTARTE_RESULT_TLS_ERROR;
+    astarte_result_t res = astarte_tls_credential_delete();
+    if (res != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(res));
+        return res;
     }
 
     return get_new_client_certificate(device);

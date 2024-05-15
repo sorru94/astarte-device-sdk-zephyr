@@ -275,15 +275,10 @@ astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char 
 }
 
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
-    const char *cred_secr, unsigned char *privkey_pem, size_t privkey_pem_size, char *crt_pem,
-    size_t crt_pem_size)
+    const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
-    if (crt_pem_size < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE) {
-        ASTARTE_LOG_ERR("Insufficient output buffer size for client certificate.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
@@ -291,14 +286,14 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     // Step 2: create a private key and a CSR
-    res = astarte_crypto_create_key(privkey_pem, privkey_pem_size);
+    res = astarte_crypto_create_key(client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
         return res;
     }
 
     unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
-    res = astarte_crypto_create_csr(privkey_pem, csr_buf, sizeof(csr_buf));
+    res = astarte_crypto_create_csr(client_crt->privkey_pem, csr_buf, sizeof(csr_buf));
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
         return res;
@@ -334,7 +329,8 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     // Step 4: process the result
-    res = parse_get_client_certificate_response(resp_buf, crt_pem, crt_pem_size);
+    res = parse_get_client_certificate_response(
+        resp_buf, client_crt->crt_pem, ARRAY_SIZE(client_crt->crt_pem));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }
@@ -342,12 +338,12 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     // Step 5: convert the received certificate to a valid PEM certificate
     // Replace "\n" with newlines chars
     char *tmp = NULL;
-    while ((tmp = strstr(crt_pem, "\\n")) != NULL) {
+    while ((tmp = strstr(client_crt->crt_pem, "\\n")) != NULL) {
         tmp[0] = '\n';
         tmp[1] = '\n';
     }
 
-    ASTARTE_LOG_DBG("Received client certificate: %s", crt_pem);
+    ASTARTE_LOG_DBG("Received client certificate: %s", client_crt->crt_pem);
     return ASTARTE_RESULT_OK;
 }
 

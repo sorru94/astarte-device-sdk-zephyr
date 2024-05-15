@@ -202,4 +202,9 @@ module-str = Log level for Astarte device SDK MQTT wrapper
 module-help = Sets log level for Astarte device SDK MQTT wrapper.
 source "subsys/logging/Kconfig.template.log_config"
 
+module = ASTARTE_DEVICE_SDK_TLS_CREDENTIALS
+module-str = Log level for Astarte device SDK tls credentials wrapper
+module-help = Sets log level for Astarte device SDK tls credentials wrapper.
+source "subsys/logging/Kconfig.template.log_config"
+
 endmenu

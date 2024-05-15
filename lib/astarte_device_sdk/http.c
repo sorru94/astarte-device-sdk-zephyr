@@ -70,7 +70,7 @@ static int create_and_connect_socket(void);
  *
  * @param[in] input_addinfo addrinfo struct to print.
  */
-static void dump_addrinfo(const struct addrinfo *input_addinfo);
+static void dump_addrinfo(const struct zsock_addrinfo *input_addinfo);
 #endif
 
 /************************************************
@@ -225,8 +225,8 @@ static int create_and_connect_socket(void)
     struct zsock_addrinfo *broker_addrinfo = NULL;
     int getaddrinfo_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve address %s", gai_strerror(getaddrinfo_rc));
-        if (getaddrinfo_rc == EAI_SYSTEM) {
+        ASTARTE_LOG_ERR("Unable to resolve address %s", zsock_gai_strerror(getaddrinfo_rc));
+        if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
         return -1;
@@ -286,10 +286,10 @@ static int create_and_connect_socket(void)
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL_DBG)
 #define ADDRINFO_IP_ADDR_SIZE 16U
-static void dump_addrinfo(const struct addrinfo *input_addinfo)
+static void dump_addrinfo(const struct zsock_addrinfo *input_addinfo)
 {
     char ip_addr[ADDRINFO_IP_ADDR_SIZE] = { 0 };
-    inet_ntop(AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, ip_addr,
+    zsock_inet_ntop(AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, ip_addr,
         sizeof(ip_addr));
     ASTARTE_LOG_DBG("addrinfo @%p: ai_family=%d, ai_socktype=%d, ai_protocol=%d, "
                     "sa_family=%d, sin_port=%x, ip_addr=%s",

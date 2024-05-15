@@ -316,8 +316,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     int getaddrinfo_rc = zsock_getaddrinfo(
         astarte_mqtt->broker_hostname, astarte_mqtt->broker_port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve broker address %s", gai_strerror(getaddrinfo_rc));
-        if (getaddrinfo_rc == EAI_SYSTEM) {
+        ASTARTE_LOG_ERR("Unable to resolve broker address %s", zsock_gai_strerror(getaddrinfo_rc));
+        if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
         astarte_res = ASTARTE_RESULT_SOCKET_ERROR;

@@ -184,7 +184,7 @@ void astarte_bson_serializer_append_double(
     double_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOUBLE);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, val_buf, sizeof(double));
 }
 
@@ -195,7 +195,7 @@ void astarte_bson_serializer_append_int32(
     int32_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT32);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, val_buf, sizeof(int32_t));
 }
 
@@ -206,7 +206,7 @@ void astarte_bson_serializer_append_int64(
     int64_to_bytes(value, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT64);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, val_buf, sizeof(int64_t));
 }
 
@@ -217,7 +217,7 @@ void astarte_bson_serializer_append_binary(
     uint32_to_bytes(size, len_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BINARY);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, len_buf, sizeof(int32_t));
     byte_array_append_byte(bson, ASTARTE_BSON_SUBTYPE_DEFAULT_BINARY);
     byte_array_append(bson, value, size);
@@ -232,9 +232,9 @@ void astarte_bson_serializer_append_string(
     uint32_to_bytes(string_len + 1, len_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_STRING);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, len_buf, sizeof(int32_t));
-    byte_array_append(bson, string, string_len + sizeof(char));
+    byte_array_append(bson, string, string_len + 1);
 }
 
 void astarte_bson_serializer_append_datetime(
@@ -244,7 +244,7 @@ void astarte_bson_serializer_append_datetime(
     uint64_to_bytes(epoch_millis, val_buf);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DATETIME);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, val_buf, sizeof(uint64_t));
 }
 
@@ -252,7 +252,7 @@ void astarte_bson_serializer_append_boolean(
     astarte_bson_serializer_t *bson, const char *name, bool value)
 {
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BOOLEAN);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append_byte(bson, value ? '\1' : '\0');
 }
 
@@ -264,7 +264,7 @@ void astarte_bson_serializer_append_document(
     size = sys_le32_to_cpu(size);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOCUMENT);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
 
     byte_array_append(bson, document, size);
 }
@@ -292,7 +292,7 @@ void astarte_bson_serializer_append_document(
         const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);           \
                                                                                                    \
         byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);                                     \
-        byte_array_append(bson, name, strlen(name) + sizeof(char));                                \
+        byte_array_append(bson, name, strlen(name) + 1);                                           \
                                                                                                    \
         byte_array_append(bson, document, size);                                                   \
                                                                                                    \
@@ -330,7 +330,7 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
     const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);
 
     byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);
-    byte_array_append(bson, name, strlen(name) + sizeof(char));
+    byte_array_append(bson, name, strlen(name) + 1);
     byte_array_append(bson, document, size);
 
     astarte_bson_serializer_destroy(&array_ser);

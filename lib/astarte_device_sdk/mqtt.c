@@ -763,7 +763,7 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
 
     // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = calloc(topic_len + sizeof(char), sizeof(char));
+    char *topic = calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return;

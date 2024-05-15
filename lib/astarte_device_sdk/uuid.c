@@ -48,10 +48,10 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_uuid, CONFIG_ASTARTE_DEVICE_SDK_UUID_LOG_LEV
 #define UUID_STR_OFFSET_NODE (24)
 
 // Position of the hyphens
-#define UUID_STR_POSITION_FIRST_HYPHEN (UUID_STR_OFFSET_TIME_MID - sizeof(char))
-#define UUID_STR_POSITION_SECOND_HYPHEN (UUID_STR_OFFSET_TIME_HIGH_AND_VERSION - sizeof(char))
-#define UUID_STR_POSITION_THIRD_HYPHEN (UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED - sizeof(char))
-#define UUID_STR_POSITION_FOURTH_HYPHEN (UUID_STR_OFFSET_NODE - sizeof(char))
+#define UUID_STR_POSITION_FIRST_HYPHEN (UUID_STR_OFFSET_TIME_MID - 1)
+#define UUID_STR_POSITION_SECOND_HYPHEN (UUID_STR_OFFSET_TIME_HIGH_AND_VERSION - 1)
+#define UUID_STR_POSITION_THIRD_HYPHEN (UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED - 1)
+#define UUID_STR_POSITION_FOURTH_HYPHEN (UUID_STR_OFFSET_NODE - 1)
 
 // Internal element's masks and offsets
 #define UUID_TIME_HI_AND_VERSION_MASK_TIME (0x0FFFU)
@@ -160,7 +160,7 @@ astarte_result_t astarte_uuid_generate_v5(
 
 astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_STR_LEN + sizeof(char);
+    size_t min_out_size = ASTARTE_UUID_STR_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -186,7 +186,7 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
 
 astarte_result_t astarte_uuid_to_base64(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_BASE64_LEN + sizeof(char);
+    size_t min_out_size = ASTARTE_UUID_BASE64_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -204,7 +204,7 @@ astarte_result_t astarte_uuid_to_base64(const astarte_uuid_t uuid, char *out, si
 
 astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_BASE64URL_LEN + sizeof(char);
+    size_t min_out_size = ASTARTE_UUID_BASE64URL_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -212,9 +212,9 @@ astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out,
 
     // Convert UUID to RFC 3548/4648 base 64 notation
     size_t olen = 0;
-    char uuid_base64[ASTARTE_UUID_BASE64_LEN + sizeof(char)] = { 0 };
-    int res = base64_encode(
-        uuid_base64, ASTARTE_UUID_BASE64_LEN + sizeof(char), &olen, uuid, ASTARTE_UUID_SIZE);
+    char uuid_base64[ASTARTE_UUID_BASE64_LEN + 1] = { 0 };
+    int res
+        = base64_encode(uuid_base64, ASTARTE_UUID_BASE64_LEN + 1, &olen, uuid, ASTARTE_UUID_SIZE);
     if (res != 0) {
         ASTARTE_LOG_ERR("Error converting UUID to base 64 string, rc: %d.", res);
         return ASTARTE_RESULT_INTERNAL_ERROR;
@@ -274,11 +274,11 @@ astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
         = strtoul(input + UUID_STR_OFFSET_TIME_HIGH_AND_VERSION, NULL, strtoul_base);
 
     tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED];
-    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED + sizeof(char)];
+    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED + 1];
     uuid_struct.clock_seq_hi_res = strtoul(tmp, NULL, strtoul_base);
 
     tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW];
-    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW + sizeof(char)];
+    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW + 1];
     uuid_struct.clock_seq_low = strtoul(tmp, NULL, strtoul_base);
 
     for (int i = 0; i < UUID_LEN_NODE; i++) {

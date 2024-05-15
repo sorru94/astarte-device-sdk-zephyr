@@ -27,8 +27,7 @@
 #define ASTARTE_MQTT_MAX_BROKER_PORT_LEN 5
 /** @brief Exact length in chars for the MQTT client ID */
 #define ASTARTE_MQTT_CLIENT_ID_LEN                                                                 \
-    (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
-        + ASTARTE_PAIRING_DEVICE_ID_LEN)
+    (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - 1 + ASTARTE_PAIRING_DEVICE_ID_LEN)
 /** @brief Size for the MQTT transmission and reception buffers */
 #define ASTARTE_MQTT_RX_TX_BUFFER_SIZE 256U
 

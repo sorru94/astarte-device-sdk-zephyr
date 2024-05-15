@@ -46,14 +46,14 @@ astarte_result_t astarte_tls_credential_delete(void)
 {
     int tls_rc = tls_credential_delete(
         CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
-    if (tls_rc != 0) {
+    if ((tls_rc != 0) && (tls_rc != -ENOENT)) {
         ASTARTE_LOG_ERR("Failed removing the client certificate from credentials %d.", tls_rc);
         return ASTARTE_RESULT_TLS_ERROR;
     }
 
     tls_rc = tls_credential_delete(
         CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PRIVATE_KEY);
-    if (tls_rc != 0) {
+    if ((tls_rc != 0) && (tls_rc != -ENOENT)) {
         ASTARTE_LOG_ERR("Failed removing the client private key from credentials %d.", tls_rc);
         return ASTARTE_RESULT_TLS_ERROR;
     }

@@ -442,8 +442,6 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         return res;
     }
 
-    // TODO: the following two operations should only be performed if the certificate/key have
-    // been added as credentials
     res = astarte_tls_credential_delete();
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(res));
@@ -962,6 +960,8 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
         device->http_timeout_ms, device->device_id, device->cred_secr, client_crt);
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed getting the client TLS cert: %s.", astarte_result_to_name(res));
+        memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
+        memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
         return res;
     }
 

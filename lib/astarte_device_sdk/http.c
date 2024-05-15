@@ -30,12 +30,6 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEV
 BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME) != 1, "Missing hostname in configuration");
 
 /************************************************
- *        Defines, constants and typedef        *
- ***********************************************/
-
-static uint8_t http_recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE];
-
-/************************************************
  *       Callbacks declaration/definition       *
  ***********************************************/
 
@@ -70,19 +64,21 @@ static void http_response_cb(
  */
 static int create_and_connect_socket(void);
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL_DBG)
 /**
  * @brief Print content of addrinfo struct.
  *
  * @param[in] input_addinfo addrinfo struct to print.
  */
 static void dump_addrinfo(const struct addrinfo *input_addinfo);
+#endif
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_http_post(const char *url, const char **header_fields, const char *payload,
-    int32_t timeout_ms, uint8_t *resp_buf, size_t resp_buf_size)
+astarte_result_t astarte_http_post(int32_t timeout_ms, const char *url, const char **header_fields,
+    const char *payload, uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
     int sock = create_and_connect_socket();
@@ -91,7 +87,8 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
     }
 
     struct http_request req = { 0 };
-    memset(&http_recv_buf, 0, sizeof(http_recv_buf));
+    uint8_t recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE];
+    memset(&recv_buf, 0, sizeof(recv_buf));
 
     req.method = HTTP_POST;
     req.host = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
@@ -107,15 +104,15 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
     req.response = http_response_cb;
     req.payload = payload;
     req.payload_len = strlen(payload);
-    req.recv_buf = http_recv_buf;
-    req.recv_buf_len = sizeof(http_recv_buf);
+    req.recv_buf = recv_buf;
+    req.recv_buf_len = sizeof(recv_buf);
 
     bool post_ok = true;
 
     int http_rc = http_client_req(sock, &req, timeout_ms, &post_ok);
     if ((http_rc < 0) || !post_ok) {
         ASTARTE_LOG_ERR("HTTP post request failed: %d", http_rc);
-        ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
+        ASTARTE_LOG_ERR("Receive buffer content:\n%s", recv_buf);
         zsock_close(sock);
         return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
@@ -127,8 +124,8 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
     uint8_t *http_recv_body = NULL;
     const char two_crlf[] = "\r\n\r\n";
     for (size_t i = 0; i < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE - 4; i++) {
-        if (memcmp(http_recv_buf + i, two_crlf, 4) == 0) {
-            http_recv_body = http_recv_buf + i + 4;
+        if (memcmp(recv_buf + i, two_crlf, 4) == 0) {
+            http_recv_body = recv_buf + i + 4;
             break;
         }
     }
@@ -146,7 +143,7 @@ astarte_result_t astarte_http_post(const char *url, const char **header_fields, 
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_http_get(const char *url, const char **header_fields, int32_t timeout_ms,
+astarte_result_t astarte_http_get(int32_t timeout_ms, const char *url, const char **header_fields,
     uint8_t *resp_buf, size_t resp_buf_size)
 {
     // Create and connect the socket to use
@@ -156,7 +153,8 @@ astarte_result_t astarte_http_get(const char *url, const char **header_fields, i
     }
 
     struct http_request req = { 0 };
-    memset(&http_recv_buf, 0, sizeof(http_recv_buf));
+    uint8_t recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE];
+    memset(&recv_buf, 0, sizeof(recv_buf));
 
     req.method = HTTP_GET;
     req.host = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
@@ -170,15 +168,15 @@ astarte_result_t astarte_http_get(const char *url, const char **header_fields, i
     req.header_fields = header_fields;
     req.protocol = "HTTP/1.1";
     req.response = http_response_cb;
-    req.recv_buf = http_recv_buf;
-    req.recv_buf_len = sizeof(http_recv_buf);
+    req.recv_buf = recv_buf;
+    req.recv_buf_len = sizeof(recv_buf);
 
     bool get_ok = true;
 
     int http_rc = http_client_req(sock, &req, timeout_ms, &get_ok);
     if ((http_rc < 0) || !get_ok) {
         ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
-        ASTARTE_LOG_ERR("Receive buffer content:\n%s", http_recv_buf);
+        ASTARTE_LOG_ERR("Receive buffer content:\n%s", recv_buf);
         zsock_close(sock);
         return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
@@ -190,8 +188,8 @@ astarte_result_t astarte_http_get(const char *url, const char **header_fields, i
     uint8_t *http_recv_body = NULL;
     const char two_crlf[] = "\r\n\r\n";
     for (size_t i = 0; i < CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE - 4; i++) {
-        if (memcmp(http_recv_buf + i, two_crlf, 4) == 0) {
-            http_recv_body = http_recv_buf + i + 4;
+        if (memcmp(recv_buf + i, two_crlf, 4) == 0) {
+            http_recv_body = recv_buf + i + 4;
             break;
         }
     }
@@ -234,7 +232,9 @@ static int create_and_connect_socket(void)
         return -1;
     }
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL_DBG)
     dump_addrinfo(broker_addrinfo);
+#endif
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)
     int proto = IPPROTO_TCP;
@@ -284,16 +284,17 @@ static int create_and_connect_socket(void)
     return sock;
 }
 
-// NOLINTBEGIN Just used for logging during development
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL_DBG)
+#define ADDRINFO_IP_ADDR_SIZE 16U
 static void dump_addrinfo(const struct addrinfo *input_addinfo)
 {
-    char dst[16] = { 0 };
-    inet_ntop(
-        AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, dst, sizeof(dst));
+    char ip_addr[ADDRINFO_IP_ADDR_SIZE] = { 0 };
+    inet_ntop(AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, ip_addr,
+        sizeof(ip_addr));
     ASTARTE_LOG_DBG("addrinfo @%p: ai_family=%d, ai_socktype=%d, ai_protocol=%d, "
                     "sa_family=%d, sin_port=%x, ip_addr=%s",
         input_addinfo, input_addinfo->ai_family, input_addinfo->ai_socktype,
         input_addinfo->ai_protocol, input_addinfo->ai_addr->sa_family,
-        ((struct sockaddr_in *) input_addinfo->ai_addr)->sin_port, dst);
+        ((struct sockaddr_in *) input_addinfo->ai_addr)->sin_port, ip_addr);
 }
-// NOLINTEND
+#endif

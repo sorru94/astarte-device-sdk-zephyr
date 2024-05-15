@@ -222,7 +222,8 @@ astarte_result_t astarte_pairing_register_device(
         return res;
     }
     char resp_buf[REGISTER_DEVICE_RESPONSE_MAX_SIZE] = { 0 };
-    res = astarte_http_post(url, header_fields, payload, timeout_ms, resp_buf, sizeof(resp_buf));
+
+    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }
@@ -265,7 +266,7 @@ astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char 
     }
 
     char resp_buf[GET_BROKER_INFO_RESPONSE_MAX_SIZE] = { 0 };
-    res = astarte_http_get(url, header_fields, timeout_ms, resp_buf, sizeof(resp_buf));
+    res = astarte_http_get(timeout_ms, url, header_fields, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }
@@ -323,7 +324,7 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    res = astarte_http_post(url, header_fields, payload, timeout_ms, resp_buf, sizeof(resp_buf));
+    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }
@@ -383,7 +384,7 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     }
 
     char resp_buf[VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
-    res = astarte_http_post(url, header_fields, payload, timeout_ms, resp_buf, sizeof(resp_buf));
+    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }

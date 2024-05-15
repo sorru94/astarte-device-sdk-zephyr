@@ -29,6 +29,8 @@
 #define ASTARTE_MQTT_CLIENT_ID_LEN                                                                 \
     (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - sizeof(char)                               \
         + ASTARTE_PAIRING_DEVICE_ID_LEN)
+/** @brief Size for the MQTT transmission and reception buffers */
+#define ASTARTE_MQTT_RX_TX_BUFFER_SIZE 256U
 
 /** @brief Contains all the data related to a single MQTT client. */
 typedef struct astarte_mqtt astarte_mqtt_t;
@@ -99,6 +101,10 @@ struct astarte_mqtt
     struct sys_mutex mutex;
     /** @brief Zephyr MQTT client handle. */
     struct mqtt_client client;
+    /** @brief Reception buffer to be used by the MQTT client. */
+    uint8_t rx_buffer[ASTARTE_MQTT_RX_TX_BUFFER_SIZE];
+    /** @brief Transmission buffer to be used by the MQTT client. */
+    uint8_t tx_buffer[ASTARTE_MQTT_RX_TX_BUFFER_SIZE];
     /** @brief Timepoint to be used to check a connection timeout. */
     k_timepoint_t connection_timepoint;
     /** @brief Timeout for socket polls before connection to an MQTT broker. */

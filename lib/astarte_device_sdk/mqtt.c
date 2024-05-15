@@ -22,22 +22,6 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEV
 #endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT) */
 
 /************************************************
- *        Defines, constants and typedef        *
- ***********************************************/
-
-/* Buffers for MQTT client. */
-#define MQTT_RX_TX_BUFFER_SIZE 256U
-static uint8_t mqtt_rx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-static uint8_t mqtt_tx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-
-static sec_tag_t sec_tag_list[] = {
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
-    CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
-#endif
-    CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-};
-
-/************************************************
  *         Static functions declaration         *
  ***********************************************/
 
@@ -352,6 +336,13 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.transport.type = MQTT_TRANSPORT_SECURE;
 
     // MQTT TLS configuration
+    sec_tag_t sec_tag_list[] = {
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
+        CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
+#endif
+        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
+    };
+
     struct mqtt_sec_config *tls_config = &(astarte_mqtt->client.transport.tls.config);
 #if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
     tls_config->peer_verify = TLS_PEER_VERIFY_REQUIRED;
@@ -364,10 +355,10 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     tls_config->hostname = astarte_mqtt->broker_hostname;
 
     // MQTT buffers configuration
-    astarte_mqtt->client.rx_buf = mqtt_rx_buffer;
-    astarte_mqtt->client.rx_buf_size = sizeof(mqtt_rx_buffer);
-    astarte_mqtt->client.tx_buf = mqtt_tx_buffer;
-    astarte_mqtt->client.tx_buf_size = sizeof(mqtt_tx_buffer);
+    astarte_mqtt->client.rx_buf = astarte_mqtt->rx_buffer;
+    astarte_mqtt->client.rx_buf_size = ARRAY_SIZE(astarte_mqtt->rx_buffer);
+    astarte_mqtt->client.tx_buf = astarte_mqtt->tx_buffer;
+    astarte_mqtt->client.tx_buf_size = ARRAY_SIZE(astarte_mqtt->tx_buffer);
 
     // Request connection to broker
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);

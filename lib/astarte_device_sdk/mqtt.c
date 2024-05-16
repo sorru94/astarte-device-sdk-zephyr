@@ -187,6 +187,10 @@ static void mqtt_caching_retransmit_out_msg_handler(
             ret = mqtt_publish(&astarte_mqtt->client, &msg);
             if (ret != 0) {
                 ASTARTE_LOG_ERR("MQTT publish failed (message ID %d), err: %d", message_id, ret);
+            } else {
+                ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B",
+                    message.topic, msg.message_id, msg.message.topic.qos, message.data_size);
+                ASTARTE_LOG_HEXDUMP_DBG(message.data, message.data_size, "Published payload:");
             }
             break;
         case MQTT_CACHING_SUBSCRIPTION_ENTRY:
@@ -202,7 +206,9 @@ static void mqtt_caching_retransmit_out_msg_handler(
             };
             int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
             if (ret != 0) {
-                ASTARTE_LOG_ERR("MQTT subscribe failed (message ID %d), err: %d", message_id, ret);
+                ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
+            } else {
+                ASTARTE_LOG_DBG("SUBSCRIBED to %s", message.topic);
             }
             break;
 
@@ -451,8 +457,6 @@ astarte_result_t astarte_mqtt_subscribe(
         goto exit;
     }
 
-    ASTARTE_LOG_DBG("Subscribing to %s", topic);
-
     uint16_t message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
 
     struct mqtt_topic topics[] = { {
@@ -467,10 +471,12 @@ astarte_result_t astarte_mqtt_subscribe(
 
     int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
     if (ret != 0) {
-        ASTARTE_LOG_ERR("Failed to subscribe to control topic: %d", ret);
+        ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
         astarte_res = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
+
+    ASTARTE_LOG_DBG("SUBSCRIBED to %s", topic);
 
     mqtt_caching_message_t message = {
         .type = MQTT_CACHING_SUBSCRIPTION_ENTRY,
@@ -528,9 +534,6 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         astarte_res = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
-    if (out_message_id && (qos > 0)) {
-        *out_message_id = message_id;
-    }
 
     ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
         msg.message_id, msg.message.topic.qos, data_size);
@@ -545,6 +548,10 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
             .qos = qos,
         };
         mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
+    }
+
+    if (out_message_id && (qos > 0)) {
+        *out_message_id = message_id;
     }
 
 exit:
@@ -667,17 +674,21 @@ static void handle_connack_event(
     backoff_context_init(&astarte_mqtt->backoff_ctx,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, true);
+
     if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;
     }
+
+    if (connack.session_present_flag == 0) {
+        mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
+        mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
+    }
+
     astarte_mqtt->on_connected_cbk(astarte_mqtt, connack);
 }
 static void handle_disconnection_event(astarte_mqtt_t *astarte_mqtt)
 {
     ASTARTE_LOG_DBG("MQTT client disconnected");
-
-    mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
-    mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
 
     switch (astarte_mqtt->connection_state) {
         case ASTARTE_MQTT_CONNECTING:

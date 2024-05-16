@@ -260,6 +260,7 @@ static void on_connected_handler(
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
     if (connack_param.session_present_flag != 0) {
+        device->connection_state = DEVICE_CONNECTED;
         return;
     }
 

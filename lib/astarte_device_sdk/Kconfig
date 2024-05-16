@@ -139,7 +139,7 @@ config ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE
 config ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE
 	int "Maximum size for the MQTT caching hashmaps"
 	depends on ASTARTE_DEVICE_SDK
-	default 50
+	default 100
 	help
 	  Sets the maximum size for the MQTT caching hashmaps. The caching hashmaps are used to retain
 	  messages for QoS higher than 0 in order to enable retransmission and avoid duplication.

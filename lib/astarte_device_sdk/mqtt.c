@@ -22,22 +22,6 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEV
 #endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT) */
 
 /************************************************
- *        Defines, constants and typedef        *
- ***********************************************/
-
-/* Buffers for MQTT client. */
-#define MQTT_RX_TX_BUFFER_SIZE 256U
-static uint8_t mqtt_rx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-static uint8_t mqtt_tx_buffer[MQTT_RX_TX_BUFFER_SIZE];
-
-static sec_tag_t sec_tag_list[] = {
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
-    CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
-#endif
-    CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-};
-
-/************************************************
  *         Static functions declaration         *
  ***********************************************/
 
@@ -199,9 +183,14 @@ static void mqtt_caching_retransmit_out_msg_handler(
             msg.message.payload.data = message.data;
             msg.message.payload.len = message.data_size;
             msg.message_id = message_id;
+            msg.dup_flag = 1U;
             ret = mqtt_publish(&astarte_mqtt->client, &msg);
             if (ret != 0) {
                 ASTARTE_LOG_ERR("MQTT publish failed (message ID %d), err: %d", message_id, ret);
+            } else {
+                ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B",
+                    message.topic, msg.message_id, msg.message.topic.qos, message.data_size);
+                ASTARTE_LOG_HEXDUMP_DBG(message.data, message.data_size, "Published payload:");
             }
             break;
         case MQTT_CACHING_SUBSCRIPTION_ENTRY:
@@ -217,7 +206,9 @@ static void mqtt_caching_retransmit_out_msg_handler(
             };
             int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
             if (ret != 0) {
-                ASTARTE_LOG_ERR("MQTT subscribe failed (message ID %d), err: %d", message_id, ret);
+                ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
+            } else {
+                ASTARTE_LOG_DBG("SUBSCRIBED to %s", message.topic);
             }
             break;
 
@@ -278,9 +269,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
         SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
     astarte_mqtt->out_msg_map = (struct sys_hashmap){
-        .api = (const struct sys_hashmap_api *) (&sys_hashmap_sc_api),
-        .config = (const struct sys_hashmap_config *) &astarte_mqtt->out_msg_map_config,
-        .data = (struct sys_hashmap_data *) &astarte_mqtt->out_msg_map_data,
+        .api = &sys_hashmap_sc_api,
+        .config = &astarte_mqtt->out_msg_map_config,
+        .data = &astarte_mqtt->out_msg_map_data,
         .hash_func = sys_hash32,
         .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
     };
@@ -289,9 +280,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
         SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
     astarte_mqtt->in_msg_map = (struct sys_hashmap){
-        .api = (const struct sys_hashmap_api *) (&sys_hashmap_sc_api),
-        .config = (const struct sys_hashmap_config *) &astarte_mqtt->in_msg_map_config,
-        .data = (struct sys_hashmap_data *) &astarte_mqtt->in_msg_map_data,
+        .api = &sys_hashmap_sc_api,
+        .config = &astarte_mqtt->in_msg_map_config,
+        .data = &astarte_mqtt->in_msg_map_data,
         .hash_func = sys_hash32,
         .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
     };
@@ -332,8 +323,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     int getaddrinfo_rc = zsock_getaddrinfo(
         astarte_mqtt->broker_hostname, astarte_mqtt->broker_port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve broker address %s", gai_strerror(getaddrinfo_rc));
-        if (getaddrinfo_rc == EAI_SYSTEM) {
+        ASTARTE_LOG_ERR("Unable to resolve broker address %s", zsock_gai_strerror(getaddrinfo_rc));
+        if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
         astarte_res = ASTARTE_RESULT_SOCKET_ERROR;
@@ -352,6 +343,13 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.transport.type = MQTT_TRANSPORT_SECURE;
 
     // MQTT TLS configuration
+    sec_tag_t sec_tag_list[] = {
+#if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
+        CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
+#endif
+        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
+    };
+
     struct mqtt_sec_config *tls_config = &(astarte_mqtt->client.transport.tls.config);
 #if !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT)
     tls_config->peer_verify = TLS_PEER_VERIFY_REQUIRED;
@@ -364,10 +362,10 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     tls_config->hostname = astarte_mqtt->broker_hostname;
 
     // MQTT buffers configuration
-    astarte_mqtt->client.rx_buf = mqtt_rx_buffer;
-    astarte_mqtt->client.rx_buf_size = sizeof(mqtt_rx_buffer);
-    astarte_mqtt->client.tx_buf = mqtt_tx_buffer;
-    astarte_mqtt->client.tx_buf_size = sizeof(mqtt_tx_buffer);
+    astarte_mqtt->client.rx_buf = astarte_mqtt->rx_buffer;
+    astarte_mqtt->client.rx_buf_size = ARRAY_SIZE(astarte_mqtt->rx_buffer);
+    astarte_mqtt->client.tx_buf = astarte_mqtt->tx_buffer;
+    astarte_mqtt->client.tx_buf_size = ARRAY_SIZE(astarte_mqtt->tx_buffer);
 
     // Request connection to broker
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);
@@ -459,8 +457,6 @@ astarte_result_t astarte_mqtt_subscribe(
         goto exit;
     }
 
-    ASTARTE_LOG_DBG("Subscribing to %s", topic);
-
     uint16_t message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
 
     struct mqtt_topic topics[] = { {
@@ -475,10 +471,12 @@ astarte_result_t astarte_mqtt_subscribe(
 
     int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
     if (ret != 0) {
-        ASTARTE_LOG_ERR("Failed to subscribe to control topic: %d", ret);
+        ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
         astarte_res = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
+
+    ASTARTE_LOG_DBG("SUBSCRIBED to %s", topic);
 
     mqtt_caching_message_t message = {
         .type = MQTT_CACHING_SUBSCRIPTION_ENTRY,
@@ -517,7 +515,10 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         goto exit;
     }
 
-    uint16_t message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+    uint16_t message_id = 0;
+    if (qos > 0) {
+        message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+    }
 
     struct mqtt_publish_param msg = { 0 };
     msg.retain_flag = 0U;
@@ -533,15 +534,12 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         astarte_res = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
-    if (out_message_id && (qos > 0)) {
-        *out_message_id = message_id;
-    }
 
     ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
         msg.message_id, msg.message.topic.qos, data_size);
     ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
 
-    if (qos >= 1) {
+    if (qos > 0) {
         mqtt_caching_message_t message = {
             .type = MQTT_CACHING_PUBLISH_ENTRY,
             .topic = (char *) topic,
@@ -550,6 +548,10 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
             .qos = qos,
         };
         mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
+    }
+
+    if (out_message_id && (qos > 0)) {
+        *out_message_id = message_id;
     }
 
 exit:
@@ -672,17 +674,21 @@ static void handle_connack_event(
     backoff_context_init(&astarte_mqtt->backoff_ctx,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, true);
+
     if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;
     }
+
+    if (connack.session_present_flag == 0) {
+        mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
+        mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
+    }
+
     astarte_mqtt->on_connected_cbk(astarte_mqtt, connack);
 }
 static void handle_disconnection_event(astarte_mqtt_t *astarte_mqtt)
 {
     ASTARTE_LOG_DBG("MQTT client disconnected");
-
-    mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
-    mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
 
     switch (astarte_mqtt->connection_state) {
         case ASTARTE_MQTT_CONNECTING:
@@ -769,7 +775,7 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
 
     // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = calloc(topic_len + sizeof(char), sizeof(char));
+    char *topic = calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return;

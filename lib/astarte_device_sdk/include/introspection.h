@@ -45,10 +45,7 @@ extern "C" {
  * @details The resulting struct should be deallocated by the user by calling #introspection_free
  *
  * @param[out] introspection a pointer to an uninitialized introspection struct
- * @return result code of the operation
- * @retval ASTARTE_RESULT_INVALID_PARAM invalid pointer passed as argument
- * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the inner data
- * @retval ASTARTE_RESULT_OK initialization completed successfully
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t introspection_init(introspection_t *introspection);
 
@@ -61,10 +58,7 @@ astarte_result_t introspection_init(introspection_t *introspection);
  * @param[in,out] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
- * @return result code of the operation:
- * @retval ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT the interface was already present
- * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the new node
- * @retval ASTARTE_RESULT_OK insertion completed successfully
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t introspection_add(
     introspection_t *introspection, const astarte_interface_t *interface);
@@ -79,10 +73,7 @@ astarte_result_t introspection_add(
  * @param[in,out] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
- * @return result code of the operation:
- * @retval ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT the interface was already present
- * @retval ASTARTE_RESULT_OUT_OF_MEMORY couldn't allocate the memory for the new node
- * @retval ASTARTE_RESULT_OK insertion completed successfully
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t introspection_update(
     introspection_t *introspection, const astarte_interface_t *interface);
@@ -95,11 +86,22 @@ astarte_result_t introspection_update(
  * @param[in] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] interface_name the name of one of the interfaces contained in the introspection list
- * @return pointer to the interface matching the passed interface_name
- * @retval NULL no interface was found
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 const astarte_interface_t *introspection_get(
     introspection_t *introspection, const char *interface_name);
+
+/**
+ * @brief Retrieves the QoS for an interface's mapping from the introspection list.
+ *
+ * @param[in] introspection Introspection struct initialized using #introspection_init.
+ * @param[in] interface_name The name of one of the interfaces contained in the introspection list.
+ * @param[in] path For the mapping for which the QoS will need to be extracted.
+ * @param[out] qos The extracted QoS.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
+ */
+astarte_result_t introspection_get_qos(
+    introspection_t *introspection, const char *interface_name, const char *path, int *qos);
 
 /**
  * @brief Removes an interface from the introspection list
@@ -107,9 +109,7 @@ const astarte_interface_t *introspection_get(
  * @param[in,out] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] interface_name the name of one of the interfaces contained in the introspection list
- * @return result code of the operation:
- * @retval ASTARTE_RESULT_INTERFACE_NOT_FOUND no interface matching the name was found
- * @retval ASTARTE_RESULT_OK interface removed successfully
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t introspection_remove(introspection_t *introspection, const char *interface_name);
 
@@ -145,8 +145,8 @@ void introspection_fill_string(introspection_t *introspection, char *buffer, siz
  *
  * @param[in] introspection a pointer to an introspection struct initialized using
  * #introspection_init
- * @return pointer to the first node that can be passed to #introspection_iter_next for iteration.
- * @retval NULL If no node on the introspection is found
+ * @return The first node that can be passed to #introspection_iter_next for iteration.
+ * NULL if no introspection is empty.
  */
 introspection_node_t *introspection_iter(introspection_t *introspection);
 
@@ -156,9 +156,8 @@ introspection_node_t *introspection_iter(introspection_t *introspection);
  * @param[in] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] current a pointer to the current introspection_node_t
- * @return pointer to the current node of the passed introspection.
- * @retval NULL If iteration is complete and there are no more nodes in this introspection
- * or if a NULL pointer gets passed as the current pointer parameter
+ * @return The next node in the introspection. NULL if there are no more nodes in the introspection
+ * or if a NULL pointer gets passed as the current parameter.
  */
 introspection_node_t *introspection_iter_next(
     introspection_t *introspection, introspection_node_t *current);

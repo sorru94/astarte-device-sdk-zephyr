@@ -25,8 +25,7 @@ extern "C" {
  *
  * @param[in] array_type Input mapping type. Has to be an array type.
  * @param[out] scalar_type The resulting scalar type.
- * @retval ASTARTE_RESULT_OK On success.
- * @retval ASTARTE_RESULT_INTERNAL_ERROR When the input type is not an array type or a mapping type.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t astarte_mapping_array_to_scalar_type(
     astarte_mapping_type_t array_type, astarte_mapping_type_t *scalar_type);
@@ -38,9 +37,7 @@ astarte_result_t astarte_mapping_array_to_scalar_type(
  *
  * @param[in] mapping Mapping to use for the comparison.
  * @param[in] path Path to use for comparison.
- * @retval ASTARTE_RESULT_OK On success.
- * @retval ASTARTE_RESULT_MAPPING_PATH_MISMATCH When the path does not matches the mapping endpoint.
- * @retval ASTARTE_RESULT_INTERNAL_ERROR If an internal error took place.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const char *path);
 
@@ -49,9 +46,7 @@ astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const cha
  *
  * @param[in] mapping Mapping to use for the comparison.
  * @param[in] value Astarte value to use for comparison.
- * @retval ASTARTE_RESULT_OK On success.
- * @retval ASTARTE_RESULT_MAPPING_VALUE_INCOMPATIBLE When the value is not compatible with the
- * mapping.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 astarte_result_t astarte_mapping_check_value(
     const astarte_mapping_t *mapping, astarte_value_t value);

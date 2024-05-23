@@ -283,11 +283,11 @@ void astarte_value_destroy_deserialized(astarte_value_t value)
             free(value.data.double_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_STRINGARRAY:
-            free(value.data.string_array.buf);
+            free((void *) value.data.string_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
             free(value.data.binaryblob_array.sizes);
-            free(value.data.binaryblob_array.blobs);
+            free((void *) value.data.binaryblob_array.blobs);
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
             free(value.data.boolean_array.buf);
@@ -578,7 +578,7 @@ static astarte_result_t astarte_value_deserialize_array(
     }
     size_t array_length = 0U;
 
-    astarte_mapping_type_t scalar_type = { 0 };
+    astarte_mapping_type_t scalar_type = ASTARTE_MAPPING_TYPE_BINARYBLOB;
     res = astarte_mapping_array_to_scalar_type(type, &scalar_type);
     if (res != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Non array type passed to astarte_value_deserialize_array.");
@@ -738,7 +738,7 @@ static astarte_result_t astarte_value_deserialize_array_string(
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
     // Step 1: allocate enough memory to contain the array from the BSON file
-    const char **array = calloc(array_length, sizeof(char *));
+    const char **array = (const char **) calloc(array_length, sizeof(char *));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         res = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -769,7 +769,7 @@ static astarte_result_t astarte_value_deserialize_array_string(
     return ASTARTE_RESULT_OK;
 
 failure:
-    free(array);
+    free((void *) array);
     return res;
 }
 
@@ -780,7 +780,7 @@ static astarte_result_t astarte_value_deserialize_array_binblob(
     const uint8_t **array = NULL;
     size_t *array_sizes = NULL;
     // Step 1: allocate enough memory to contain the array from the BSON file
-    array = calloc(array_length, sizeof(uint8_t *));
+    array = (const uint8_t **) calloc(array_length, sizeof(uint8_t *));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         res = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -821,7 +821,7 @@ static astarte_result_t astarte_value_deserialize_array_binblob(
     return ASTARTE_RESULT_OK;
 
 failure:
-    free(array);
+    free((void *) array);
     free(array_sizes);
     return res;
 }

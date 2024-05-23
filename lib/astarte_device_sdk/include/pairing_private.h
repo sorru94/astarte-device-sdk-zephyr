@@ -15,6 +15,9 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
 
+#include "crypto.h"
+#include "tls_credentials.h"
+
 /** @brief Maximum length for the MQTT broker URL in chars.
  *
  * @details It is the sum of:
@@ -48,20 +51,16 @@ astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char 
 /**
  * @brief Fetch the client x509 certificate from Astarte.
  *
- * @warning This is often a very memory intensive operation, more than 20kB of stack are required.
+ * @warning This is often a very memory intensive operation.
  *
  * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
  * @param[in] device_id Unique identifier to use to register the device instance.
  * @param[in] cred_secr Credential secret to use as authorization token.
- * @param[out] privkey_pem Buffer where to store the computed private key, in the PEM format.
- * @param[in] privkey_pem_size Size of preallocated privkey_pem buffer.
- * @param[out] crt_pem Output buffer where to store the fetched PEM certificate.
- * @param[in] crt_pem_size Size of the output buffer for the PEM certificate.
+ * @param[out] client_crt Client private key and certificate for mutual TLS authentication.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
-    const char *cred_secr, unsigned char *privkey_pem, size_t privkey_pem_size, char *crt_pem,
-    size_t crt_pem_size);
+    const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt);
 
 /**
  * @brief Fetch the client x509 certificate from Astarte.

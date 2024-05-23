@@ -114,6 +114,7 @@ void mqtt_caching_check_message_expiry(struct sys_hashmap *map, astarte_mqtt_t *
         iter.next(&iter);
         // Check if the message has expired
         uint16_t message_id = iter.key;
+        // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(iter.value);
         if (K_TIMEOUT_EQ(sys_timepoint_timeout(map_entry->end_of_validity), K_NO_WAIT)) {
             ASTARTE_LOG_ERR("Message ID (%d) has timed out, it will be retransmitted.", message_id);
@@ -133,6 +134,7 @@ void mqtt_caching_update_message_expiry(struct sys_hashmap *map, uint16_t messag
     uint64_t value = 0;
     if (sys_hashmap_get(map, message_id, &value)) {
         // Replace the timestamp for the message ID with a fresh one
+        // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(value);
         map_entry->end_of_validity = sys_timepoint_calc(K_SECONDS(CONFIG_MQTT_KEEPALIVE));
     } else {
@@ -146,6 +148,7 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
 
     uint64_t value = 0;
     if (sys_hashmap_remove(map, message_id, &value)) {
+        // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(value);
         if (map_entry->message.topic) {
             free(map_entry->message.topic);

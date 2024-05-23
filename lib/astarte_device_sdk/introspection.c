@@ -27,8 +27,7 @@ ASTARTE_LOG_MODULE_REGISTER(
  *
  * @param[in] introspection a pointer to an introspection struct
  * @param[in] interface_name Interface name used in the comparison
- * @return The node whose interface name matches the one passed
- * @retval NULL no interface matched the passed name
+ * @return The node whose interface name matches the one passed, NULL if not such interface exists.
  */
 static introspection_node_t *find_node_by_name(
     introspection_t *introspection, const char *interface_name);
@@ -62,12 +61,7 @@ static inline void node_free(introspection_node_t *alloc_node);
  * @param[out] introspection_node Output pointer that if not NULL will be set to the
  * to the location of the old node found, or NULL if there was no previous node matching
  * the passed interface->name
- * @return result code of the operation:
- * @retval ASTARTE_RESULT_INTERFACE_INVALID_VERSION the interface has both major and
- * minor version set to 0
- * @retval ASTARTE_RESULT_INTERFACE_CONFLICTING the passed interface colflicts with the
- * previously defined one with the same name
- * @retval ASTARTE_RESULT_OK if the check completed successfully, an error code otherwise.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node);
@@ -78,10 +72,7 @@ static astarte_result_t check_interface_update(introspection_t *introspection,
  * @param[in,out] introspection a pointer to an introspection struct initialized using
  * #introspection_init
  * @param[in] interface the pointer to an interface struct
- * @return result code of the operation:
- * @retval ASTARTE_RESULT_INTERFACE_INVALID_VERSION the interface has both major and
- * minor version set to 0
- * @retval ASTARTE_RESULT_OK if the operation completed successfully, an error code otherwise.
+ * @return ASTARTE_RESULT_OK on success, otherwise an error code.
  */
 static astarte_result_t append_introspection_node(
     introspection_t *introspection, const astarte_interface_t *interface);

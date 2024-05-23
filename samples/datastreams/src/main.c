@@ -52,12 +52,14 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 #define MAIN_THREAD_SLEEP_MS 500
 
 #define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static atomic_t device_rx_thread_flags;
 K_THREAD_STACK_DEFINE(device_rx_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
 static struct k_thread device_rx_thread_data;
 
 K_THREAD_STACK_DEFINE(device_tx_thread_stack_area, CONFIG_DEVICE_TX_THREAD_STACK_SIZE);
 static struct k_thread device_tx_thread_data;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
  * Static functions declaration

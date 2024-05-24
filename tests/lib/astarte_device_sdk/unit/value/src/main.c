@@ -625,10 +625,14 @@ ZTEST(astarte_device_sdk_value, test_deserialize_astarte_value_pair_from_aggrega
     astarte_bson_element_t v_elem;
     astarte_bson_deserializer_element_lookup(full_document, "v", &v_elem);
 
-    astarte_value_pair_t *values;
-    size_t values_length = 0;
+    astarte_value_pair_array_t value_pair_array = { 0 };
     astarte_result_t res = astarte_value_pair_deserialize(
-        v_elem, &interface, "/sensor33/stringarray_endpoint", &values, &values_length);
+        v_elem, &interface, "/sensor33/stringarray_endpoint", &value_pair_array);
+    zassert_equal(res, ASTARTE_RESULT_OK, "%s", astarte_result_to_name(res));
+
+    astarte_value_pair_t *values = NULL;
+    size_t values_length = 0;
+    res = astarte_value_pair_array_to_value_pairs(value_pair_array, &values, &values_length);
     zassert_equal(res, ASTARTE_RESULT_OK, "%s", astarte_result_to_name(res));
     zassert_equal(values_length, 3); // The bson contains two pairs
 
@@ -656,7 +660,7 @@ ZTEST(astarte_device_sdk_value, test_deserialize_astarte_value_pair_from_aggrega
             0);
     }
 
-    astarte_value_pair_destroy_deserialized(values, values_length);
+    astarte_value_pair_destroy_deserialized(value_pair_array);
 }
 
 ZTEST(astarte_device_sdk_value, test_deserialize_astarte_value_pair_from_empty_aggregate)
@@ -666,9 +670,7 @@ ZTEST(astarte_device_sdk_value, test_deserialize_astarte_value_pair_from_empty_a
     astarte_bson_element_t v_elem;
     astarte_bson_deserializer_element_lookup(full_document, "v", &v_elem);
 
-    astarte_value_pair_t *values;
-    size_t values_length = 0;
-    astarte_result_t res
-        = astarte_value_pair_deserialize(v_elem, NULL, NULL, &values, &values_length);
+    astarte_value_pair_array_t value_pair_array = { 0 };
+    astarte_result_t res = astarte_value_pair_deserialize(v_elem, NULL, NULL, &value_pair_array);
     zassert_equal(res, ASTARTE_RESULT_BSON_EMPTY_DOCUMENT_ERROR, "%s", astarte_result_to_name(res));
 }

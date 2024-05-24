@@ -74,7 +74,7 @@ astarte_result_t astarte_value_deserialize(
 void astarte_value_destroy_deserialized(astarte_value_t value);
 
 /**
- * @brief Deserialize a BSON element to an array of #astarte_value_pair_t.
+ * @brief Deserialize a BSON element to an #astarte_value_pair_array_t.
  *
  * @warning This function might perform dynamic allocation, as such any value deserialized with this
  * function should be destroyed calling #astarte_value_pair_destroy_deserialized.
@@ -85,28 +85,23 @@ void astarte_value_destroy_deserialized(astarte_value_t value);
  * @param[in] bson_elem The BSON element containing the data to deserialize.
  * @param[in] interface The interface corresponding the the Astarte value to deserialize.
  * @param[in] path The path corresponding to the BSON element to deserialize.
- * @param[out] values The resulting array of key-value pairs.
- * @param[out] values_length The number of elements in the values array.
+ * @param[out] value_pair_array Deserialized Astarte value pair array.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_value_pair_deserialize(astarte_bson_element_t bson_elem,
-    const astarte_interface_t *interface, const char *path, astarte_value_pair_t **values,
-    size_t *values_length);
+    const astarte_interface_t *interface, const char *path,
+    astarte_value_pair_array_t *value_pair_array);
 
 /**
  * @brief Destroy the data serialized with #astarte_value_pair_deserialize.
  *
  * @warning This function will free all dynamically allocated memory allocated by
- * #astarte_value_pair_deserialize. As so it should only be called on #astarte_value_pair_t
+ * #astarte_value_pair_deserialize. As so it should only be called on #astarte_value_pair_array_t
  * that have been created with #astarte_value_pair_deserialize.
  *
- * @note This function will have no effect on scalar #astarte_value_t, but only act on array
- * types.
- *
- * @param[in] values Array of values of which the content will be destroyed.
- * @param[in] values_length Elements in the values array.
+ * @param[in] value_pair_array Astarte value pair array of which the content will be destroyed.
  */
-void astarte_value_pair_destroy_deserialized(astarte_value_pair_t *values, size_t values_length);
+void astarte_value_pair_destroy_deserialized(astarte_value_pair_array_t value_pair_array);
 
 #ifdef __cplusplus
 }

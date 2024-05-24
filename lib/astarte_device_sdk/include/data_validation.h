@@ -39,13 +39,12 @@ astarte_result_t data_validation_individual_datastream(const astarte_interface_t
  *
  * @param[in] interface Interface to use for the operation.
  * @param[in] path Path to validate.
- * @param[in] values Array of Astarte value pairs to validate.
- * @param[in] values_length Size of the array of Astarte value pairs to validate.
+ * @param[in] value_pair_array Astarte value pair array to validate.
  * @param[in] timestamp Timestamp to validate, it might be NULL.
  * @return ASTARTE_RESULT_OK when validation is successful, an error otherwise.
  */
 astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t *interface,
-    const char *path, astarte_value_pair_t *values, size_t values_length, const int64_t *timestamp);
+    const char *path, astarte_value_pair_array_t value_pair_array, const int64_t *timestamp);
 
 /**
  * @brief Validate data for setting a device property against the device introspection.

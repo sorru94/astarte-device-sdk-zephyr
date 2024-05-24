@@ -170,11 +170,10 @@ static void on_datastream_individual(
  *
  * @param[in] device Handle to the device instance.
  * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] values Array of Astarte value pairs received.
- * @param[in] values_length Size of the array of Astarte value pairs received.
+ * @param[in] value_pair_array Astarte value pair array received.
  */
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_value_pair_t *values, size_t values_length);
+    astarte_device_data_event_t data_event, astarte_value_pair_array_t value_pair_array);
 /**
  * @brief Fetch a new client certificate from Astarte.
  *
@@ -574,8 +573,8 @@ exit:
 }
 
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_pair_t *values,
-    size_t values_length, const int64_t *timestamp)
+    const char *interface_name, const char *path, astarte_value_pair_array_t value_pair_array,
+    const int64_t *timestamp)
 {
     astarte_bson_serializer_t outer_bson = { 0 };
     astarte_bson_serializer_t inner_bson = { 0 };
@@ -596,7 +595,7 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     }
 
     astarte_rc
-        = data_validation_aggregated_datastream(interface, path, values, values_length, timestamp);
+        = data_validation_aggregated_datastream(interface, path, value_pair_array, timestamp);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");
         goto exit;
@@ -619,7 +618,15 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    astarte_rc = astarte_value_pair_serialize(&inner_bson, values, values_length);
+    astarte_value_pair_t *value_pairs = NULL;
+    size_t value_pairs_len = 0;
+    astarte_rc
+        = astarte_value_pair_array_to_value_pairs(value_pair_array, &value_pairs, &value_pairs_len);
+    if (astarte_rc != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Invalid Astarte value pair array.");
+        goto exit;
+    }
+    astarte_rc = astarte_value_pair_serialize(&inner_bson, value_pairs, value_pairs_len);
     if (astarte_rc != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -821,17 +828,16 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
         }
         astarte_value_destroy_deserialized(value);
     } else {
-        astarte_value_pair_t *values = NULL;
-        size_t values_length = 0;
+        astarte_value_pair_array_t value_pair_array = { 0 };
         astarte_result_t res
-            = astarte_value_pair_deserialize(v_elem, interface, path, &values, &values_length);
+            = astarte_value_pair_deserialize(v_elem, interface, path, &value_pair_array);
         if (res != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface_name, path);
             return;
         }
-        on_datastream_aggregated(device, data_event, values, values_length);
-        astarte_value_pair_destroy_deserialized(values, values_length);
+        on_datastream_aggregated(device, data_event, value_pair_array);
+        astarte_value_pair_destroy_deserialized(value_pair_array);
     }
 }
 
@@ -920,7 +926,7 @@ static void on_datastream_individual(
 }
 
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_value_pair_t *values, size_t values_length)
+    astarte_device_data_event_t data_event, astarte_value_pair_array_t value_pair_array)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, data_event.interface_name);
@@ -930,8 +936,8 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
         return;
     }
 
-    astarte_result_t astarte_rc = data_validation_aggregated_datastream(
-        interface, data_event.path, values, values_length, NULL);
+    astarte_result_t astarte_rc
+        = data_validation_aggregated_datastream(interface, data_event.path, value_pair_array, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
     if (astarte_rc == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
@@ -944,8 +950,7 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
     if (device->datastream_object_cbk) {
         astarte_device_datastream_object_event_t event = {
             .data_event = data_event,
-            .values = values,
-            .values_length = values_length,
+            .value_pair_array = value_pair_array,
         };
         device->datastream_object_cbk(event);
     } else {

@@ -51,13 +51,22 @@ astarte_result_t data_validation_individual_datastream(const astarte_interface_t
 }
 
 astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t *interface,
-    const char *path, astarte_value_pair_t *values, size_t values_length, const int64_t *timestamp)
+    const char *path, astarte_value_pair_array_t value_pair_array, const int64_t *timestamp)
 {
     astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
 
-    for (size_t i = 0; i < values_length; i++) {
+    astarte_value_pair_t *value_pairs = NULL;
+    size_t value_pairs_len = 0;
+    astarte_rc
+        = astarte_value_pair_array_to_value_pairs(value_pair_array, &value_pairs, &value_pairs_len);
+    if (astarte_rc != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Invalid Astarte value pair array.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    for (size_t i = 0; i < value_pairs_len; i++) {
         const astarte_mapping_t *mapping = NULL;
-        astarte_value_pair_t value_pair = values[i];
+        astarte_value_pair_t value_pair = value_pairs[i];
         astarte_rc = astarte_interface_get_mapping_from_paths(
             interface, path, value_pair.endpoint, &mapping);
         if (astarte_rc != ASTARTE_RESULT_OK) {

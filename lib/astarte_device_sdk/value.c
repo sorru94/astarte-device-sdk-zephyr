@@ -142,7 +142,180 @@ static bool astarte_value_check_if_bson_type_is_mapping_type(
     astarte_mapping_type_t mapping_type, uint8_t bson_type);
 
 /************************************************
- *         Global functions definitions         *
+ *     Global public functions definitions      *
+ ***********************************************/
+
+// clang-format off
+#define ASTARTE_VALUE_MAKE_FROM_FUNC(NAME, ENUM, TYPE, PARAM)                                      \
+    astarte_value_t astarte_value_from_##NAME(TYPE PARAM)                                          \
+    {                                                                                              \
+        return (astarte_value_t) {                                                                 \
+            .data = {                                                                              \
+                .PARAM = (PARAM),                                                                  \
+            },                                                                                     \
+            .tag = (ENUM),                                                                         \
+        };                                                                                         \
+    }
+
+#define ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(NAME, ENUM, TYPE, PARAM)                                \
+    astarte_value_t astarte_value_from_##NAME(TYPE PARAM, size_t len)                              \
+    {                                                                                              \
+        return (astarte_value_t) {                                                                 \
+            .data = {                                                                              \
+                .PARAM = {                                                                         \
+                    .buf = (PARAM),                                                                \
+                    .len = len,                                                                    \
+                },                                                                                 \
+            },                                                                                     \
+            .tag = (ENUM),                                                                         \
+        };                                                                                         \
+    }
+// clang-format on
+
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(binaryblob, ASTARTE_MAPPING_TYPE_BINARYBLOB, void *, binaryblob)
+ASTARTE_VALUE_MAKE_FROM_FUNC(boolean, ASTARTE_MAPPING_TYPE_BOOLEAN, bool, boolean)
+ASTARTE_VALUE_MAKE_FROM_FUNC(datetime, ASTARTE_MAPPING_TYPE_DATETIME, int64_t, datetime)
+ASTARTE_VALUE_MAKE_FROM_FUNC(double, ASTARTE_MAPPING_TYPE_DOUBLE, double, dbl)
+ASTARTE_VALUE_MAKE_FROM_FUNC(integer, ASTARTE_MAPPING_TYPE_INTEGER, int32_t, integer)
+ASTARTE_VALUE_MAKE_FROM_FUNC(longinteger, ASTARTE_MAPPING_TYPE_LONGINTEGER, int64_t, longinteger)
+ASTARTE_VALUE_MAKE_FROM_FUNC(string, ASTARTE_MAPPING_TYPE_STRING, const char *, string)
+
+astarte_value_t astarte_value_from_binaryblob_array(const void **blobs, size_t *sizes, size_t count)
+{
+    return (astarte_value_t) {
+        .data = {
+            .binaryblob_array = {
+                .blobs = blobs,
+                .sizes = sizes,
+                .count = count,
+            },
+        },
+        .tag = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
+    };
+}
+
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    boolean_array, ASTARTE_MAPPING_TYPE_BOOLEANARRAY, bool *, boolean_array)
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    datetime_array, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, int64_t *, datetime_array)
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    double_array, ASTARTE_MAPPING_TYPE_DOUBLEARRAY, double *, double_array)
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    integer_array, ASTARTE_MAPPING_TYPE_INTEGERARRAY, int32_t *, integer_array)
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    longinteger_array, ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, int64_t *, longinteger_array)
+ASTARTE_VALUE_MAKE_FROM_ARRAY_FUNC(
+    string_array, ASTARTE_MAPPING_TYPE_STRINGARRAY, const char **, string_array)
+
+astarte_mapping_type_t astarte_value_get_type(astarte_value_t value)
+{
+    return value.tag;
+}
+
+// clang-format off
+// NOLINTBEGIN(bugprone-macro-parentheses)
+#define ASTARTE_VALUE_MAKE_TO_FUNC(NAME, ENUM, TYPE, PARAM)                                        \
+    astarte_result_t astarte_value_to_##NAME(astarte_value_t value, TYPE *PARAM)                   \
+    {                                                                                              \
+        if (!(PARAM) || (value.tag != (ENUM))) {                                                   \
+            ASTARTE_LOG_ERR("Conversion from Astarte value to %s error.", #NAME);                  \
+            return ASTARTE_RESULT_INVALID_PARAM;                                                   \
+        }                                                                                          \
+        *PARAM = value.data.PARAM;                                                                 \
+        return ASTARTE_RESULT_OK;                                                                  \
+    }
+
+#define ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(NAME, ENUM, TYPE, PARAM)                                  \
+    astarte_result_t astarte_value_to_##NAME(astarte_value_t value, TYPE *PARAM, size_t *len)      \
+    {                                                                                              \
+        if (!(PARAM) || !len || (value.tag != (ENUM))) {                                           \
+            ASTARTE_LOG_ERR("Conversion from Astarte value to %s error.", #NAME);                  \
+            return ASTARTE_RESULT_INVALID_PARAM;                                                   \
+        }                                                                                          \
+        *PARAM = value.data.PARAM.buf;                                                             \
+        *len = value.data.PARAM.len;                                                               \
+        return ASTARTE_RESULT_OK;                                                                  \
+    }
+// NOLINTEND(bugprone-macro-parentheses)
+// clang-format on
+
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(binaryblob, ASTARTE_MAPPING_TYPE_BINARYBLOB, void *, binaryblob)
+ASTARTE_VALUE_MAKE_TO_FUNC(boolean, ASTARTE_MAPPING_TYPE_BOOLEAN, bool, boolean)
+ASTARTE_VALUE_MAKE_TO_FUNC(datetime, ASTARTE_MAPPING_TYPE_DATETIME, int64_t, datetime)
+ASTARTE_VALUE_MAKE_TO_FUNC(double, ASTARTE_MAPPING_TYPE_DOUBLE, double, dbl)
+ASTARTE_VALUE_MAKE_TO_FUNC(integer, ASTARTE_MAPPING_TYPE_INTEGER, int32_t, integer)
+ASTARTE_VALUE_MAKE_TO_FUNC(longinteger, ASTARTE_MAPPING_TYPE_LONGINTEGER, int64_t, longinteger)
+ASTARTE_VALUE_MAKE_TO_FUNC(string, ASTARTE_MAPPING_TYPE_STRING, const char *, string)
+
+astarte_result_t astarte_value_to_binaryblob_array(
+    astarte_value_t value, const void ***blobs, size_t **sizes, size_t *count)
+{
+    if (!blobs || !sizes || !count || (value.tag != ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY)) {
+        ASTARTE_LOG_ERR("Conversion from Astarte value to binaryblob_array error.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+    *blobs = value.data.binaryblob_array.blobs;
+    *sizes = value.data.binaryblob_array.sizes;
+    *count = value.data.binaryblob_array.count;
+    return ASTARTE_RESULT_OK;
+}
+
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    boolean_array, ASTARTE_MAPPING_TYPE_BOOLEANARRAY, bool *, boolean_array)
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    datetime_array, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, int64_t *, datetime_array)
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    double_array, ASTARTE_MAPPING_TYPE_DOUBLEARRAY, double *, double_array)
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    integer_array, ASTARTE_MAPPING_TYPE_INTEGERARRAY, int32_t *, integer_array)
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    longinteger_array, ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, int64_t *, longinteger_array)
+ASTARTE_VALUE_MAKE_TO_ARRAY_FUNC(
+    string_array, ASTARTE_MAPPING_TYPE_STRINGARRAY, const char **, string_array)
+
+astarte_value_pair_t astarte_value_pair_new(const char *endpoint, astarte_value_t value)
+{
+    return (astarte_value_pair_t){
+        .endpoint = endpoint,
+        .value = value,
+    };
+}
+
+astarte_value_pair_array_t astarte_value_pair_array_new(
+    astarte_value_pair_t *value_pairs, size_t len)
+{
+    return (astarte_value_pair_array_t){
+        .buf = value_pairs,
+        .len = len,
+    };
+}
+
+astarte_result_t astarte_value_pair_to_endpoint_and_value(
+    astarte_value_pair_t value_pair, const char **endpoint, astarte_value_t *value)
+{
+    if (!endpoint || !value) {
+        ASTARTE_LOG_ERR("Conversion from Astarte value pair to endpoint_and_value error.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+    *endpoint = value_pair.endpoint;
+    *value = value_pair.value;
+    return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_value_pair_array_to_value_pairs(
+    astarte_value_pair_array_t value_pair_array, astarte_value_pair_t **value_pairs, size_t *len)
+{
+    if (!value_pairs || !len) {
+        ASTARTE_LOG_ERR("Conversion from Astarte value pair array to value pairs error.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+    *value_pairs = value_pair_array.buf;
+    *len = value_pair_array.len;
+    return ASTARTE_RESULT_OK;
+}
+
+/************************************************
+ *     Global private functions definitions     *
  ***********************************************/
 
 astarte_result_t astarte_value_serialize(
@@ -301,8 +474,8 @@ void astarte_value_destroy_deserialized(astarte_value_t value)
 }
 
 astarte_result_t astarte_value_pair_deserialize(astarte_bson_element_t bson_elem,
-    const astarte_interface_t *interface, const char *path, astarte_value_pair_t **values,
-    size_t *values_length)
+    const astarte_interface_t *interface, const char *path,
+    astarte_value_pair_array_t *value_pair_array)
 {
     astarte_value_pair_t *pairs = NULL;
     size_t deserialize_idx = 0;
@@ -361,8 +534,8 @@ astarte_result_t astarte_value_pair_deserialize(astarte_bson_element_t bson_elem
     }
 
     // Step 4: fill in the output variables
-    *values_length = bson_doc_length;
-    *values = pairs;
+    value_pair_array->buf = pairs;
+    value_pair_array->len = bson_doc_length;
 
     return ASTARTE_RESULT_OK;
 
@@ -375,74 +548,12 @@ failure:
     return res;
 }
 
-void astarte_value_pair_destroy_deserialized(astarte_value_pair_t *values, size_t values_length)
+void astarte_value_pair_destroy_deserialized(astarte_value_pair_array_t value_pair_array)
 {
-    for (size_t i = 0; i < values_length; i++) {
-        astarte_value_destroy_deserialized(values[i].value);
+    for (size_t i = 0; i < value_pair_array.len; i++) {
+        astarte_value_destroy_deserialized(value_pair_array.buf[i].value);
     }
-    free(values);
-}
-
-// clang-format off
-#define DEFINE_ASTARTE_VALUE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                      \
-    astarte_value_t astarte_value_from_##NAME(TYPE PARAM)                                          \
-    {                                                                                              \
-        return (astarte_value_t) {                                                                 \
-            .data = {                                                                             \
-                .PARAM = (PARAM),                                                                  \
-            },                                                                                     \
-            .tag = (ENUM),                                                                         \
-        };                                                                                         \
-    }
-
-#define DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(NAME, ENUM, TYPE, PARAM)                                \
-    astarte_value_t astarte_value_from_##NAME(TYPE PARAM, size_t len)                              \
-    {                                                                                              \
-        return (astarte_value_t) {                                                                 \
-            .data = {                                                                             \
-                .PARAM = {                                                                         \
-                    .buf = (PARAM),                                                                \
-                    .len = len,                                                                    \
-                },                                                                                 \
-            },                                                                                     \
-            .tag = (ENUM),                                                                         \
-        };                                                                                         \
-    }
-// clang-format on
-
-DEFINE_ASTARTE_VALUE_MAKE_FN(integer, ASTARTE_MAPPING_TYPE_INTEGER, int32_t, integer)
-DEFINE_ASTARTE_VALUE_MAKE_FN(longinteger, ASTARTE_MAPPING_TYPE_LONGINTEGER, int64_t, longinteger)
-DEFINE_ASTARTE_VALUE_MAKE_FN(double, ASTARTE_MAPPING_TYPE_DOUBLE, double, dbl)
-DEFINE_ASTARTE_VALUE_MAKE_FN(string, ASTARTE_MAPPING_TYPE_STRING, const char *, string)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(binaryblob, ASTARTE_MAPPING_TYPE_BINARYBLOB, void *, binaryblob)
-DEFINE_ASTARTE_VALUE_MAKE_FN(boolean, ASTARTE_MAPPING_TYPE_BOOLEAN, bool, boolean)
-DEFINE_ASTARTE_VALUE_MAKE_FN(datetime, ASTARTE_MAPPING_TYPE_DATETIME, int64_t, datetime)
-
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    integer_array, ASTARTE_MAPPING_TYPE_INTEGERARRAY, int32_t *, integer_array)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    longinteger_array, ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, int64_t *, longinteger_array)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    double_array, ASTARTE_MAPPING_TYPE_DOUBLEARRAY, double *, double_array)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    string_array, ASTARTE_MAPPING_TYPE_STRINGARRAY, const char **, string_array)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    boolean_array, ASTARTE_MAPPING_TYPE_BOOLEANARRAY, bool *, boolean_array)
-DEFINE_ASTARTE_ARRAY_VALUE_MAKE_FN(
-    datetime_array, ASTARTE_MAPPING_TYPE_DATETIMEARRAY, int64_t *, datetime_array)
-
-astarte_value_t astarte_value_from_binaryblob_array(const void **buf, size_t *sizes, size_t count)
-{
-    return (astarte_value_t) {
-        .data = {
-            .binaryblob_array = {
-                .blobs = buf,
-                .sizes = sizes,
-                .count = count,
-            },
-        },
-        .tag = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
-    };
+    free(value_pair_array.buf);
 }
 
 /************************************************

@@ -256,60 +256,75 @@ static void datastream_object_events_handler(astarte_device_datastream_object_ev
 {
     const char *interface_name = event.data_event.interface_name;
     const char *path = event.data_event.path;
-    astarte_value_pair_t *values = event.values;
-    size_t values_length = event.values_length;
+
+    astarte_value_pair_t *value_pairs = NULL;
+    size_t value_pairs_length = 0;
+
+    astarte_result_t astarte_rc = astarte_value_pair_array_to_value_pairs(
+        event.value_pair_array, &value_pairs, &value_pairs_length);
+    if (astarte_rc != ASTARTE_RESULT_OK) {
+        LOG_INF("Value pair array error: %s.", astarte_result_to_name(astarte_rc)); // NOLINT
+        return;
+    }
 
     LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
 
     LOG_INF("Astarte object:"); // NOLINT
-    for (size_t i = 0; i < values_length; i++) {
-        const char *endpoint = values[i].endpoint;
-        astarte_value_t value = values[i].value;
-        LOG_INF("Partial endpoint: %s", endpoint); // NOLINT
-        utils_log_astarte_value(value);
+    for (size_t i = 0; i < value_pairs_length; i++) {
+        const char *endpoint = NULL;
+        astarte_value_t value = { 0 };
+        astarte_result_t astarte_rc
+            = astarte_value_pair_to_endpoint_and_value(value_pairs[i], &endpoint, &value);
+        if (astarte_rc == ASTARTE_RESULT_OK) {
+            LOG_INF("Partial endpoint: %s", endpoint); // NOLINT
+            utils_log_astarte_value(value);
+        }
     }
 }
 
 static void transmit_data(astarte_device_handle_t device)
 {
     astarte_value_pair_t value_pairs[UTILS_DATA_ELEMENTS] = {
-        { .endpoint = "binaryblob_endpoint",
-            .value = astarte_value_from_binaryblob(
-                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)) },
-        { .endpoint = "binaryblobarray_endpoint",
-            .value = astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
-                (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)) },
-        { .endpoint = "boolean_endpoint", .value = astarte_value_from_boolean(utils_boolean_data) },
-        { .endpoint = "booleanarray_endpoint",
-            .value = astarte_value_from_boolean_array(
-                (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)) },
-        { .endpoint = "datetime_endpoint",
-            .value = astarte_value_from_datetime(utils_unix_time_data) },
-        { .endpoint = "datetimearray_endpoint",
-            .value = astarte_value_from_datetime_array(
-                (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data)) },
-        { .endpoint = "double_endpoint", .value = astarte_value_from_double(utils_double_data) },
-        { .endpoint = "doublearray_endpoint",
-            .value = astarte_value_from_double_array(
-                (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)) },
-        { .endpoint = "integer_endpoint", .value = astarte_value_from_integer(utils_integer_data) },
-        { .endpoint = "integerarray_endpoint",
-            .value = astarte_value_from_integer_array(
-                (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)) },
-        { .endpoint = "longinteger_endpoint",
-            .value = astarte_value_from_longinteger(utils_longinteger_data) },
-        { .endpoint = "longintegerarray_endpoint",
-            .value = astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
-                ARRAY_SIZE(utils_longinteger_array_data)) },
-        { .endpoint = "string_endpoint", .value = astarte_value_from_string(utils_string_data) },
-        { .endpoint = "stringarray_endpoint",
-            .value = astarte_value_from_string_array(
-                (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) }
+        astarte_value_pair_new("binaryblob_endpoint",
+            astarte_value_from_binaryblob(
+                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data))),
+        astarte_value_pair_new("binaryblobarray_endpoint",
+            astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
+                (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data))),
+        astarte_value_pair_new("boolean_endpoint", astarte_value_from_boolean(utils_boolean_data)),
+        astarte_value_pair_new("booleanarray_endpoint",
+            astarte_value_from_boolean_array(
+                (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data))),
+        astarte_value_pair_new(
+            "datetime_endpoint", astarte_value_from_datetime(utils_unix_time_data)),
+        astarte_value_pair_new("datetimearray_endpoint",
+            astarte_value_from_datetime_array(
+                (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data))),
+        astarte_value_pair_new("double_endpoint", astarte_value_from_double(utils_double_data)),
+        astarte_value_pair_new("doublearray_endpoint",
+            astarte_value_from_double_array(
+                (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data))),
+        astarte_value_pair_new("integer_endpoint", astarte_value_from_integer(utils_integer_data)),
+        astarte_value_pair_new("integerarray_endpoint",
+            astarte_value_from_integer_array(
+                (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data))),
+        astarte_value_pair_new(
+            "longinteger_endpoint", astarte_value_from_longinteger(utils_longinteger_data)),
+        astarte_value_pair_new("longintegerarray_endpoint",
+            astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
+                ARRAY_SIZE(utils_longinteger_array_data))),
+        astarte_value_pair_new("string_endpoint", astarte_value_from_string(utils_string_data)),
+        astarte_value_pair_new("stringarray_endpoint",
+            astarte_value_from_string_array(
+                (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data))),
     };
 
+    astarte_value_pair_array_t value_pair_array
+        = astarte_value_pair_array_new(value_pairs, ARRAY_SIZE(value_pairs));
+
     astarte_result_t res = astarte_device_stream_aggregated(device,
-        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", value_pairs,
-        ARRAY_SIZE(value_pairs), NULL);
+        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", value_pair_array,
+        NULL);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Error streaming the aggregate"); // NOLINT
     }

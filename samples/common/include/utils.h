@@ -11,7 +11,7 @@
  * @file utils.h
  * @brief Contains some common utilities for the samples.
  *
- * @details This file contains a function to "pretty print" an Astarte value and a set of
+ * @details This file contains a function to "pretty print" an Astarte individual and a set of
  * standard data to use when streaming datastreams or setting properties in the samples.
  * The standard data contains an element for each possible Astarte type. This allows the samples
  * to demonstrate transmission of all existing Astarte types.
@@ -19,7 +19,7 @@
  * be used in the samples.
  */
 
-#include <astarte_device_sdk/value.h>
+#include <astarte_device_sdk/individual.h>
 
 #define UTILS_DATA_ELEMENTS 14
 
@@ -40,10 +40,10 @@ extern const char utils_string_data[];
 extern const char *const utils_string_array_data[2];
 
 /**
- * @brief Pretty print to the log output an Astarte value.
+ * @brief Pretty print to the log output an Astarte individual.
  *
- * @param[in] value The value to log
+ * @param[in] individual The individual to log
  */
-void utils_log_astarte_value(astarte_value_t value);
+void utils_log_astarte_individual(astarte_individual_t individual);
 
 #endif /* UTILS_H */

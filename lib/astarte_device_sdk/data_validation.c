@@ -16,7 +16,7 @@ ASTARTE_LOG_MODULE_DECLARE(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_
  ***********************************************/
 
 astarte_result_t data_validation_individual_datastream(const astarte_interface_t *interface,
-    const char *path, astarte_value_t value, const int64_t *timestamp)
+    const char *path, astarte_individual_t individual, const int64_t *timestamp)
 {
     astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
 
@@ -27,9 +27,10 @@ astarte_result_t data_validation_individual_datastream(const astarte_interface_t
         return astarte_rc;
     }
 
-    astarte_rc = astarte_mapping_check_value(mapping, value);
+    astarte_rc = astarte_mapping_check_individual(mapping, individual);
     if (astarte_rc != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Value validation failed, interface/path (%s/%s).", interface->name, path);
+        ASTARTE_LOG_ERR(
+            "Individual validation failed, interface/path (%s/%s).", interface->name, path);
         return astarte_rc;
     }
 
@@ -51,34 +52,33 @@ astarte_result_t data_validation_individual_datastream(const astarte_interface_t
 }
 
 astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t *interface,
-    const char *path, astarte_value_pair_array_t value_pair_array, const int64_t *timestamp)
+    const char *path, astarte_object_t object, const int64_t *timestamp)
 {
     astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
 
-    astarte_value_pair_t *value_pairs = NULL;
-    size_t value_pairs_len = 0;
-    astarte_rc
-        = astarte_value_pair_array_to_value_pairs(value_pair_array, &value_pairs, &value_pairs_len);
+    astarte_object_entry_t *entries = NULL;
+    size_t entries_len = 0;
+    astarte_rc = astarte_object_to_entries(object, &entries, &entries_len);
     if (astarte_rc != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Invalid Astarte value pair array.");
+        ASTARTE_LOG_ERR("Invalid Astarte object.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    for (size_t i = 0; i < value_pairs_len; i++) {
+    for (size_t i = 0; i < entries_len; i++) {
         const astarte_mapping_t *mapping = NULL;
-        astarte_value_pair_t value_pair = value_pairs[i];
-        astarte_rc = astarte_interface_get_mapping_from_paths(
-            interface, path, value_pair.endpoint, &mapping);
+        astarte_object_entry_t entry = entries[i];
+        astarte_rc
+            = astarte_interface_get_mapping_from_paths(interface, path, entry.endpoint, &mapping);
         if (astarte_rc != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Can't find mapping in interface %s for path %s/%s.", interface->name,
-                path, value_pair.endpoint);
+                path, entry.endpoint);
             return astarte_rc;
         }
 
-        astarte_rc = astarte_mapping_check_value(mapping, value_pair.value);
+        astarte_rc = astarte_mapping_check_individual(mapping, entry.individual);
         if (astarte_rc != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Value validation failed, interface/path (%s/%s/%s).", interface->name,
-                path, value_pair.endpoint);
+            ASTARTE_LOG_ERR("Individual validation failed, interface/path (%s/%s/%s).",
+                interface->name, path, entry.endpoint);
             return astarte_rc;
         }
 
@@ -101,9 +101,9 @@ astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t
 }
 
 astarte_result_t data_validation_set_property(
-    const astarte_interface_t *interface, const char *path, astarte_value_t value)
+    const astarte_interface_t *interface, const char *path, astarte_individual_t individual)
 {
-    return data_validation_individual_datastream(interface, path, value, NULL);
+    return data_validation_individual_datastream(interface, path, individual, NULL);
 }
 
 astarte_result_t data_validation_unset_property(

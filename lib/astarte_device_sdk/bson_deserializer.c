@@ -121,25 +121,25 @@ astarte_bson_document_t astarte_bson_deserializer_init_doc(const void *buffer)
 astarte_result_t astarte_bson_deserializer_doc_count_elements(
     astarte_bson_document_t document, size_t *count)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_bson_element_t element = { 0 };
-    res = astarte_bson_deserializer_first_element(document, &element);
-    if (res == ASTARTE_RESULT_NOT_FOUND) {
+    ares = astarte_bson_deserializer_first_element(document, &element);
+    if (ares == ASTARTE_RESULT_NOT_FOUND) {
         *count = 0;
         return ASTARTE_RESULT_OK;
     }
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
     size_t document_length = 0U;
 
     do {
         document_length++;
-        res = astarte_bson_deserializer_next_element(document, element, &element);
-    } while (res == ASTARTE_RESULT_OK);
+        ares = astarte_bson_deserializer_next_element(document, element, &element);
+    } while (ares == ASTARTE_RESULT_OK);
 
-    if (res != ASTARTE_RESULT_NOT_FOUND) {
-        return res;
+    if (ares != ASTARTE_RESULT_NOT_FOUND) {
+        return ares;
     }
 
     *count = document_length;
@@ -228,16 +228,16 @@ astarte_result_t astarte_bson_deserializer_element_lookup(
     astarte_bson_document_t document, const char *key, astarte_bson_element_t *element)
 {
     astarte_bson_element_t candidate_element = { 0 };
-    astarte_result_t ret = astarte_bson_deserializer_first_element(document, &candidate_element);
-    if (ret != ASTARTE_RESULT_OK) {
-        return ret;
+    astarte_result_t ares = astarte_bson_deserializer_first_element(document, &candidate_element);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     while (strncmp(key, candidate_element.name, candidate_element.name_len + NULL_TERM_SIZE) != 0) {
-        ret = astarte_bson_deserializer_next_element(
+        ares = astarte_bson_deserializer_next_element(
             document, candidate_element, &candidate_element);
-        if (ret != ASTARTE_RESULT_OK) {
-            return ret;
+        if (ares != ASTARTE_RESULT_OK) {
+            return ares;
         }
     }
 
@@ -247,7 +247,7 @@ astarte_result_t astarte_bson_deserializer_element_lookup(
     element->name_len = candidate_element.name_len;
     element->value = candidate_element.value;
 
-    return ret;
+    return ares;
 }
 
 double astarte_bson_deserializer_element_to_double(astarte_bson_element_t element)

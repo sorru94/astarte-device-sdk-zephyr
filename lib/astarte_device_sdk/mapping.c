@@ -21,7 +21,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_mapping, CONFIG_ASTARTE_DEVICE_SDK_MAPPING_L
 astarte_result_t astarte_mapping_array_to_scalar_type(
     astarte_mapping_type_t array_type, astarte_mapping_type_t *scalar_type)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     switch (array_type) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
             *scalar_type = ASTARTE_MAPPING_TYPE_BINARYBLOB;
@@ -46,15 +46,15 @@ astarte_result_t astarte_mapping_array_to_scalar_type(
             break;
         default:
             ASTARTE_LOG_ERR("Attempting to conversion array->scalar on non array type.");
-            res = ASTARTE_RESULT_INTERNAL_ERROR;
+            ares = ASTARTE_RESULT_INTERNAL_ERROR;
             break;
     }
-    return res;
+    return ares;
 }
 
 astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const char *path)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     regex_t preg = { 0 };
     if (regcomp(&preg, mapping.regex_endpoint, REG_EXTENDED) != 0) {
         ASTARTE_LOG_ERR("Compilation command FAILED.");
@@ -62,11 +62,11 @@ astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const cha
     }
 
     if (regexec(&preg, path, 0, NULL, 0) != 0) {
-        res = ASTARTE_RESULT_MAPPING_PATH_MISMATCH;
+        ares = ASTARTE_RESULT_MAPPING_PATH_MISMATCH;
     }
 
     regfree(&preg);
-    return res;
+    return ares;
 }
 
 astarte_result_t astarte_mapping_check_individual(

@@ -103,9 +103,9 @@ astarte_result_t introspection_init(introspection_t *introspection)
 astarte_result_t introspection_add(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
-    astarte_result_t res = astarte_interface_validate(interface);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    astarte_result_t ares = astarte_interface_validate(interface);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     introspection_node_t *check_alloc_node = find_node_by_name(introspection, interface->name);
@@ -113,9 +113,9 @@ astarte_result_t introspection_add(
         return ASTARTE_RESULT_INTERFACE_ALREADY_PRESENT;
     }
 
-    res = append_introspection_node(introspection, interface);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = append_introspection_node(introspection, interface);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     return ASTARTE_RESULT_OK;
@@ -125,15 +125,15 @@ astarte_result_t introspection_update(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
 
-    astarte_result_t res = astarte_interface_validate(interface);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    astarte_result_t ares = astarte_interface_validate(interface);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     introspection_node_t *old_node = NULL;
-    res = check_interface_update(introspection, interface, &old_node);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = check_interface_update(introspection, interface, &old_node);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     if (old_node) {
@@ -141,9 +141,9 @@ astarte_result_t introspection_update(
         old_node->interface = interface;
     } else {
         // no previous interface with the same name so we append a new node
-        res = append_introspection_node(introspection, interface);
-        if (res != ASTARTE_RESULT_OK) {
-            return res;
+        ares = append_introspection_node(introspection, interface);
+        if (ares != ASTARTE_RESULT_OK) {
+            return ares;
         }
     }
 

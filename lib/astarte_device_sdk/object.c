@@ -30,14 +30,6 @@ astarte_object_entry_t astarte_object_entry_new(
     };
 }
 
-astarte_object_t astarte_object_new(astarte_object_entry_t *object_entries, size_t len)
-{
-    return (astarte_object_t){
-        .buf = object_entries,
-        .len = len,
-    };
-}
-
 astarte_result_t astarte_object_entry_to_endpoint_and_individual(
     astarte_object_entry_t object_entry, const char **endpoint, astarte_individual_t *individual)
 {
@@ -48,18 +40,6 @@ astarte_result_t astarte_object_entry_to_endpoint_and_individual(
     }
     *endpoint = object_entry.endpoint;
     *individual = object_entry.individual;
-    return ASTARTE_RESULT_OK;
-}
-
-astarte_result_t astarte_object_to_entries(
-    astarte_object_t object, astarte_object_entry_t **entries, size_t *len)
-{
-    if (!entries || !len) {
-        ASTARTE_LOG_ERR("Conversion from Astarte object to object entries error.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-    *entries = object.buf;
-    *len = object.len;
     return ASTARTE_RESULT_OK;
 }
 
@@ -81,10 +61,11 @@ astarte_result_t astarte_object_entries_serialize(
     return ares;
 }
 
-astarte_result_t astarte_object_deserialize(astarte_bson_element_t bson_elem,
-    const astarte_interface_t *interface, const char *path, astarte_object_t *object)
+astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_elem,
+    const astarte_interface_t *interface, const char *path, astarte_object_entry_t **entries,
+    size_t *entries_length)
 {
-    astarte_object_entry_t *entries = NULL;
+    astarte_object_entry_t *tmp_entries = NULL;
     size_t deserialize_idx = 0;
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
@@ -108,8 +89,8 @@ astarte_result_t astarte_object_deserialize(astarte_bson_element_t bson_elem,
     }
 
     // Step 2: Allocate sufficient memory for all the astarte object entries
-    entries = calloc(bson_doc_length, sizeof(astarte_object_entry_t));
-    if (!entries) {
+    tmp_entries = calloc(bson_doc_length, sizeof(astarte_object_entry_t));
+    if (!tmp_entries) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto failure;
@@ -124,13 +105,13 @@ astarte_result_t astarte_object_deserialize(astarte_bson_element_t bson_elem,
 
     const astarte_mapping_t *mapping = NULL;
     while ((ares != ASTARTE_RESULT_NOT_FOUND) && (deserialize_idx < bson_doc_length)) {
-        entries[deserialize_idx].endpoint = inner_elem.name;
+        tmp_entries[deserialize_idx].endpoint = inner_elem.name;
         ares = astarte_interface_get_mapping_from_paths(interface, path, inner_elem.name, &mapping);
         if (ares != ASTARTE_RESULT_OK) {
             goto failure;
         }
         ares = astarte_individual_deserialize(
-            inner_elem, mapping->type, &(entries[deserialize_idx].individual));
+            inner_elem, mapping->type, &(tmp_entries[deserialize_idx].individual));
         if (ares != ASTARTE_RESULT_OK) {
             goto failure;
         }
@@ -142,24 +123,25 @@ astarte_result_t astarte_object_deserialize(astarte_bson_element_t bson_elem,
     }
 
     // Step 4: fill in the output variables
-    object->buf = entries;
-    object->len = bson_doc_length;
+    *entries = tmp_entries;
+    *entries_length = bson_doc_length;
 
     return ASTARTE_RESULT_OK;
 
 failure:
     for (size_t j = 0; j < deserialize_idx; j++) {
-        astarte_individual_destroy_deserialized(entries[j].individual);
+        astarte_individual_destroy_deserialized(tmp_entries[j].individual);
     }
-    free(entries);
+    free(tmp_entries);
 
     return ares;
 }
 
-void astarte_object_destroy_deserialized(astarte_object_t object)
+void astarte_object_entries_destroy_deserialized(
+    astarte_object_entry_t *entries, size_t entries_length)
 {
-    for (size_t i = 0; i < object.len; i++) {
-        astarte_individual_destroy_deserialized(object.buf[i].individual);
+    for (size_t i = 0; i < entries_length; i++) {
+        astarte_individual_destroy_deserialized(entries[i].individual);
     }
-    free(object.buf);
+    free(entries);
 }

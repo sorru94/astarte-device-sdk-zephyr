@@ -77,7 +77,8 @@ typedef void (*astarte_device_datastream_individual_cbk_t)(
 typedef struct
 {
     astarte_device_data_event_t data_event; /**< Generic data event context */
-    astarte_object_t object; /**< Received data from Astarte */
+    astarte_object_entry_t *entries; /**< Received data from Astarte, as an array of entries. */
+    size_t entries_len; /**< Length of the array of Astarte object entries. */
 } astarte_device_datastream_object_event_t;
 
 /** @brief Function pointer for datastream object events. */
@@ -232,13 +233,14 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
- * @param[in] object The object payload to stream.
+ * @param[in] entries The object entries to stream, organized as an array.
+ * @param[in] entries_len The number of element in the @p entries array.
  * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_object_t object,
-    const int64_t *timestamp);
+    const char *interface_name, const char *path, astarte_object_entry_t *entries,
+    size_t entries_len, const int64_t *timestamp);
 
 /**
  * @brief Set a device property to the provided individual value.

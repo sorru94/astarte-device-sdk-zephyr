@@ -257,16 +257,8 @@ static void datastream_object_events_handler(astarte_device_datastream_object_ev
 {
     const char *interface_name = event.data_event.interface_name;
     const char *path = event.data_event.path;
-
-    astarte_object_entry_t *entries = NULL;
-    size_t entries_length = 0;
-
-    astarte_result_t astarte_rc
-        = astarte_object_to_entries(event.object, &entries, &entries_length);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
-        LOG_INF("Astarte object error: %s.", astarte_result_to_name(astarte_rc)); // NOLINT
-        return;
-    }
+    astarte_object_entry_t *entries = event.entries;
+    size_t entries_length = event.entries_len;
 
     LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
 
@@ -285,7 +277,7 @@ static void datastream_object_events_handler(astarte_device_datastream_object_ev
 
 static void transmit_data(astarte_device_handle_t device)
 {
-    astarte_object_entry_t entries[UTILS_DATA_ELEMENTS] = {
+    astarte_object_entry_t entries[] = {
         astarte_object_entry_new("binaryblob_endpoint",
             astarte_individual_from_binaryblob(
                 (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data))),
@@ -324,10 +316,9 @@ static void transmit_data(astarte_device_handle_t device)
                 (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data))),
     };
 
-    astarte_object_t object = astarte_object_new(entries, ARRAY_SIZE(entries));
-
     astarte_result_t res = astarte_device_stream_aggregated(device,
-        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", object, NULL);
+        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", entries,
+        ARRAY_SIZE(entries), NULL);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Error streaming the aggregate"); // NOLINT
     }

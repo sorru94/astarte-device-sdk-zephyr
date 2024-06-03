@@ -52,17 +52,9 @@ astarte_result_t data_validation_individual_datastream(const astarte_interface_t
 }
 
 astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t *interface,
-    const char *path, astarte_object_t object, const int64_t *timestamp)
+    const char *path, astarte_object_entry_t *entries, size_t entries_len, const int64_t *timestamp)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-
-    astarte_object_entry_t *entries = NULL;
-    size_t entries_len = 0;
-    ares = astarte_object_to_entries(object, &entries, &entries_len);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Invalid Astarte object.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
 
     for (size_t i = 0; i < entries_len; i++) {
         const astarte_mapping_t *mapping = NULL;

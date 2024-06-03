@@ -93,7 +93,9 @@ typedef enum
     /** @brief Attempting to connect an MQTT client already connecting. */
     ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING = 31,
     /** @brief Calling a device API while the device is not ready. */
-    ASTARTE_RESULT_DEVICE_NOT_READY = 32
+    ASTARTE_RESULT_DEVICE_NOT_READY = 32,
+    /** @brief A partial aggregated object has been found. */
+    ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT = 33
 } astarte_result_t;
 
 #ifdef __cplusplus

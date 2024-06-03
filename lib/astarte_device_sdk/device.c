@@ -598,6 +598,14 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
         goto exit;
     }
 
+    // This validation section has been moved outside the data_validation_aggregated_datastream
+    // function as it is only required for transmission.
+    if (interface->mappings_length != entries_len) {
+        ASTARTE_LOG_ERR("Incomplete aggregated datastream (%s/%s).", interface->name, path);
+        ares = ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+        goto exit;
+    }
+
     ares = data_validation_aggregated_datastream(interface, path, entries, entries_len, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");

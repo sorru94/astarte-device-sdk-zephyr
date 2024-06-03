@@ -295,7 +295,7 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
 
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     struct zsock_addrinfo *broker_addrinfo = NULL;
 
     // Lock the mutex for the Astarte MQTT wrapper
@@ -306,12 +306,12 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     if ((astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)
         && (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)) {
         ASTARTE_LOG_ERR("Connection request while the client is non idle will be ignored.");
-        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
         goto exit;
     }
 
-    astarte_res = astarte_mqtt->refresh_client_cert_cbk(astarte_mqtt);
-    if (astarte_res != ASTARTE_RESULT_OK) {
+    ares = astarte_mqtt->refresh_client_cert_cbk(astarte_mqtt);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Refreshing client certificate failed");
         goto exit;
     }
@@ -327,7 +327,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
         if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
-        astarte_res = ASTARTE_RESULT_SOCKET_ERROR;
+        ares = ASTARTE_RESULT_SOCKET_ERROR;
         goto exit;
     }
 
@@ -371,7 +371,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);
     if (mqtt_rc != 0) {
         ASTARTE_LOG_ERR("MQTT connection error (%d)", mqtt_rc);
-        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        ares = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
 
@@ -391,7 +391,7 @@ exit:
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return astarte_res;
+    return ares;
 }
 
 bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt)
@@ -401,7 +401,7 @@ bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt)
 
 astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
@@ -414,11 +414,11 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
             goto exit;
         case ASTARTE_MQTT_DISCONNECTED:
             ASTARTE_LOG_ERR("Disconnection request for a disconnected client will be ignored.");
-            astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+            ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
             goto exit;
         case ASTARTE_MQTT_DISCONNECTING:
             ASTARTE_LOG_ERR("Disconnection request for a disconnecting client will be ignored.");
-            astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+            ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
             goto exit;
         default:
             break;
@@ -428,7 +428,7 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
     int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client);
     if (mqtt_rc < 0) {
         ASTARTE_LOG_ERR("Device disconnection failure %d", mqtt_rc);
-        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        ares = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
     astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTING;
@@ -438,13 +438,13 @@ exit:
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return astarte_res;
+    return ares;
 }
 
 astarte_result_t astarte_mqtt_subscribe(
     astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id)
 {
-    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
@@ -453,7 +453,7 @@ astarte_result_t astarte_mqtt_subscribe(
 
     if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
         ASTARTE_LOG_ERR("Subscription to a topic is not allowed when the client is not connected.");
-        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
         goto exit;
     }
 
@@ -472,7 +472,7 @@ astarte_result_t astarte_mqtt_subscribe(
     int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
     if (ret != 0) {
         ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
-        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        ares = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
 
@@ -496,13 +496,13 @@ exit:
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return astarte_res;
+    return ares;
 }
 
 astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
     size_t data_size, int qos, uint16_t *out_message_id)
 {
-    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
@@ -511,7 +511,7 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
 
     if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
         ASTARTE_LOG_ERR("Publish to a topic is not allowed when the client is not connected.");
-        astarte_res = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
+        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
         goto exit;
     }
 
@@ -531,7 +531,7 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
     int ret = mqtt_publish(&astarte_mqtt->client, &msg);
     if (ret != 0) {
         ASTARTE_LOG_ERR("MQTT publish failed: %s, %d", strerror(-ret), ret);
-        astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+        ares = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
 
@@ -559,12 +559,12 @@ exit:
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return astarte_res;
+    return ares;
 }
 
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t astarte_res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
@@ -592,10 +592,9 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 
         // Attempt reconnection
         ASTARTE_LOG_INF("Attempting a reconnection");
-        astarte_result_t conn_rc = astarte_mqtt_connect(astarte_mqtt);
-        if (conn_rc != ASTARTE_RESULT_OK) {
+        if (astarte_mqtt_connect(astarte_mqtt) != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed establishing a new connection!");
-            goto exit;
+            goto exit; // Exit with ASTARTE_RESULT_OK.
         }
     }
 
@@ -635,7 +634,7 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
         if (socket_rc < 0) {
             ASTARTE_LOG_ERR("Poll error: %d", errno);
             astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
-            astarte_res = ASTARTE_RESULT_SOCKET_ERROR;
+            ares = ASTARTE_RESULT_SOCKET_ERROR;
             goto exit;
         }
         if (socket_rc != 0) {
@@ -643,7 +642,7 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
             int mqtt_rc = mqtt_input(&astarte_mqtt->client);
             if ((mqtt_rc != 0) && (mqtt_rc != -ENOTCONN)) {
                 ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_rc);
-                astarte_res = ASTARTE_RESULT_MQTT_ERROR;
+                ares = ASTARTE_RESULT_MQTT_ERROR;
                 goto exit;
             }
         }
@@ -654,7 +653,7 @@ exit:
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return astarte_res;
+    return ares;
 }
 
 bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt)

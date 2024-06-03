@@ -45,86 +45,119 @@ const char *const utils_string_array_data[2] = { "Hello ", "world!" };
  ***********************************************/
 
 // NOLINTNEXTLINE(hicpp-function-size)
-void utils_log_astarte_value(astarte_value_t value)
+void utils_log_astarte_individual(astarte_individual_t individual)
 {
     struct tm *tm_obj = NULL;
     char tm_str[DATETIME_MAX_STR_LEN] = { 0 };
 
-    switch (value.tag) {
+    switch (astarte_individual_get_type(individual)) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-            // NOLINTNEXTLINE
-            LOG_HEXDUMP_INF(
-                value.data.binaryblob.buf, value.data.binaryblob.len, "Astarte binaryblob:");
+            void *blob = NULL;
+            size_t blob_len = 0;
+            (void) astarte_individual_to_binaryblob(individual, &blob, &blob_len);
+            LOG_HEXDUMP_INF(blob, blob_len, "Astarte binaryblob:"); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
             LOG_INF("Astarte binaryblobarray:"); // NOLINT
-            for (size_t i = 0; i < value.data.binaryblob_array.count; i++) {
-                // NOLINTNEXTLINE
-                LOG_HEXDUMP_INF(
-                    value.data.binaryblob_array.blobs[i], value.data.binaryblob_array.sizes[i], "");
+            const void **blobs = NULL;
+            size_t *sizes = NULL;
+            size_t count = 0;
+            (void) astarte_individual_to_binaryblob_array(individual, &blobs, &sizes, &count);
+            for (size_t i = 0; i < count; i++) {
+                LOG_HEXDUMP_INF(blobs[i], sizes[i], ""); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEAN:
-            LOG_INF("Astarte boolean: %s", (value.data.boolean) ? "true" : "false"); // NOLINT
+            bool boolean = false;
+            (void) astarte_individual_to_boolean(individual, &boolean);
+            LOG_INF("Astarte boolean: %s", (boolean) ? "true" : "false"); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
             LOG_INF("Astarte booleanarray:"); // NOLINT
-            for (size_t i = 0; i < value.data.boolean_array.len; i++) {
-                // NOLINTNEXTLINE
-                LOG_INF("    %zi: %s", i, (value.data.boolean_array.buf[i]) ? "true" : "false");
+            bool *bools = NULL;
+            size_t bools_len = 0;
+            (void) astarte_individual_to_boolean_array(individual, &bools, &bools_len);
+            for (size_t i = 0; i < bools_len; i++) {
+                LOG_INF("    %zi: %s", i, (bools[i]) ? "true" : "false"); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_DATETIME:
-            tm_obj = gmtime(&value.data.datetime);
+            int64_t datetime = false;
+            (void) astarte_individual_to_datetime(individual, &datetime);
+            tm_obj = gmtime(&datetime);
             (void) strftime(tm_str, DATETIME_MAX_STR_LEN, "%Y-%m-%dT%H:%M:%S%z", tm_obj);
             LOG_INF("Astarte datetime: %s", tm_str); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
             LOG_INF("Astarte datetimearray:"); // NOLINT
-            for (size_t i = 0; i < value.data.datetime_array.len; i++) {
-                tm_obj = gmtime(&value.data.datetime_array.buf[i]);
+            int64_t *datetimes = NULL;
+            size_t datetimes_len = 0;
+            (void) astarte_individual_to_datetime_array(individual, &datetimes, &datetimes_len);
+            for (size_t i = 0; i < datetimes_len; i++) {
+                tm_obj = gmtime(&datetimes[i]);
                 (void) strftime(tm_str, DATETIME_MAX_STR_LEN, "%Y-%m-%dT%H:%M:%S%z", tm_obj);
                 LOG_INF("    %zi: %s", i, tm_str); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLE:
-            LOG_INF("Astarte double: %f", value.data.dbl); // NOLINT
+            double dbl = false;
+            (void) astarte_individual_to_double(individual, &dbl);
+            LOG_INF("Astarte double: %f", dbl); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
             LOG_INF("Astarte doublearray:"); // NOLINT
-            for (size_t i = 0; i < value.data.double_array.len; i++) {
-                LOG_INF("    %zi: %f", i, value.data.double_array.buf[i]); // NOLINT
+            double *doubles = NULL;
+            size_t doubles_len = 0;
+            (void) astarte_individual_to_double_array(individual, &doubles, &doubles_len);
+            for (size_t i = 0; i < doubles_len; i++) {
+                LOG_INF("    %zi: %f", i, doubles[i]); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_INTEGER:
-            LOG_INF("Astarte integer: %i", value.data.integer); // NOLINT
+            int32_t integer = false;
+            (void) astarte_individual_to_integer(individual, &integer);
+            LOG_INF("Astarte integer: %i", integer); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
             LOG_INF("Astarte integerarray:"); // NOLINT
-            for (size_t i = 0; i < value.data.integer_array.len; i++) {
-                LOG_INF("    %zi: %i", i, value.data.integer_array.buf[i]); // NOLINT
+            int32_t *integers = NULL;
+            size_t integers_len = 0;
+            (void) astarte_individual_to_integer_array(individual, &integers, &integers_len);
+            for (size_t i = 0; i < integers_len; i++) {
+                LOG_INF("    %zi: %i", i, integers[i]); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGER:
-            LOG_INF("Astarte longinteger: %lli", value.data.longinteger); // NOLINT
+            int64_t longinteger = false;
+            (void) astarte_individual_to_longinteger(individual, &longinteger);
+            LOG_INF("Astarte longinteger: %lli", longinteger); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
             LOG_INF("Astarte longintegerarray:"); // NOLINT
-            for (size_t i = 0; i < value.data.longinteger_array.len; i++) {
-                LOG_INF("    %zi: %lli", i, value.data.longinteger_array.buf[i]); // NOLINT
+            int64_t *longintegers = NULL;
+            size_t longintegers_len = 0;
+            (void) astarte_individual_to_longinteger_array(
+                individual, &longintegers, &longintegers_len);
+            for (size_t i = 0; i < longintegers_len; i++) {
+                LOG_INF("    %zi: %lli", i, longintegers[i]); // NOLINT
             }
             break;
         case ASTARTE_MAPPING_TYPE_STRING:
-            LOG_INF("Astarte string: %s", value.data.string); // NOLINT
+            const char *string = false;
+            (void) astarte_individual_to_string(individual, &string);
+            LOG_INF("Astarte string: %s", string); // NOLINT
             break;
         case ASTARTE_MAPPING_TYPE_STRINGARRAY:
             LOG_INF("Astarte stringarray:"); // NOLINT
-            for (size_t i = 0; i < value.data.string_array.len; i++) {
-                LOG_INF("    %zi: %s", i, value.data.string_array.buf[i]); // NOLINT
+            const char **strings = NULL;
+            size_t strings_len = 0;
+            (void) astarte_individual_to_string_array(individual, &strings, &strings_len);
+            for (size_t i = 0; i < strings_len; i++) {
+                LOG_INF("    %zi: %s", i, strings[i]); // NOLINT
             }
             break;
         default:
-            LOG_ERR("Astarte value has invalid tag!"); // NOLINT
+            LOG_ERR("Astarte individual has invalid tag!"); // NOLINT
             break;
     }
 }

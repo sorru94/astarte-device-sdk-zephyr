@@ -125,11 +125,11 @@ static void byte_array_replace(
 
 astarte_result_t astarte_bson_serializer_init(astarte_bson_serializer_t *bson)
 {
-    astarte_result_t astarte_rc = byte_array_init(bson, "\0\0\0\0", 4);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    astarte_result_t ares = byte_array_init(bson, "\0\0\0\0", 4);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Unable to initialize byte_array");
     }
-    return astarte_rc;
+    return ares;
 }
 
 void astarte_bson_serializer_destroy(astarte_bson_serializer_t *bson)
@@ -274,15 +274,15 @@ void astarte_bson_serializer_append_document(
         astarte_bson_serializer_t *bson, const char *name, TYPE arr, int count)                    \
     {                                                                                              \
         astarte_bson_serializer_t array_ser = { 0 };                                               \
-        astarte_result_t result = astarte_bson_serializer_init(&array_ser);                        \
-        if (result != ASTARTE_RESULT_OK) {                                                         \
-            return result;                                                                         \
+        astarte_result_t ares = astarte_bson_serializer_init(&array_ser);                          \
+        if (ares != ASTARTE_RESULT_OK) {                                                           \
+            return ares;                                                                           \
         }                                                                                          \
         for (int i = 0; i < count; i++) {                                                          \
             char key[BSON_ARRAY_SIZE_STR_LEN] = { 0 };                                             \
             int ret = snprintf(key, BSON_ARRAY_SIZE_STR_LEN, "%i", i);                             \
             if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {                                   \
-                result = ASTARTE_RESULT_INTERNAL_ERROR;                                            \
+                ares = ASTARTE_RESULT_INTERNAL_ERROR;                                              \
             }                                                                                      \
             astarte_bson_serializer_append_##TYPE_NAME(&array_ser, key, arr[i]);                   \
         }                                                                                          \
@@ -298,7 +298,7 @@ void astarte_bson_serializer_append_document(
                                                                                                    \
         astarte_bson_serializer_destroy(&array_ser);                                               \
                                                                                                    \
-        return result;                                                                             \
+        return ares;                                                                               \
     }
 
 IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(const double *, double)
@@ -312,15 +312,15 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
     const char *name, const void *const *arr, const size_t *sizes, int count)
 {
     astarte_bson_serializer_t array_ser = { 0 };
-    astarte_result_t result = astarte_bson_serializer_init(&array_ser);
-    if (result != ASTARTE_RESULT_OK) {
-        return result;
+    astarte_result_t ares = astarte_bson_serializer_init(&array_ser);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
     for (int i = 0; i < count; i++) {
         char key[BSON_ARRAY_SIZE_STR_LEN] = { 0 };
         int ret = snprintf(key, BSON_ARRAY_SIZE_STR_LEN, "%i", i);
         if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {
-            result = ASTARTE_RESULT_INTERNAL_ERROR;
+            ares = ASTARTE_RESULT_INTERNAL_ERROR;
         }
         astarte_bson_serializer_append_binary(&array_ser, key, arr[i], sizes[i]);
     }
@@ -335,5 +335,5 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
 
     astarte_bson_serializer_destroy(&array_ser);
 
-    return result;
+    return ares;
 }

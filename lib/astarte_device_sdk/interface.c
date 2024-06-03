@@ -34,12 +34,12 @@ astarte_result_t astarte_interface_get_mapping_from_path(
     const astarte_interface_t *interface, const char *path, const astarte_mapping_t **mapping)
 {
     for (size_t i = 0; i < interface->mappings_length; i++) {
-        astarte_result_t res = astarte_mapping_check_path(interface->mappings[i], path);
-        if (res == ASTARTE_RESULT_OK) {
+        astarte_result_t ares = astarte_mapping_check_path(interface->mappings[i], path);
+        if (ares == ASTARTE_RESULT_OK) {
             *mapping = &interface->mappings[i];
             return ASTARTE_RESULT_OK;
         }
-        if (res != ASTARTE_RESULT_MAPPING_PATH_MISMATCH) {
+        if (ares != ASTARTE_RESULT_MAPPING_PATH_MISMATCH) {
             return ASTARTE_RESULT_INTERNAL_ERROR;
         }
     }
@@ -51,7 +51,7 @@ astarte_result_t astarte_interface_get_mapping_from_path(
 astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interface_t *interface,
     const char *path1, const char *path2, const astarte_mapping_t **mapping)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     const size_t fullpath_size = strlen(path1) + 1 + strlen(path2) + 1;
     char *fullpath = calloc(fullpath_size, sizeof(char));
     if (!fullpath) {
@@ -60,26 +60,26 @@ astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interfac
     }
     if (snprintf(fullpath, fullpath_size, "%s/%s", path1, path2) != fullpath_size - 1) {
         ASTARTE_LOG_ERR("Failure in formatting the full endpoint path.");
-        res = ASTARTE_RESULT_INTERNAL_ERROR;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }
-    res = astarte_interface_get_mapping_from_path(interface, fullpath, mapping);
-    if (res != ASTARTE_RESULT_OK) {
+    ares = astarte_interface_get_mapping_from_path(interface, fullpath, mapping);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR(
             "For path '%s' could not find mapping in interface '%s'.", fullpath, interface->name);
-        res = ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
+        ares = ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
         goto exit;
     }
 
 exit:
     free(fullpath);
-    return res;
+    return ares;
 }
 
 astarte_result_t astarte_interface_get_qos(
     const astarte_interface_t *interface, const char *path, int *qos)
 {
-    astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     if (!qos) {
         ASTARTE_LOG_ERR("Missing QoS parameter in introspection_get_qos.");
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -87,11 +87,11 @@ astarte_result_t astarte_interface_get_qos(
 
     const astarte_mapping_t *mapping = NULL;
     if (interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
-        astarte_rc = astarte_interface_get_mapping_from_path(interface, path, &mapping);
-        if (astarte_rc != ASTARTE_RESULT_OK) {
+        ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+        if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR(
                 "Couldn't find mapping in interface %s for path %s.", interface->name, path);
-            return astarte_rc;
+            return ares;
         }
     } else {
         // All the QoS are the same in an aggregated interface, as such taking any of them works.

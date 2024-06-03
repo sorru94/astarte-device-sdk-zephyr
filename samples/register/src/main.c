@@ -22,10 +22,10 @@
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 #include <astarte_device_sdk/device.h>
+#include <astarte_device_sdk/individual.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
-#include <astarte_device_sdk/value.h>
 
 #if defined(CONFIG_WIFI)
 #include "wifi.h"

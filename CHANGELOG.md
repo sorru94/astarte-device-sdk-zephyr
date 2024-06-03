@@ -17,9 +17,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   runtime.
 - Utilities functions to convert an UUID to a base64 and base64 url and filename safe string.
 
+### Changed
+- Renamed the `astarte_value_t` type to `astarte_individual_t` to better reflect its content.
+- Renamed the `astarte_value_pair_t` type to `astarte_object_entry_t` to better reflect its content.
+
 ### Removed
 - Kconfig option `CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID`. Device ID should be defined using the
   `astarte_device_config_t` struct during device initialization.
+- The typedefined struct `astarte_value_pair_array_t`.
 
 ## [0.5.0] - 2024-04-10
 ### Added

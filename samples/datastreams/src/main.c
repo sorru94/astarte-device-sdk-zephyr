@@ -22,10 +22,10 @@
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 #include <astarte_device_sdk/device.h>
+#include <astarte_device_sdk/individual.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
-#include <astarte_device_sdk/value.h>
 
 #if defined(CONFIG_WIFI)
 #include "wifi.h"
@@ -247,28 +247,28 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     const char *interface_name = org_astarteplatform_zephyr_examples_DeviceDatastream.name;
 
-    astarte_value_t values[UTILS_DATA_ELEMENTS]
-        = { astarte_value_from_binaryblob(
+    astarte_individual_t individuals[UTILS_DATA_ELEMENTS]
+        = { astarte_individual_from_binaryblob(
                 (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
-              astarte_value_from_binaryblob_array((const void **) utils_binary_blobs_data,
+              astarte_individual_from_binaryblob_array((const void **) utils_binary_blobs_data,
                   (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)),
-              astarte_value_from_boolean(utils_boolean_data),
-              astarte_value_from_boolean_array(
+              astarte_individual_from_boolean(utils_boolean_data),
+              astarte_individual_from_boolean_array(
                   (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)),
-              astarte_value_from_datetime(utils_unix_time_data),
-              astarte_value_from_datetime_array(
+              astarte_individual_from_datetime(utils_unix_time_data),
+              astarte_individual_from_datetime_array(
                   (int64_t *) utils_unix_time_array_data, ARRAY_SIZE(utils_unix_time_array_data)),
-              astarte_value_from_double(utils_double_data),
-              astarte_value_from_double_array(
+              astarte_individual_from_double(utils_double_data),
+              astarte_individual_from_double_array(
                   (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)),
-              astarte_value_from_integer(utils_integer_data),
-              astarte_value_from_integer_array(
+              astarte_individual_from_integer(utils_integer_data),
+              astarte_individual_from_integer_array(
                   (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)),
-              astarte_value_from_longinteger(utils_longinteger_data),
-              astarte_value_from_longinteger_array((int64_t *) utils_longinteger_array_data,
+              astarte_individual_from_longinteger(utils_longinteger_data),
+              astarte_individual_from_longinteger_array((int64_t *) utils_longinteger_array_data,
                   ARRAY_SIZE(utils_longinteger_array_data)),
-              astarte_value_from_string(utils_string_data),
-              astarte_value_from_string_array(
+              astarte_individual_from_string(utils_string_data),
+              astarte_individual_from_string_array(
                   (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
 
     const char *paths[UTILS_DATA_ELEMENTS] = {
@@ -291,8 +291,9 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
         LOG_INF("Stream on %s:", paths[i]); // NOLINT
-        utils_log_astarte_value(values[i]);
-        res = astarte_device_stream_individual(device, interface_name, paths[i], values[i], &tms);
+        utils_log_astarte_individual(individuals[i]);
+        res = astarte_device_stream_individual(
+            device, interface_name, paths[i], individuals[i], &tms);
         if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Astarte device transmission failure."); // NOLINT
         }
@@ -317,11 +318,11 @@ static void datastream_individual_callback(astarte_device_datastream_individual_
 {
     const char *interface_name = event.data_event.interface_name;
     const char *path = event.data_event.path;
-    astarte_value_t value = event.value;
+    astarte_individual_t individual = event.individual;
 
     LOG_INF("Datastream individual event, interface: %s, path: %s", interface_name, path); // NOLINT
 
     if (strcmp(interface_name, org_astarteplatform_zephyr_examples_ServerDatastream.name) == 0) {
-        utils_log_astarte_value(value);
+        utils_log_astarte_individual(individual);
     }
 }

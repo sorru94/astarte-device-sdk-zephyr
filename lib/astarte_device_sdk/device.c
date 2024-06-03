@@ -8,21 +8,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "astarte_device_sdk/individual.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/mapping.h"
+#include "astarte_device_sdk/object.h"
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/result.h"
-#include "astarte_device_sdk/value.h"
 #include "crypto.h"
 #include "data_validation.h"
+#include "individual_private.h"
 #include "interface_private.h"
 #include "introspection.h"
 #include "log.h"
 #include "mapping_private.h"
 #include "mqtt.h"
+#include "object_private.h"
 #include "pairing_private.h"
 #include "tls_credentials.h"
-#include "value_private.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
 
@@ -152,29 +154,29 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
  *
  * @param[in] device Handle to the device instance.
  * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] value Astarte value received.
+ * @param[in] individual Astarte individual value received.
  */
-static void on_set_property(
-    astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value);
+static void on_set_property(astarte_device_handle_t device, astarte_device_data_event_t data_event,
+    astarte_individual_t individual);
 /**
  * @brief Handles an incoming datastream individual message.
  *
  * @param[in] device Handle to the device instance.
  * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] value Astarte value received.
+ * @param[in] individual Astarte individual value received.
  */
-static void on_datastream_individual(
-    astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value);
+static void on_datastream_individual(astarte_device_handle_t device,
+    astarte_device_data_event_t data_event, astarte_individual_t individual);
 /**
  * @brief Handles an incoming datastream aggregated message.
  *
  * @param[in] device Handle to the device instance.
  * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] values Array of Astarte value pairs received.
- * @param[in] values_length Size of the array of Astarte value pairs received.
+ * @param[in] entries The object entries received, organized as an array.
+ * @param[in] entries_len The number of element in the @p entries array.
  */
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_value_pair_t *values, size_t values_length);
+    astarte_device_data_event_t data_event, astarte_object_entry_t *entries, size_t entries_len);
 /**
  * @brief Fetch a new client certificate from Astarte.
  *
@@ -234,24 +236,24 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
     astarte_tls_credentials_client_crt_t *client_crt = &device->client_crt;
     // Obtain new client certificate if no cached one exists
     if (strlen(client_crt->crt_pem) == 0) {
-        astarte_result_t res = get_new_client_certificate(device);
-        if (res != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Client certificate get failed: %s.", astarte_result_to_name(res));
+        astarte_result_t ares = get_new_client_certificate(device);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Client certificate get failed: %s.", astarte_result_to_name(ares));
         }
-        return res;
+        return ares;
     }
     // Verify cached certificate
-    astarte_result_t res = astarte_pairing_verify_client_certificate(
+    astarte_result_t ares = astarte_pairing_verify_client_certificate(
         device->http_timeout_ms, device->device_id, device->cred_secr, client_crt->crt_pem);
-    if (res == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
-        res = update_client_certificate(device);
-        if (res != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Client crt update failed: %s.", astarte_result_to_name(res));
+    if (ares == ASTARTE_RESULT_CLIENT_CERT_INVALID) {
+        ares = update_client_certificate(device);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Client crt update failed: %s.", astarte_result_to_name(ares));
         }
-    } else if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Verify client certificate failed: %s.", astarte_result_to_name(res));
+    } else if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Verify client certificate failed: %s.", astarte_result_to_name(ares));
     }
-    return res;
+    return ares;
 }
 
 static void on_connected_handler(
@@ -354,12 +356,12 @@ static void on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic,
 
 astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     astarte_device_handle_t handle = calloc(1, sizeof(struct astarte_device));
     if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        res = ASTARTE_RESULT_OUT_OF_MEMORY;
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto failure;
     }
 
@@ -380,16 +382,16 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");
-    res = introspection_init(&handle->introspection);
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(res));
+    ares = introspection_init(&handle->introspection);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(ares));
         goto failure;
     }
     if (cfg->interfaces) {
         for (size_t i = 0; i < cfg->interfaces_size; i++) {
-            res = introspection_add(&handle->introspection, cfg->interfaces[i]);
-            if (res != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(res));
+            ares = introspection_add(&handle->introspection, cfg->interfaces[i]);
+            if (ares != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(ares));
                 introspection_free(handle->introspection);
                 goto failure;
             }
@@ -406,9 +408,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     astarte_mqtt_config.on_incoming_cbk = on_incoming_handler;
 
     ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
-    res = get_mqtt_broker_hostname_and_port(handle->http_timeout_ms, handle->device_id,
+    ares = get_mqtt_broker_hostname_and_port(handle->http_timeout_ms, handle->device_id,
         handle->cred_secr, astarte_mqtt_config.broker_hostname, astarte_mqtt_config.broker_port);
-    if (res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in parsing the MQTT broker URL");
         goto failure;
     }
@@ -418,35 +420,35 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s", handle->device_id);
     if (snprintf_rc != ASTARTE_MQTT_CLIENT_ID_LEN) {
         ASTARTE_LOG_ERR("Error encoding MQTT client ID.");
-        res = ASTARTE_RESULT_INTERNAL_ERROR;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto failure;
     }
 
-    res = astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
-    if (res != ASTARTE_RESULT_OK) {
+    ares = astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
+    if (ares != ASTARTE_RESULT_OK) {
         goto failure;
     }
 
     *device = handle;
 
-    return res;
+    return ares;
 
 failure:
     free(handle);
-    return res;
+    return ares;
 }
 
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
-    astarte_result_t res = astarte_device_disconnect(device);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    astarte_result_t ares = astarte_device_disconnect(device);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
-    res = astarte_tls_credential_delete();
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(res));
-        return res;
+    ares = astarte_tls_credential_delete();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(ares));
+        return ares;
     }
 
     free(device);
@@ -472,11 +474,11 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
             break;
     }
 
-    astarte_result_t astarte_rc = astarte_mqtt_connect(&device->astarte_mqtt);
-    if (astarte_rc == ASTARTE_RESULT_OK) {
+    astarte_result_t ares = astarte_mqtt_connect(&device->astarte_mqtt);
+    if (ares == ASTARTE_RESULT_OK) {
         device->connection_state = DEVICE_CONNECTING;
     }
-    return astarte_rc;
+    return ares;
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
@@ -505,14 +507,15 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 }
 
 astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_t value, const int64_t *timestamp)
+    const char *interface_name, const char *path, astarte_individual_t individual,
+    const int64_t *timestamp)
 {
     astarte_bson_serializer_t bson = { 0 };
-    astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
-        astarte_rc = ASTARTE_RESULT_DEVICE_NOT_READY;
+        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
         goto exit;
     }
 
@@ -520,30 +523,30 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
         &device->introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
-        astarte_rc = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        ares = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
         goto exit;
     }
 
-    astarte_rc = data_validation_individual_datastream(interface, path, value, timestamp);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = data_validation_individual_datastream(interface, path, individual, timestamp);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device individual data validation failed.");
         goto exit;
     }
 
     int qos = 0;
-    astarte_rc = astarte_interface_get_qos(interface, path, &qos);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_interface_get_qos(interface, path, &qos);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed getting QoS for individual data streaming.");
         goto exit;
     }
 
-    astarte_result_t exit_code = astarte_bson_serializer_init(&bson);
-    if (exit_code != ASTARTE_RESULT_OK) {
+    ares = astarte_bson_serializer_init(&bson);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    astarte_rc = astarte_value_serialize(&bson, "v", value);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_individual_serialize(&bson, "v", individual);
+    if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
 
@@ -556,34 +559,34 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     void *data = (void *) astarte_bson_serializer_get_serialized(bson, &len);
     if (!data) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
     if (len < 0) {
         ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
         ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
 
-    astarte_rc = publish_data(device, interface_name, path, data, len, qos);
+    ares = publish_data(device, interface_name, path, data, len, qos);
 
 exit:
     astarte_bson_serializer_destroy(&bson);
-    return astarte_rc;
+    return ares;
 }
 
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_pair_t *values,
-    size_t values_length, const int64_t *timestamp)
+    const char *interface_name, const char *path, astarte_object_entry_t *entries,
+    size_t entries_len, const int64_t *timestamp)
 {
     astarte_bson_serializer_t outer_bson = { 0 };
     astarte_bson_serializer_t inner_bson = { 0 };
-    astarte_result_t astarte_rc = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
-        astarte_rc = ASTARTE_RESULT_DEVICE_NOT_READY;
+        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
         goto exit;
     }
 
@@ -591,36 +594,43 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
         &device->introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
-        astarte_rc = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        ares = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
         goto exit;
     }
 
-    astarte_rc
-        = data_validation_aggregated_datastream(interface, path, values, values_length, timestamp);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    // This validation section has been moved outside the data_validation_aggregated_datastream
+    // function as it is only required for transmission.
+    if (interface->mappings_length != entries_len) {
+        ASTARTE_LOG_ERR("Incomplete aggregated datastream (%s/%s).", interface->name, path);
+        ares = ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+        goto exit;
+    }
+
+    ares = data_validation_aggregated_datastream(interface, path, entries, entries_len, timestamp);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");
         goto exit;
     }
 
     int qos = 0;
-    astarte_rc = astarte_interface_get_qos(interface, NULL, &qos);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_interface_get_qos(interface, NULL, &qos);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed getting QoS for aggregated data streaming.");
         goto exit;
     }
 
-    astarte_rc = astarte_bson_serializer_init(&outer_bson);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_bson_serializer_init(&outer_bson);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    astarte_rc = astarte_bson_serializer_init(&inner_bson);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_bson_serializer_init(&inner_bson);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    astarte_rc = astarte_value_pair_serialize(&inner_bson, values, values_length);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    ares = astarte_object_entries_serialize(&inner_bson, entries, entries_len);
+    if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
     astarte_bson_serializer_append_end_of_document(&inner_bson);
@@ -628,14 +638,14 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const void *inner_data = astarte_bson_serializer_get_serialized(inner_bson, &inner_len);
     if (!inner_data) {
         ASTARTE_LOG_ERR("Error during BSON serialization");
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
     if (inner_len < 0) {
         ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
         ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
 
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
 
@@ -650,28 +660,28 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const void *data = astarte_bson_serializer_get_serialized(outer_bson, &len);
     if (!data) {
         ASTARTE_LOG_ERR("Error during BSON serialization");
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
     if (len < 0) {
         ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
         ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
 
-        astarte_rc = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
 
-    astarte_rc = publish_data(device, interface_name, path, (void *) data, len, qos);
+    ares = publish_data(device, interface_name, path, (void *) data, len, qos);
 
 exit:
     astarte_bson_serializer_destroy(&outer_bson);
     astarte_bson_serializer_destroy(&inner_bson);
 
-    return astarte_rc;
+    return ares;
 }
 
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_t value)
+    const char *interface_name, const char *path, astarte_individual_t individual)
 {
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
@@ -685,13 +695,13 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
-    astarte_result_t astarte_rc = data_validation_set_property(interface, path, value);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    astarte_result_t ares = data_validation_set_property(interface, path, individual);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Property data validation failed.");
-        return astarte_rc;
+        return ares;
     }
 
-    return astarte_device_stream_individual(device, interface_name, path, value, NULL);
+    return astarte_device_stream_individual(device, interface_name, path, individual, NULL);
 }
 
 astarte_result_t astarte_device_unset_property(
@@ -709,10 +719,10 @@ astarte_result_t astarte_device_unset_property(
         return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
-    astarte_result_t astarte_rc = data_validation_unset_property(interface, path);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    astarte_result_t ares = data_validation_unset_property(interface, path);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device property unset failed.");
-        return astarte_rc;
+        return ares;
     }
 
     return publish_data(device, interface_name, path, "", 0, 2);
@@ -728,11 +738,11 @@ static astarte_result_t get_mqtt_broker_hostname_and_port(int32_t http_timeout_m
     char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1])
 {
     char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1] = { 0 };
-    astarte_result_t astarte_res = astarte_pairing_get_broker_info(
+    astarte_result_t ares = astarte_pairing_get_broker_info(
         http_timeout_ms, device_id, cred_secr, broker_url, sizeof(broker_url));
-    if (astarte_res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
-        return astarte_res;
+        return ares;
     }
     int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
     if (strncmp_rc != 0) {
@@ -801,37 +811,37 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
 
     if (interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
         const astarte_mapping_t *mapping = NULL;
-        astarte_result_t res = astarte_interface_get_mapping_from_path(interface, path, &mapping);
-        if (res != ASTARTE_RESULT_OK) {
+        astarte_result_t ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+        if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Could not find received mapping in interface %s.", interface_name);
             return;
         }
-        astarte_value_t value = { 0 };
-        res = astarte_value_deserialize(v_elem, mapping->type, &value);
-        if (res != ASTARTE_RESULT_OK) {
+        astarte_individual_t individual = { 0 };
+        ares = astarte_individual_deserialize(v_elem, mapping->type, &individual);
+        if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface_name, path);
             return;
         }
 
         if (interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) {
-            on_set_property(device, data_event, value);
+            on_set_property(device, data_event, individual);
         } else {
-            on_datastream_individual(device, data_event, value);
+            on_datastream_individual(device, data_event, individual);
         }
-        astarte_value_destroy_deserialized(value);
+        astarte_individual_destroy_deserialized(individual);
     } else {
-        astarte_value_pair_t *values = NULL;
-        size_t values_length = 0;
-        astarte_result_t res
-            = astarte_value_pair_deserialize(v_elem, interface, path, &values, &values_length);
-        if (res != ASTARTE_RESULT_OK) {
+        astarte_object_entry_t *entries = NULL;
+        size_t entries_length = 0;
+        astarte_result_t ares = astarte_object_entries_deserialize(
+            v_elem, interface, path, &entries, &entries_length);
+        if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface_name, path);
             return;
         }
-        on_datastream_aggregated(device, data_event, values, values_length);
-        astarte_value_pair_destroy_deserialized(values, values_length);
+        on_datastream_aggregated(device, data_event, entries, entries_length);
+        astarte_object_entries_destroy_deserialized(entries, entries_length);
     }
 }
 
@@ -845,9 +855,9 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
         return;
     }
 
-    astarte_result_t astarte_rc = data_validation_unset_property(interface, event.path);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Server property unset failed: %s.", astarte_result_to_name(astarte_rc));
+    astarte_result_t ares = data_validation_unset_property(interface, event.path);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Server property unset failed: %s.", astarte_result_to_name(ares));
         return;
     }
 
@@ -858,8 +868,8 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
     }
 }
 
-static void on_set_property(
-    astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value)
+static void on_set_property(astarte_device_handle_t device, astarte_device_data_event_t data_event,
+    astarte_individual_t individual)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, data_event.interface_name);
@@ -869,8 +879,8 @@ static void on_set_property(
         return;
     }
 
-    astarte_result_t astarte_rc = data_validation_set_property(interface, data_event.path, value);
-    if (astarte_rc != ASTARTE_RESULT_OK) {
+    astarte_result_t ares = data_validation_set_property(interface, data_event.path, individual);
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property data validation failed.");
         return;
     }
@@ -878,7 +888,7 @@ static void on_set_property(
     if (device->property_set_cbk) {
         astarte_device_property_set_event_t set_event = {
             .data_event = data_event,
-            .value = value,
+            .individual = individual,
         };
         device->property_set_cbk(set_event);
     } else {
@@ -886,8 +896,8 @@ static void on_set_property(
     }
 }
 
-static void on_datastream_individual(
-    astarte_device_handle_t device, astarte_device_data_event_t data_event, astarte_value_t value)
+static void on_datastream_individual(astarte_device_handle_t device,
+    astarte_device_data_event_t data_event, astarte_individual_t individual)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, data_event.interface_name);
@@ -897,13 +907,13 @@ static void on_datastream_individual(
         return;
     }
 
-    astarte_result_t astarte_rc
-        = data_validation_individual_datastream(interface, data_event.path, value, NULL);
+    astarte_result_t ares
+        = data_validation_individual_datastream(interface, data_event.path, individual, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
-    if (astarte_rc == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
+    if (ares == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
         ASTARTE_LOG_WRN("Received an individual datastream with missing explicit timestamp.");
-    } else if (astarte_rc != ASTARTE_RESULT_OK) {
+    } else if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server individual data validation failed.");
         return;
     }
@@ -911,7 +921,7 @@ static void on_datastream_individual(
     if (device->datastream_individual_cbk) {
         astarte_device_datastream_individual_event_t event = {
             .data_event = data_event,
-            .value = value,
+            .individual = individual,
         };
         device->datastream_individual_cbk(event);
     } else {
@@ -920,7 +930,7 @@ static void on_datastream_individual(
 }
 
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_value_pair_t *values, size_t values_length)
+    astarte_device_data_event_t data_event, astarte_object_entry_t *entries, size_t entries_len)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, data_event.interface_name);
@@ -930,13 +940,13 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
         return;
     }
 
-    astarte_result_t astarte_rc = data_validation_aggregated_datastream(
-        interface, data_event.path, values, values_length, NULL);
+    astarte_result_t ares = data_validation_aggregated_datastream(
+        interface, data_event.path, entries, entries_len, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
-    if (astarte_rc == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
+    if (ares == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
         ASTARTE_LOG_WRN("Received an aggregated datastream with missing explicit timestamp.");
-    } else if (astarte_rc != ASTARTE_RESULT_OK) {
+    } else if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server aggregated data validation failed.");
         return;
     }
@@ -944,8 +954,8 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
     if (device->datastream_object_cbk) {
         astarte_device_datastream_object_event_t event = {
             .data_event = data_event,
-            .values = values,
-            .values_length = values_length,
+            .entries = entries,
+            .entries_len = entries_len,
         };
         device->datastream_object_cbk(event);
     } else {
@@ -957,30 +967,30 @@ static astarte_result_t get_new_client_certificate(astarte_device_handle_t devic
 {
     astarte_tls_credentials_client_crt_t *client_crt = &device->client_crt;
 
-    astarte_result_t res = astarte_pairing_get_client_certificate(
+    astarte_result_t ares = astarte_pairing_get_client_certificate(
         device->http_timeout_ms, device->device_id, device->cred_secr, client_crt);
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed getting the client TLS cert: %s.", astarte_result_to_name(res));
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed getting the client TLS cert: %s.", astarte_result_to_name(ares));
         memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
         memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
-        return res;
+        return ares;
     }
 
-    res = astarte_tls_credential_add(client_crt);
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed adding the client TLS cert: %s.", astarte_result_to_name(res));
-        return res;
+    ares = astarte_tls_credential_add(client_crt);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed adding the client TLS cert: %s.", astarte_result_to_name(ares));
+        return ares;
     }
 
-    return res;
+    return ares;
 }
 
 static astarte_result_t update_client_certificate(astarte_device_handle_t device)
 {
-    astarte_result_t res = astarte_tls_credential_delete();
-    if (res != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(res));
-        return res;
+    astarte_result_t ares = astarte_tls_credential_delete();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(ares));
+        return ares;
     }
 
     return get_new_client_certificate(device);
@@ -996,9 +1006,9 @@ static void setup_subscriptions(astarte_device_handle_t device)
         ASTARTE_LOG_ERR("Error encoding properties subscription topic.");
         return;
     }
-    astarte_result_t mqtt_res
+    astarte_result_t ares
         = astarte_mqtt_subscribe(&device->astarte_mqtt, prop_topic, 2, &message_id);
-    if (mqtt_res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", prop_topic);
         return;
     }
@@ -1017,10 +1027,10 @@ static void setup_subscriptions(astarte_device_handle_t device)
                 continue;
             }
 
-            astarte_result_t mqtt_res
+            astarte_result_t ares
                 = astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, &message_id);
             free(topic);
-            if (mqtt_res != ASTARTE_RESULT_OK) {
+            if (ares != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
                 return;
             }
@@ -1057,9 +1067,9 @@ static void send_introspection(astarte_device_handle_t device)
     ASTARTE_LOG_DBG("Publishing introspection: %s", introspection_str);
 
     uint16_t message_id = 0;
-    astarte_result_t mqtt_res = astarte_mqtt_publish(
+    astarte_result_t ares = astarte_mqtt_publish(
         &device->astarte_mqtt, topic, introspection_str, strlen(introspection_str), 2, &message_id);
-    if (mqtt_res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing introspection.");
     }
 
@@ -1079,9 +1089,9 @@ static void send_emptycache(astarte_device_handle_t device)
     ASTARTE_LOG_DBG("Sending emptyCache to %s", topic);
 
     uint16_t message_id = 0;
-    astarte_result_t mqtt_res
+    astarte_result_t ares
         = astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2, &message_id);
-    if (mqtt_res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing empty cache.");
     }
 }
@@ -1108,12 +1118,12 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    astarte_result_t res
+    astarte_result_t ares
         = astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos, NULL);
     free(topic);
-    if (res != ASTARTE_RESULT_OK) {
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error publishing data.");
-        return res;
+        return ares;
     }
 
     return ASTARTE_RESULT_OK;

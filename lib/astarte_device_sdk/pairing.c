@@ -195,7 +195,7 @@ static astarte_result_t parse_verify_client_certificate_response(char *resp_buf)
 astarte_result_t astarte_pairing_register_device(
     int32_t timeout_ms, const char *device_id, char *out_cred_secr, size_t out_cred_secr_size)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
     if (sizeof(CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT) <= 1) {
         ASTARTE_LOG_ERR("Registration of a device requires a valid pairing JWT");
@@ -217,15 +217,15 @@ astarte_result_t astarte_pairing_register_device(
             AUTH_HEADER_BEARER_STR_END };
     const char *header_fields[] = { auth_header, NULL };
     char payload[REGISTER_DEVICE_PAYLOAD_MAX_SIZE] = { 0 };
-    res = encode_register_device_payload(device_id, payload, REGISTER_DEVICE_PAYLOAD_MAX_SIZE);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = encode_register_device_payload(device_id, payload, REGISTER_DEVICE_PAYLOAD_MAX_SIZE);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
     char resp_buf[REGISTER_DEVICE_RESPONSE_MAX_SIZE] = { 0 };
 
-    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     // Step 3: process the result
@@ -235,7 +235,7 @@ astarte_result_t astarte_pairing_register_device(
 astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char *device_id,
     const char *cred_secr, char *out_url, size_t out_url_size)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the input parameters
     if (out_url_size <= ASTARTE_PAIRING_MAX_BROKER_URL_LEN) {
         ASTARTE_LOG_ERR("Insufficient output buffer size for broker URL.");
@@ -266,9 +266,9 @@ astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char 
     }
 
     char resp_buf[GET_BROKER_INFO_RESPONSE_MAX_SIZE] = { 0 };
-    res = astarte_http_get(timeout_ms, url, header_fields, resp_buf, sizeof(resp_buf));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = astarte_http_get(timeout_ms, url, header_fields, resp_buf, sizeof(resp_buf));
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     // Step 3: process the result
@@ -278,7 +278,7 @@ astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char 
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
     const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
@@ -287,17 +287,17 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     // Step 2: create a private key and a CSR
-    res = astarte_crypto_create_key(client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
-    if (res != ASTARTE_RESULT_OK) {
+    ares = astarte_crypto_create_key(client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
-        return res;
+        return ares;
     }
 
     unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
-    res = astarte_crypto_create_csr(client_crt->privkey_pem, csr_buf, sizeof(csr_buf));
-    if (res != ASTARTE_RESULT_OK) {
+    ares = astarte_crypto_create_csr(client_crt->privkey_pem, csr_buf, sizeof(csr_buf));
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
-        return res;
+        return ares;
     }
 
     // Step 3: get the client certificate from the server
@@ -310,9 +310,9 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
     const char *header_fields[] = { auth_header, NULL };
     char payload[GET_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
-    res = encode_get_client_certificate_payload(csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = encode_get_client_certificate_payload(csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
     char resp_buf[GET_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
 
@@ -324,16 +324,16 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     // Step 4: process the result
-    res = parse_get_client_certificate_response(
+    ares = parse_get_client_certificate_response(
         resp_buf, client_crt->crt_pem, ARRAY_SIZE(client_crt->crt_pem));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     // Step 5: convert the received certificate to a valid PEM certificate
@@ -351,7 +351,7 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
 astarte_result_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *device_id, const char *cred_secr, const char *crt_pem)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
@@ -369,10 +369,10 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     }
     const char *header_fields[] = { auth_header, NULL };
     char payload[VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
-    res = encode_verify_client_certificate_payload(
+    ares = encode_verify_client_certificate_payload(
         crt_pem, payload, VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     char url[PAIRING_DEVICE_CERT_CHECK_URL_LEN + 1] = { 0 };
@@ -384,9 +384,9 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     }
 
     char resp_buf[VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
-    res = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
+    ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
     }
 
     // Step 3: process the result

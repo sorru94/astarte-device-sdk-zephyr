@@ -44,7 +44,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG
 
 astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size)
 {
-    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
+    astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
     if (privkey_pem_size < ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE) {
         ASTARTE_LOG_ERR("Insufficient output buffer size for client private key.");
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -92,7 +92,7 @@ astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t pr
 
     ASTARTE_LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem);
 
-    exit_code = ASTARTE_RESULT_OK;
+    ares = ASTARTE_RESULT_OK;
 
 exit:
 
@@ -100,13 +100,13 @@ exit:
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
 
-    return exit_code;
+    return ares;
 }
 
 astarte_result_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size)
 {
-    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
+    astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
     if (csr_pem_size < ASTARTE_CRYPTO_CSR_BUFFER_SIZE) {
         ASTARTE_LOG_ERR("Insufficient output buffer size for certificate signing request.");
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -163,7 +163,7 @@ astarte_result_t astarte_crypto_create_csr(
 
     ASTARTE_LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem);
 
-    exit_code = ASTARTE_RESULT_OK;
+    ares = ASTARTE_RESULT_OK;
 
 exit:
 
@@ -172,13 +172,13 @@ exit:
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
 
-    return exit_code;
+    return ares;
 }
 
 astarte_result_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size)
 {
-    astarte_result_t exit_code = ASTARTE_RESULT_MBEDTLS_ERROR;
+    astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
     mbedtls_x509_crt crt = { 0 };
     mbedtls_x509_crt_init(&crt);
 
@@ -196,23 +196,23 @@ astarte_result_t astarte_crypto_get_certificate_info(
 
     if (!subj_it) {
         ASTARTE_LOG_ERR("CN not found in certificate");
-        exit_code = ASTARTE_RESULT_NOT_FOUND;
+        ares = ASTARTE_RESULT_NOT_FOUND;
         goto exit;
     }
 
     ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
     if ((ret < 0) || (ret >= cert_cn_size)) {
         ASTARTE_LOG_ERR("Error encoding certificate common name");
-        exit_code = ASTARTE_RESULT_INTERNAL_ERROR;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }
 
-    exit_code = ASTARTE_RESULT_OK;
+    ares = ASTARTE_RESULT_OK;
 
 exit:
     mbedtls_x509_crt_free(&crt);
 
-    return exit_code;
+    return ares;
 }
 /************************************************
  *         Static functions definitions         *

@@ -42,7 +42,7 @@ config DEVICE_TRANSMISSION_DELAY_SECONDS
 
 config DEVICE_RX_THREAD_STACK_SIZE
     int "Device reception thread stack size (Bytes)"
-    default 32768
+    default 12288
     help
         Use this setting to change the size of the stack for the thread running the Astarte device
         receiving functionality.

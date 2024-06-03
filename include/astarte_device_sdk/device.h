@@ -19,10 +19,11 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/individual.h"
 #include "astarte_device_sdk/interface.h"
+#include "astarte_device_sdk/object.h"
 #include "astarte_device_sdk/pairing.h"
 #include "astarte_device_sdk/result.h"
-#include "astarte_device_sdk/value.h"
 
 /**
  * @brief Handle for an instance of an Astarte device.
@@ -65,7 +66,7 @@ typedef struct
 typedef struct
 {
     astarte_device_data_event_t data_event; /**< Generic data event context */
-    astarte_value_t value; /**< Received data from Astarte */
+    astarte_individual_t individual; /**< Received data from Astarte */
 } astarte_device_datastream_individual_event_t;
 
 /** @brief Function pointer for datastream individual events. */
@@ -76,8 +77,8 @@ typedef void (*astarte_device_datastream_individual_cbk_t)(
 typedef struct
 {
     astarte_device_data_event_t data_event; /**< Generic data event context */
-    astarte_value_pair_t *values; /**< Received data from Astarte, as an array of key-value pairs */
-    size_t values_length; /**< Size of the array of received data */
+    astarte_object_entry_t *entries; /**< Received data from Astarte, as an array of entries. */
+    size_t entries_len; /**< Length of the array of Astarte object entries. */
 } astarte_device_datastream_object_event_t;
 
 /** @brief Function pointer for datastream object events. */
@@ -88,7 +89,7 @@ typedef void (*astarte_device_datastream_object_cbk_t)(
 typedef struct
 {
     astarte_device_data_event_t data_event; /**< Generic data event context */
-    astarte_value_t value; /**< Received data from Astarte */
+    astarte_individual_t individual; /**< Received data from Astarte */
 } astarte_device_property_set_event_t;
 
 /** @brief Function pointer for property set events. */
@@ -218,39 +219,40 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device);
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
- * @param[in] value Astarte value to stream.
+ * @param[in] individual Astarte individual value to stream.
  * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_t value, const int64_t *timestamp);
+    const char *interface_name, const char *path, astarte_individual_t individual,
+    const int64_t *timestamp);
 
 /**
- * @brief Send an aggregated value through the device connection.
+ * @brief Send an aggregated object through the device connection.
  *
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface where to publish data.
  * @param[in] path Path where to publish data.
- * @param[in] values Array of aggregated values pairs.
- * @param[in] values_length Number of elements for the values array.
+ * @param[in] entries The object entries to stream, organized as an array.
+ * @param[in] entries_len The number of element in the @p entries array.
  * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_pair_t *values,
-    size_t values_length, const int64_t *timestamp);
+    const char *interface_name, const char *path, astarte_object_entry_t *entries,
+    size_t entries_len, const int64_t *timestamp);
 
 /**
- * @brief Set a device property to the provided value.
+ * @brief Set a device property to the provided individual value.
  *
  * @param[in] device Handle to the device instance.
  * @param[in] interface_name Interface of the property.
  * @param[in] path Path of the property.
- * @param[in] value New value for the property.
+ * @param[in] individual New individual value for the property.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_value_t value);
+    const char *interface_name, const char *path, astarte_individual_t individual);
 
 /**
  * @brief Unset a device property.

@@ -47,48 +47,27 @@ enum e2e_thread_flags
 };
 static atomic_t device_thread_flags;
 
-ASTARTE_UTIL_DEFINE_ARRAY(astarte_interfaces, const astarte_interface_t *);
+ASTARTE_UTIL_DEFINE_ARRAY(astarte_interface_array_t, const astarte_interface_t *);
 
 /************************************************
  * Static functions declaration
  ***********************************************/
 
-/**
- * @brief Frees an array of interfaces.
- */
-static void free_interfaces(astarte_interfaces interfaces);
-/**
- * @brief Entry point for the Astarte device thread.
- *
- * @param device_handle Handle to the Astarte device.
- */
+static void free_interfaces(astarte_interface_array_t interfaces);
 static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2);
-/**
- * @brief Extract device and server interfaces from the test data and copies them to a new array
- */
-static astarte_interfaces alloc_interfaces_from_test_data(const e2e_test_data_t *test_data);
-/**
- * @brief Sets up the device given some defaults and the passed parameters
- */
+static astarte_interface_array_t alloc_interfaces_from_test_data(const e2e_test_data_t *test_data);
 static astarte_device_handle_t device_setup(const e2e_device_config_t *e2e_device_config,
-    const astarte_interfaces *interfaces, const e2e_test_data_t *test_data);
+    const astarte_interface_array_t *interfaces, const e2e_test_data_t *test_data);
 static void transmit_data(
-    astarte_device_handle_t device, const e2e_interface_data_array *interfaces_data);
+    astarte_device_handle_t device, const e2e_interface_data_array_t *interfaces_data);
 static void transmit_property_data(astarte_device_handle_t device,
-    const astarte_interface_t *interface, const e2e_property_data_array *properties);
+    const astarte_interface_t *interface, const e2e_property_data_array_t *properties);
 static void transmit_datastream_individual_data(astarte_device_handle_t device,
-    const astarte_interface_t *interface, const e2e_mapping_data_array *mappings);
+    const astarte_interface_t *interface, const e2e_individual_data_array_t *mappings);
 static void transmit_datastream_object_data(astarte_device_handle_t device,
     const astarte_interface_t *interface, const e2e_object_data_t *object_values);
-static void datastream_individual_callback(astarte_device_datastream_individual_event_t event);
-static void datastream_object_callback(astarte_device_datastream_object_event_t event);
 static void connection_callback(astarte_device_connection_event_t event);
 static void disconnection_callback(astarte_device_disconnection_event_t event);
-// checks that all the data sent by the server got received by the device
-static void check_device_received_data(e2e_interface_data_array *server_interfaces);
-/**
- * @brief Main device loop: initializes the device with test data, send server test data
- */
 static void run_device(const e2e_device_config_t *config);
 
 /************************************************
@@ -112,12 +91,12 @@ void run_e2e_test()
  * Static functions definitions
  ***********************************************/
 
-static void free_interfaces(astarte_interfaces interfaces)
+static void free_interfaces(astarte_interface_array_t interfaces)
 {
     free(interfaces.buf);
 }
 
-static astarte_interfaces alloc_interfaces_from_test_data(const e2e_test_data_t *test_data)
+static astarte_interface_array_t alloc_interfaces_from_test_data(const e2e_test_data_t *test_data)
 {
     size_t len = test_data->device_sent.len + test_data->server_sent.len;
     const astarte_interface_t **const test_interfaces = calloc(len, sizeof(astarte_interface_t));
@@ -134,14 +113,14 @@ static astarte_interfaces alloc_interfaces_from_test_data(const e2e_test_data_t 
             = test_data->server_sent.buf[index - test_data->device_sent.len].interface;
     }
 
-    return (astarte_interfaces){
+    return (astarte_interface_array_t){
         .buf = test_interfaces,
         .len = len,
     };
 }
 
 static astarte_device_handle_t device_setup(const e2e_device_config_t *e2e_device_config,
-    const astarte_interfaces *interfaces, const e2e_test_data_t *test_data)
+    const astarte_interface_array_t *interfaces, const e2e_test_data_t *test_data)
 {
     CHECK_HALT(strcmp(e2e_device_config->device_id, "") == 0
             || strcmp(e2e_device_config->cred_secr, "") == 0,
@@ -154,8 +133,6 @@ static astarte_device_handle_t device_setup(const e2e_device_config_t *e2e_devic
         .mqtt_connection_timeout_ms = CONFIG_MQTT_CONNECTION_TIMEOUT_MS,
         .mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS,
         .cbk_user_data = (void *) &test_data->server_sent,
-        .datastream_individual_cbk = datastream_individual_callback,
-        .datastream_object_cbk = datastream_object_callback,
         // TODO add the callbacks to check received properties of other tests
         .connection_cbk = connection_callback,
         .disconnection_cbk = disconnection_callback,
@@ -172,7 +149,7 @@ static astarte_device_handle_t device_setup(const e2e_device_config_t *e2e_devic
 }
 
 static void transmit_data(
-    astarte_device_handle_t device, const e2e_interface_data_array *interfaces_data)
+    astarte_device_handle_t device, const e2e_interface_data_array_t *interfaces_data)
 {
     LOG_INF("Starting transmission of %zu interfaces", interfaces_data->len); // NOLINT
 
@@ -196,7 +173,7 @@ static void transmit_data(
 }
 
 static void transmit_property_data(astarte_device_handle_t device,
-    const astarte_interface_t *interface, const e2e_property_data_array *properties)
+    const astarte_interface_t *interface, const e2e_property_data_array_t *properties)
 {
     LOG_INF("Setting properties of interface '%s'", interface->name); // NOLINT
 
@@ -211,7 +188,7 @@ static void transmit_property_data(astarte_device_handle_t device,
         } else {
             LOG_INF("Setting value on '%s'", property_value->path); // NOLINT
             res = astarte_device_set_property(
-                device, interface->name, property_value->path, property_value->value);
+                device, interface->name, property_value->path, property_value->individual);
         }
 
         CHECK_ASTARTE_OK_HALT(
@@ -222,7 +199,7 @@ static void transmit_property_data(astarte_device_handle_t device,
 }
 
 static void transmit_datastream_individual_data(astarte_device_handle_t device,
-    const astarte_interface_t *interface, const e2e_mapping_data_array *mappings)
+    const astarte_interface_t *interface, const e2e_individual_data_array_t *mappings)
 {
     LOG_INF("Sending values on individual interface '%s'", interface->name); // NOLINT
 
@@ -230,17 +207,17 @@ static void transmit_datastream_individual_data(astarte_device_handle_t device,
     for (size_t j = 0; j < mappings->len; ++j) {
         const e2e_individual_data_t *mapping = mappings->buf + j;
 
-        LOG_INF("Stream individual value on '%s'", mapping->endpoint); // NOLINT
+        LOG_INF("Stream individual value on '%s'", mapping->path); // NOLINT
 
         const e2e_timestamp_option_t *timestamp = &mapping->timestamp;
 
         astarte_result_t res = ASTARTE_RESULT_OK;
         if (timestamp->present) {
             res = astarte_device_stream_individual(
-                device, interface->name, mapping->endpoint, mapping->individual, &timestamp->value);
+                device, interface->name, mapping->path, mapping->individual, &timestamp->value);
         } else {
             res = astarte_device_stream_individual(
-                device, interface->name, mapping->endpoint, mapping->individual, NULL);
+                device, interface->name, mapping->path, mapping->individual, NULL);
         }
 
         CHECK_ASTARTE_OK_HALT(res, "Astarte device individual value transmission failure: %s",
@@ -258,10 +235,11 @@ static void transmit_datastream_object_data(astarte_device_handle_t device,
     astarte_result_t res = ASTARTE_RESULT_OK;
     if (object->timestamp.present) {
         res = astarte_device_stream_aggregated(device, interface->name, object->path,
-            object->entries.buf, object->entries.len, &object->timestamp.value);
+            (astarte_object_entry_t *) object->entries.buf, object->entries.len,
+            &object->timestamp.value);
     } else {
-        res = astarte_device_stream_aggregated(
-            device, interface->name, object->path, object->entries.buf, object->entries.len, NULL);
+        res = astarte_device_stream_aggregated(device, interface->name, object->path,
+            (astarte_object_entry_t *) object->entries.buf, object->entries.len, NULL);
     }
 
     CHECK_ASTARTE_OK_HALT(
@@ -270,123 +248,13 @@ static void transmit_datastream_object_data(astarte_device_handle_t device,
     LOG_INF("Ended transmission"); // NOLINT
 }
 
-// TODO this check is unused until the server send logic gets implemented
-static void datastream_individual_callback(astarte_device_datastream_individual_event_t event)
-{
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
-    e2e_interface_data_array *server_interfaces
-        = (e2e_interface_data_array *) event.data_event.user_data;
-    astarte_individual_t value = event.individual;
-
-    LOG_INF("Datastream individual event, interface: %s, path: %s", interface_name, path); // NOLINT
-
-    e2e_interface_data_t *interface_data = get_e2e_interface(server_interfaces, interface_name);
-    CHECK_HALT(interface_data == NULL,
-        "The received interface name '%s' was not defined in the server test data", interface_name);
-
-    CHECK_HALT(interface_data->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-        "Expected an individual aggregation but got: %d", interface_data->interface->aggregation);
-
-    // now that we checked the aggregation tag we can safely get the values
-    e2e_mapping_data_array *individual_values = &interface_data->values.individual;
-
-    const e2e_individual_data_t *mapping_data = get_e2e_mapping(individual_values, path);
-    CHECK_HALT(mapping_data == NULL,
-        "The received mapping path '%s' was not defined in the server test data", path);
-
-    LOG_INF("Received astarte value"); // NOLINT
-    utils_log_astarte_individual(value);
-    LOG_INF("Expected astarte value"); // NOLINT
-    utils_log_astarte_individual(mapping_data->individual);
-
-    CHECK_HALT(!astarte_value_equal(&value, &mapping_data->individual),
-        "The two astarte value do not match");
-
-    size_t element = mapping_data - individual_values->buf;
-    int prev_value = 0;
-    sys_bitarray_test_and_set_bit(&interface_data->received, element, &prev_value);
-    CHECK_HALT(prev_value == 1, "This endpoint value got received more than one time");
-}
-
-// TODO this check is unused until the server send logic gets implemented
-static void datastream_object_callback(astarte_device_datastream_object_event_t event)
-{
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
-    e2e_interface_data_array *server_interfaces
-        = (e2e_interface_data_array *) event.data_event.user_data;
-    astarte_object_entry_t *received_values = event.entries;
-    size_t received_values_len = event.entries_len;
-
-    LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
-
-    e2e_interface_data_t *interface_data = get_e2e_interface(server_interfaces, interface_name);
-    CHECK_HALT(interface_data == NULL,
-        "The received interface name '%s' was not defined in the server test data", interface_name);
-
-    CHECK_HALT(interface_data->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_OBJECT,
-        "Expected an object aggregation but got: %d", interface_data->interface->aggregation);
-
-    // now that we checked the aggregation tag we can safely get the values
-    e2e_object_entry_array *expected_pairs = &interface_data->values.object.entries;
-
-    for (size_t i = 0; i < received_values_len; ++i) {
-        const astarte_object_entry_t *received_value = received_values + i;
-
-        const astarte_object_entry_t *expected_value
-            = get_pair_mapping(expected_pairs, received_value->endpoint);
-
-        CHECK_HALT(expected_value == NULL,
-            "The received mapping path '%s' was not defined in the server test data",
-            received_value->endpoint);
-
-        LOG_INF("Received astarte value"); // NOLINT
-        utils_log_astarte_individual(received_value->individual);
-        LOG_INF("Expected astarte value"); // NOLINT
-        utils_log_astarte_individual(expected_value->individual);
-
-        CHECK_HALT(!astarte_value_equal(&received_value->individual, &expected_value->individual),
-            "The two astarte value do not match");
-
-        int prev_value = 0;
-        sys_bitarray_test_and_set_bit(&interface_data->received, i, &prev_value);
-        CHECK_HALT(prev_value == 1, "This endpoint value got received more than one time");
-    }
-}
-
-// TODO this check is unused until the server send logic gets implemented
-// NOLINTNEXTLINE(unused-function)
-static void check_device_received_data(e2e_interface_data_array *server_interfaces)
-{
-    LOG_INF("Checking data received from the server"); // NOLINT
-
-    // we just check that the number of set bit matches the number of values we were expecting
-    for (size_t i = 0; i < server_interfaces->len; ++i) {
-        e2e_interface_data_t *interface = server_interfaces->buf + i;
-        size_t values_num = 0;
-
-        if (interface->interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) {
-            values_num = interface->values.property.len;
-        } else if (interface->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
-            values_num = interface->values.individual.len;
-        } else if (interface->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_OBJECT) {
-            values_num = interface->values.object.entries.len;
-        } else {
-            CHECK_HALT(true, "Unkown interface type")
-        }
-
-        CHECK_HALT(!sys_bitarray_is_region_set(&interface->received, values_num, 0),
-            "Not all the expected values were received during the test");
-    }
-}
-
 static void run_device(const e2e_device_config_t *config)
 {
     // create resources
     LOG_INF("Setting up device and getting test_data."); // NOLINT
     e2e_test_data_t test_data = config->setup();
-    const astarte_interfaces test_device_interfaces = alloc_interfaces_from_test_data(&test_data);
+    const astarte_interface_array_t test_device_interfaces
+        = alloc_interfaces_from_test_data(&test_data);
     astarte_device_handle_t device_handle
         = device_setup(config, &test_device_interfaces, &test_data);
 
@@ -406,14 +274,9 @@ static void run_device(const e2e_device_config_t *config)
 
     // transmit all device data declared
     transmit_data(device_handle, &test_data.device_sent);
-    // check data received by the server
-    config->check_server_received(&test_data.device_sent);
 
-    // send the data for the interfaces owned by the server
-    config->server_send(&test_data.server_sent);
     // after the server sent its data we check that all the expected data got received
-    // TODO enable the check for received data
-    // check_device_received_data(&test_data.server_sent);
+    // TODO perform the check for received data
 
     LOG_INF("Stopping and joining the astarte device polling thread."); // NOLINT
     atomic_set_bit(&device_thread_flags, THREAD_TERMINATION_FLAG);
@@ -429,7 +292,6 @@ static void run_device(const e2e_device_config_t *config)
     }
 
     free_interfaces(test_device_interfaces);
-    config->destroy(test_data);
 }
 
 static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2)

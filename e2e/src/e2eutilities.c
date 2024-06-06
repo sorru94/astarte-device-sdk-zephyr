@@ -20,89 +20,30 @@
 LOG_MODULE_REGISTER(e2e_utilities, CONFIG_E2E_UTILITIES_LOG_LEVEL); // NOLINT
 
 /************************************************
- * Constants, static variables and defines
- ***********************************************/
-
-#define FREE_ARRAY_FN_DEFINITION(TYPE)                                                             \
-    static void free_##TYPE(TYPE array)                                                            \
-    {                                                                                              \
-        if (array.len == 0) {                                                                      \
-            return;                                                                                \
-        }                                                                                          \
-                                                                                                   \
-        free(array.buf);                                                                           \
-    }
-
-/************************************************
- * Static functions declaration
- ***********************************************/
-
-static void free_e2e_object_entry_array(e2e_object_entry_array array);
-
-static void free_e2e_mapping_data_array(e2e_mapping_data_array array);
-
-static void free_e2e_property_data_array(e2e_property_data_array array);
-
-/************************************************
  * Global functions definition
  ***********************************************/
 
-// e2e mapping helper functions
-ALLOC_ARRAY_FROM_STATIC_FN_DEFINITION(e2e_individual_data_t);
-
-// e2e interfaces helper functions
-ALLOC_ARRAY_FROM_STATIC_FN_DEFINITION(e2e_interface_data_t);
-
-// astarte pair allocation helper function
-ALLOC_ARRAY_FROM_STATIC_FN_DEFINITION(astarte_object_entry_t);
-
-// e2e properties helper allocation function
-ALLOC_ARRAY_FROM_STATIC_FN_DEFINITION(e2e_property_data_t);
-
-void free_e2e_interfaces_array(e2e_interface_data_array interfaces_array)
-{
-    if (interfaces_array.len == 0) {
-        return;
-    }
-
-    for (int i = 0; i < interfaces_array.len; ++i) {
-        e2e_interface_data_t interface = interfaces_array.buf[i];
-
-        if (interface.interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) {
-            free_e2e_property_data_array(interface.values.property);
-        } else if (interface.interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
-            free_e2e_mapping_data_array(interface.values.individual);
-        } else if (interface.interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_OBJECT) {
-            free_e2e_object_entry_array(interface.values.object.entries);
-        } else {
-            CHECK_HALT(true, "Unkown interface type")
-        }
-    }
-
-    free((void *) interfaces_array.buf);
-}
-
-e2e_interface_data_t *get_e2e_interface(
-    e2e_interface_data_array *interfaces_array, const char *interface_name)
+e2e_interface_data_t *get_e2e_interface_data(
+    e2e_interface_data_array_t *interfaces_array, const char *interface_name)
 {
     for (int i = 0; i < interfaces_array->len; ++i) {
         e2e_interface_data_t *const interface = interfaces_array->buf + i;
 
         if (strcmp(interface->interface->name, interface_name) == 0) {
-            return interface;
+            return (e2e_interface_data_t *) interface;
         }
     }
 
     return NULL;
 }
 
-const e2e_individual_data_t *get_e2e_mapping(
-    const e2e_mapping_data_array *mapping_array, const char *endpoint)
+const e2e_individual_data_t *get_e2e_individual_data(
+    const e2e_individual_data_array_t *mapping_array, const char *endpoint)
 {
     for (int i = 0; i < mapping_array->len; ++i) {
         const e2e_individual_data_t *const mapping = mapping_array->buf + i;
 
-        if (strcmp(mapping->endpoint, endpoint) == 0) {
+        if (strcmp(mapping->path, endpoint) == 0) {
             return mapping;
         }
     }
@@ -110,8 +51,8 @@ const e2e_individual_data_t *get_e2e_mapping(
     return NULL;
 }
 
-const astarte_object_entry_t *get_pair_mapping(
-    const e2e_object_entry_array *value_pair_array, const char *endpoint)
+const astarte_object_entry_t *get_astarte_object_entry(
+    const e2e_object_entry_array_t *value_pair_array, const char *endpoint)
 {
     for (int i = 0; i < value_pair_array->len; ++i) {
         const astarte_object_entry_t *const entry = value_pair_array->buf + i;
@@ -208,55 +149,3 @@ bool astarte_value_equal(astarte_individual_t *a, astarte_individual_t *b)
 
     CHECK_HALT(true, "Unreachable");
 }
-
-e2e_interface_data_t e2e_interface_from_interface_individual(
-    const astarte_interface_t *interface, e2e_mapping_data_array mappings)
-{
-    CHECK_HALT(interface->aggregation != ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-        "Incorrect aggregation type in interface passed to e2e_interface_t individual constructor");
-
-    return (e2e_interface_data_t) {
-    .interface = interface,
-    .values = {
-      .individual = mappings,
-    },
-  };
-}
-
-e2e_interface_data_t e2e_interface_from_interface_object(
-    const astarte_interface_t *interface, e2e_object_data_t object_value)
-{
-    CHECK_HALT(interface->aggregation != ASTARTE_INTERFACE_AGGREGATION_OBJECT,
-        "Incorrect aggregation type in interface passed to e2e_interface_t object constructor");
-
-    return (e2e_interface_data_t) {
-    .interface = interface,
-    .values = {
-      .object = object_value,
-    },
-  };
-}
-
-e2e_interface_data_t e2e_interface_from_interface_property(
-    const astarte_interface_t *interface, e2e_property_data_array properties)
-{
-    CHECK_HALT(interface->aggregation != ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL,
-        "Incorrect aggregation type in interface passed to e2e_interface_t property constructor");
-    CHECK_HALT(interface->type != ASTARTE_INTERFACE_TYPE_PROPERTIES,
-        "Incorrect interface type in interface passed to e2e_interface_t property constructor");
-
-    return (e2e_interface_data_t) {
-    .interface = interface,
-    .values = {
-      .property = properties,
-    },
-  };
-}
-
-/************************************************
- * Static functions definitions
- ***********************************************/
-
-FREE_ARRAY_FN_DEFINITION(e2e_object_entry_array);
-FREE_ARRAY_FN_DEFINITION(e2e_mapping_data_array);
-FREE_ARRAY_FN_DEFINITION(e2e_property_data_array);

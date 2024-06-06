@@ -21,9 +21,9 @@
 #include <astarte_device_sdk/object.h>
 #include <astarte_device_sdk/result.h>
 
+#include "e2edata.h"
 #include "e2erunner.h"
 #include "e2eutilities.h"
-#include "utils.h"
 
 #include "generated_interfaces.h"
 
@@ -33,43 +33,89 @@ LOG_MODULE_REGISTER(object, CONFIG_OBJECT_LOG_LEVEL); // NOLINT
  * Constants, static variables and defines
  ***********************************************/
 
-static const char *const binaryblob_endpoint = "binaryblob_endpoint";
-static const char *const binaryblobarray_endpoint = "binaryblobarray_endpoint";
-static const char *const boolean_endpoint = "boolean_endpoint";
-static const char *const booleanarray_endpoint = "booleanarray_endpoint";
-static const char *const datetime_endpoint = "datetime_endpoint";
-static const char *const datetimearray_endpoint = "datetimearray_endpoint";
-static const char *const double_endpoint = "double_endpoint";
-static const char *const doublearray_endpoint = "doublearray_endpoint";
-static const char *const integer_endpoint = "integer_endpoint";
-static const char *const integerarray_endpoint = "integerarray_endpoint";
-static const char *const longinteger_endpoint = "longinteger_endpoint";
-static const char *const longintegerarray_endpoint = "longintegerarray_endpoint";
-static const char *const string_endpoint = "string_endpoint";
-static const char *const stringarray_endpoint = "stringarray_endpoint";
+#define BINARYBLOB_PATH "binaryblob_endpoint"
+#define BINARYBLOB_ARRAY_PATH "binaryblobarray_endpoint"
+#define BOOLEAN_PATH "boolean_endpoint"
+#define BOOLEAN_ARRAY_PATH "booleanarray_endpoint"
+#define DATETIME_PATH "datetime_endpoint"
+#define DATETIME_ARRAY_PATH "datetimearray_endpoint"
+#define DOUBLE_PATH "double_endpoint"
+#define DOUBLE_ARRAY_PATH "doublearray_endpoint"
+#define INTEGER_PATH "integer_endpoint"
+#define INTEGER_ARRAY_PATH "integerarray_endpoint"
+#define LONGINTEGER_PATH "longinteger_endpoint"
+#define LONGINTEGER_ARRAY_PATH "longintegerarray_endpoint"
+#define STRING_PATH "string_endpoint"
+#define STRING_ARRAY_PATH "stringarray_endpoint"
+
+static const astarte_object_entry_t entries[] = {
+    { .endpoint = BINARYBLOB_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_BINARYBLOB, binaryblob,
+            (void *) binary_blob_data, ARRAY_SIZE(binary_blob_data)) },
+    { .endpoint = BINARYBLOB_ARRAY_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_BINARYBLOB_ARRAY((const void **) binary_blob_array_data,
+            (size_t *) binary_blob_array_sizes_data, ARRAY_SIZE(binary_blob_array_data)) },
+    { .endpoint = BOOLEAN_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_SCALAR(ASTARTE_MAPPING_TYPE_BOOLEAN, boolean, BOOLEAN_DATA) },
+    { .endpoint = BOOLEAN_ARRAY_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
+            boolean_array, (bool *) boolean_array_data, ARRAY_SIZE(boolean_array_data)) },
+    { .endpoint = DATETIME_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_SCALAR(ASTARTE_MAPPING_TYPE_DATETIME, datetime, DATE_TIME_DATA) },
+    { .endpoint = DATETIME_ARRAY_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
+            datetime_array, (int64_t *) date_time_array_data, ARRAY_SIZE(date_time_array_data)) },
+    { .endpoint = DOUBLE_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_SCALAR(ASTARTE_MAPPING_TYPE_DOUBLE, dbl, DOUBLE_DATA) },
+    { .endpoint = DOUBLE_ARRAY_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_DOUBLEARRAY, double_array,
+            (double *) double_array_data, ARRAY_SIZE(double_array_data)) },
+    { .endpoint = INTEGER_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_SCALAR(ASTARTE_MAPPING_TYPE_INTEGER, integer, INTEGER_DATA) },
+    { .endpoint = INTEGER_ARRAY_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_INTEGERARRAY,
+            integer_array, (int32_t *) integer_array_data, ARRAY_SIZE(integer_array_data)) },
+    { .endpoint = LONGINTEGER_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_SCALAR(
+            ASTARTE_MAPPING_TYPE_LONGINTEGER, longinteger, LONGINTEGER_DATA) },
+    { .endpoint = LONGINTEGER_ARRAY_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY, longinteger_array,
+            (int64_t *) longinteger_array_data, ARRAY_SIZE(longinteger_array_data)) },
+    { .endpoint = STRING_PATH,
+        .individual
+        = MAKE_ASTARTE_INDIVIDUAL_SCALAR(ASTARTE_MAPPING_TYPE_STRING, string, string_data) },
+    { .endpoint = STRING_ARRAY_PATH,
+        .individual = MAKE_ASTARTE_INDIVIDUAL_ARRAY(ASTARTE_MAPPING_TYPE_STRINGARRAY, string_array,
+            (const char **) string_array_data, ARRAY_SIZE(string_array_data)) }
+};
+
+static e2e_interface_data_t device_interface_data[] = {
+    {
+        .interface = &org_astarte_platform_zephyr_e2etest_DeviceAggregate,
+        // check that the type of the interface matches the passed union
+        .values = {
+            .object = {
+                .path = "/sensor42",
+                .entries = {
+                    .buf = entries,
+                    .len = ARRAY_SIZE(entries),
+                }
+            },
+        },
+    }
+};
 
 /************************************************
-
  * Static functions declaration
  ***********************************************/
 
-/**
- * @brief Sets up test data
- */
 static e2e_test_data_t setup_test_data();
-/**
- * @brief Deallocates test data
- */
-static void destroy_test_data(e2e_test_data_t data);
-/**
- * @brief Function that sends data from the astarte instance connected.
- */
-static void server_send_object_data(const e2e_interface_data_array *server_interfaces_data);
-/**
- * @brief Helper function used to check the data the got transmitted in function
- * #transmit_datastream_data.
- */
-static void check_object_data(const e2e_interface_data_array *device_interfaces_data);
 
 /************************************************
  * Global functions definition
@@ -81,9 +127,6 @@ e2e_device_config_t get_object_test_config()
         .device_id = CONFIG_DEVICE_ID,
         .cred_secr = CONFIG_CREDENTIAL_SECRET,
         .setup = setup_test_data,
-        .server_send = server_send_object_data,
-        .check_server_received = check_object_data,
-        .destroy = destroy_test_data,
     };
 }
 
@@ -93,87 +136,8 @@ e2e_device_config_t get_object_test_config()
 
 static e2e_test_data_t setup_test_data()
 {
-    // the pointer stored in this array (endpoint and buffers of astarte values)
-    // need to be statically allocated and need be valid until the test data is deallocated with
-    // function `destoy_test_data`
-    e2e_object_entry_array device_pairs = DYNAMIC_ARRAY(astarte_object_entry_t,
-        ((astarte_object_entry_t[]){
-            { .endpoint = binaryblob_endpoint,
-                .individual = astarte_individual_from_binaryblob(
-                    (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)) },
-            { .endpoint = binaryblobarray_endpoint,
-                .individual
-                = astarte_individual_from_binaryblob_array((const void **) utils_binary_blobs_data,
-                    (size_t *) utils_binary_blobs_sizes_data,
-                    ARRAY_SIZE(utils_binary_blobs_data)) },
-            { .endpoint = boolean_endpoint,
-                .individual = astarte_individual_from_boolean(utils_boolean_data) },
-            { .endpoint = booleanarray_endpoint,
-                .individual = astarte_individual_from_boolean_array(
-                    (bool *) utils_boolean_array_data, ARRAY_SIZE(utils_boolean_array_data)) },
-            { .endpoint = datetime_endpoint,
-                .individual = astarte_individual_from_datetime(utils_unix_time_data) },
-            { .endpoint = datetimearray_endpoint,
-                .individual
-                = astarte_individual_from_datetime_array((int64_t *) utils_unix_time_array_data,
-                    ARRAY_SIZE(utils_unix_time_array_data)) },
-            { .endpoint = double_endpoint,
-                .individual = astarte_individual_from_double(utils_double_data) },
-            { .endpoint = doublearray_endpoint,
-                .individual = astarte_individual_from_double_array(
-                    (double *) utils_double_array_data, ARRAY_SIZE(utils_double_array_data)) },
-            { .endpoint = integer_endpoint,
-                .individual = astarte_individual_from_integer(utils_integer_data) },
-            { .endpoint = integerarray_endpoint,
-                .individual = astarte_individual_from_integer_array(
-                    (int32_t *) utils_integer_array_data, ARRAY_SIZE(utils_integer_array_data)) },
-            { .endpoint = longinteger_endpoint,
-                .individual = astarte_individual_from_longinteger(utils_longinteger_data) },
-            { .endpoint = longintegerarray_endpoint,
-                .individual = astarte_individual_from_longinteger_array(
-                    (int64_t *) utils_longinteger_array_data,
-                    ARRAY_SIZE(utils_longinteger_array_data)) },
-            { .endpoint = string_endpoint,
-                .individual = astarte_individual_from_string(utils_string_data) },
-            { .endpoint = stringarray_endpoint,
-                .individual
-                = astarte_individual_from_string_array((const char **) utils_string_array_data,
-                    ARRAY_SIZE(utils_string_array_data)) } }));
-
-    return (e2e_test_data_t){
-        .device_sent = DYNAMIC_ARRAY(e2e_interface_data_t,
-            ((e2e_interface_data_t[]){
-                e2e_interface_from_interface_object(
-                    &org_astarte_platform_zephyr_e2etest_DeviceAggregate,
-                    (e2e_object_data_t){
-                        .entries = device_pairs,
-                        .path = "/sensor42",
-                    }),
-            })),
-        // TODO add interface sent by the server
-        //.server_sent = DYNAMIC_ARRAY(e2e_interface_data_t, ((e2e_interface_data_t[]) {
-        //    e2e_interface_from_interface_object(&org_astarte_platform_zephyr_e2etest_ServerDatastream,
-        //    server_mappings),
-        //}))
-    };
-}
-
-static void check_object_data(const e2e_interface_data_array *interfaces_data)
-{
-    (void) interfaces_data;
-    // TODO connect to appengine apis and check data sent in transmit_datastream_data
-    LOG_WRN("E2E server check of the device sent data not implemented"); // NOLINT
-}
-
-static void destroy_test_data(e2e_test_data_t data)
-{
-    free_e2e_interfaces_array(data.device_sent);
-    free_e2e_interfaces_array(data.server_sent);
-}
-
-static void server_send_object_data(const e2e_interface_data_array *server_interfaces_data)
-{
-    (void) server_interfaces_data;
-    // TODO implement logic to send datastream data from astarte
-    LOG_WRN("E2E server send data logic not implemented"); // NOLINT
+    return (e2e_test_data_t){ .device_sent = {
+                                  .buf = device_interface_data,
+                                  .len = ARRAY_SIZE(device_interface_data),
+                              } };
 }

@@ -340,11 +340,14 @@ int eth_connect(void)
     enum net_if_oper_state iface_oper_state = net_if_oper_state(iface);
     LOG_INF("Default network interface operational state: %d.", iface_oper_state); // NOLINT
 
+#ifdef CONFIG_NET_DHCPV4
     net_dhcpv4_start(iface);
+
     LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
     while (k_sem_count_get(&ipv4_address_obtained) == 0) {
         k_sleep(K_MSEC(200));
     }
+#endif
 
     k_sleep(K_MSEC(500));
 
@@ -367,7 +370,8 @@ void eth_poll(void)
         k_sleep(K_SECONDS(1));
     }
 
-    // Restart DHCP if required.
+// Restart DHCP if required.
+#ifdef CONFIG_NET_DHCPV4
     if (k_sem_count_get(&ipv4_address_obtained) == 0) {
         LOG_WRN("Missing IPv4 address."); // NOLINT
         net_dhcpv4_restart(iface);
@@ -377,6 +381,7 @@ void eth_poll(void)
         }
         LOG_INF("Ready..."); // NOLINT
     }
+#endif
 
     k_sleep(K_MSEC(500));
 }

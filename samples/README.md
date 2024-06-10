@@ -100,3 +100,11 @@ To configure the wifi in a file that is ignored by git you can add the following
 CONFIG_WIFI_SSID=""
 CONFIG_WIFI_PASSWORD=""
 ```
+
+### Use native_sim with net-tools
+
+The net-setup.sh script can setup an ethernet interface to the host. This net-setup.sh script will need to be run as a root user.
+
+```
+./net-setup.sh --config nat.conf
+```

@@ -225,7 +225,8 @@ static int create_and_connect_socket(void)
     struct zsock_addrinfo *broker_addrinfo = NULL;
     int getaddrinfo_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve address %s", zsock_gai_strerror(getaddrinfo_rc));
+        ASTARTE_LOG_ERR("Unable to resolve address (%d) %s", getaddrinfo_rc,
+            zsock_gai_strerror(getaddrinfo_rc));
         if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
             ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
         }
@@ -273,7 +274,7 @@ static int create_and_connect_socket(void)
     int connect_rc = zsock_connect(sock, broker_addrinfo->ai_addr, broker_addrinfo->ai_addrlen);
     if (connect_rc == -1) {
         ASTARTE_LOG_ERR("Connection error: %d", connect_rc);
-        ASTARTE_LOG_ERR("Errno: %s\n", strerror(errno));
+        ASTARTE_LOG_ERR("Errno: (%d) %s", errno, strerror(errno));
         zsock_close(sock);
         zsock_freeaddrinfo(broker_addrinfo);
         return -1;
@@ -292,9 +293,10 @@ static void dump_addrinfo(const struct zsock_addrinfo *input_addinfo)
     zsock_inet_ntop(AF_INET, &((struct sockaddr_in *) input_addinfo->ai_addr)->sin_addr, ip_addr,
         sizeof(ip_addr));
     ASTARTE_LOG_DBG("addrinfo @%p: ai_family=%d, ai_socktype=%d, ai_protocol=%d, "
-                    "sa_family=%d, sin_port=%x, ip_addr=%s",
+                    "sa_family=%d, sin_port=%x, ip_addr=%s ai_addrlen=%zu",
         input_addinfo, input_addinfo->ai_family, input_addinfo->ai_socktype,
         input_addinfo->ai_protocol, input_addinfo->ai_addr->sa_family,
-        ((struct sockaddr_in *) input_addinfo->ai_addr)->sin_port, ip_addr);
+        ((struct sockaddr_in *) input_addinfo->ai_addr)->sin_port, ip_addr,
+        input_addinfo->ai_addrlen);
 }
 #endif

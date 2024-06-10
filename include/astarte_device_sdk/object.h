@@ -33,12 +33,12 @@
  *
  * See the following initialization/getter methods:
  *  - #astarte_object_entry_new
- *  - #astarte_object_entry_to_endpoint_and_individual
+ *  - #astarte_object_entry_to_path_and_individual
  */
 typedef struct
 {
-    /** @brief Endpoint for the entry */
-    const char *endpoint;
+    /** @brief Path for the entry */
+    const char *path;
     /** @brief Individual for the entry */
     astarte_individual_t individual;
 } astarte_object_entry_t;
@@ -50,23 +50,22 @@ extern "C" {
 /**
  * @brief Initialize an Astarte object entry.
  *
- * @param[in] endpoint Endpoint to store in the entry.
+ * @param[in] path Path to store in the entry.
  * @param[in] individual Individual data to store in the entry.
  * @return The Astarte object entry created from the inputs.
  */
-astarte_object_entry_t astarte_object_entry_new(
-    const char *endpoint, astarte_individual_t individual);
+astarte_object_entry_t astarte_object_entry_new(const char *path, astarte_individual_t individual);
 
 /**
- * @brief Convert an Astarte object entry to an Astarte individual and endpoint.
+ * @brief Convert an Astarte object entry to an Astarte individual and path.
  *
  * @param[in] entry Input Astarte object entry.
- * @param[out] endpoint Endpoint extracted from the entry.
+ * @param[out] path Path extracted from the entry.
  * @param[out] individual Individual extracted from the entry.
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
-astarte_result_t astarte_object_entry_to_endpoint_and_individual(
-    astarte_object_entry_t entry, const char **endpoint, astarte_individual_t *individual);
+astarte_result_t astarte_object_entry_to_path_and_individual(
+    astarte_object_entry_t entry, const char **path, astarte_individual_t *individual);
 
 #ifdef __cplusplus
 }

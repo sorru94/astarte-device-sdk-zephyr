@@ -42,7 +42,7 @@ astarte_result_t astarte_mapping_array_to_scalar_type(
 astarte_result_t astarte_mapping_check_path(astarte_mapping_t mapping, const char *path);
 
 /**
- * @brief Check if a individual si compatible to the endpoint of a mapping.
+ * @brief Check if a individual is compatible to the type of a mapping.
  *
  * @param[in] mapping Mapping to use for the comparison.
  * @param[in] individual Astarte individual value to use for comparison.

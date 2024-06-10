@@ -38,12 +38,12 @@ e2e_interface_data_t *get_e2e_interface_data(
 }
 
 const e2e_individual_data_t *get_e2e_individual_data(
-    const e2e_individual_data_array_t *mapping_array, const char *endpoint)
+    const e2e_individual_data_array_t *individuals_array, const char *path)
 {
-    for (int i = 0; i < mapping_array->len; ++i) {
-        const e2e_individual_data_t *const mapping = mapping_array->buf + i;
+    for (int i = 0; i < individuals_array->len; ++i) {
+        const e2e_individual_data_t *const mapping = individuals_array->buf + i;
 
-        if (strcmp(mapping->path, endpoint) == 0) {
+        if (strcmp(mapping->path, path) == 0) {
             return mapping;
         }
     }
@@ -52,12 +52,12 @@ const e2e_individual_data_t *get_e2e_individual_data(
 }
 
 const astarte_object_entry_t *get_astarte_object_entry(
-    const e2e_object_entry_array_t *value_pair_array, const char *endpoint)
+    const e2e_object_entry_array_t *entries_array, const char *path)
 {
-    for (int i = 0; i < value_pair_array->len; ++i) {
-        const astarte_object_entry_t *const entry = value_pair_array->buf + i;
+    for (int i = 0; i < entries_array->len; ++i) {
+        const astarte_object_entry_t *const entry = entries_array->buf + i;
 
-        if (strcmp(entry->endpoint, endpoint) == 0) {
+        if (strcmp(entry->path, path) == 0) {
             return entry;
         }
     }

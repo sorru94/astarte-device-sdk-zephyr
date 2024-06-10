@@ -255,21 +255,21 @@ static void disconnection_callback(astarte_device_disconnection_event_t event)
 
 static void datastream_object_events_handler(astarte_device_datastream_object_event_t event)
 {
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
+    const char *i_name = event.data_event.interface_name;
+    const char *i_path = event.data_event.path;
     astarte_object_entry_t *entries = event.entries;
     size_t entries_length = event.entries_len;
 
-    LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
+    LOG_INF("Datastream object event, interface: %s, common path: %s", i_name, i_path); // NOLINT
 
     LOG_INF("Astarte object:"); // NOLINT
     for (size_t i = 0; i < entries_length; i++) {
-        const char *endpoint = NULL;
+        const char *mapping_path = NULL;
         astarte_individual_t individual = { 0 };
         astarte_result_t astarte_rc
-            = astarte_object_entry_to_endpoint_and_individual(entries[i], &endpoint, &individual);
+            = astarte_object_entry_to_path_and_individual(entries[i], &mapping_path, &individual);
         if (astarte_rc == ASTARTE_RESULT_OK) {
-            LOG_INF("Partial endpoint: %s", endpoint); // NOLINT
+            LOG_INF("Mapping path: %s", mapping_path); // NOLINT
             utils_log_astarte_individual(individual);
         }
     }

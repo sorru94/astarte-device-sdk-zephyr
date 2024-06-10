@@ -59,17 +59,17 @@ astarte_result_t data_validation_aggregated_datastream(const astarte_interface_t
     for (size_t i = 0; i < entries_len; i++) {
         const astarte_mapping_t *mapping = NULL;
         astarte_object_entry_t entry = entries[i];
-        ares = astarte_interface_get_mapping_from_paths(interface, path, entry.endpoint, &mapping);
+        ares = astarte_interface_get_mapping_from_paths(interface, path, entry.path, &mapping);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Can't find mapping in interface %s for path %s/%s.", interface->name,
-                path, entry.endpoint);
+                path, entry.path);
             return ares;
         }
 
         ares = astarte_mapping_check_individual(mapping, entry.individual);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Individual validation failed, interface/path (%s/%s/%s).",
-                interface->name, path, entry.endpoint);
+                interface->name, path, entry.path);
             return ares;
         }
 

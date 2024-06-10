@@ -122,19 +122,19 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
     zassert_equal(entries_length, 3); // The bson contains two pairs
 
     astarte_object_entry_t entry_double = entries[0];
-    zassert_equal(strcmp(entry_double.endpoint, test_data_double_path), 0);
+    zassert_equal(strcmp(entry_double.path, test_data_double_path), 0);
     astarte_individual_t individual_double = entry_double.individual;
     zassert_equal(individual_double.tag, ASTARTE_MAPPING_TYPE_DOUBLE);
     zassert_equal(individual_double.data.dbl, test_data_double);
 
     astarte_object_entry_t entry_integer = entries[1];
-    zassert_equal(strcmp(entry_integer.endpoint, test_data_integer_path), 0);
+    zassert_equal(strcmp(entry_integer.path, test_data_integer_path), 0);
     astarte_individual_t individual_integer = entry_integer.individual;
     zassert_equal(individual_integer.tag, ASTARTE_MAPPING_TYPE_INTEGER);
     zassert_equal(individual_integer.data.integer, test_data_integer);
 
     astarte_object_entry_t object_string = entries[2];
-    zassert_equal(strcmp(object_string.endpoint, test_data_stringarray_path), 0);
+    zassert_equal(strcmp(object_string.path, test_data_stringarray_path), 0);
     astarte_individual_t individual_string = object_string.individual;
     zassert_equal(individual_string.tag, ASTARTE_MAPPING_TYPE_STRINGARRAY);
     zassert_equal(individual_string.data.string_array.len, ARRAY_SIZE(test_data_stringarray));

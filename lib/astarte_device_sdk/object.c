@@ -21,24 +21,22 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_object, CONFIG_ASTARTE_DEVICE_SDK_OBJECT_LOG
  *     Global public functions definitions      *
  ***********************************************/
 
-astarte_object_entry_t astarte_object_entry_new(
-    const char *endpoint, astarte_individual_t individual)
+astarte_object_entry_t astarte_object_entry_new(const char *path, astarte_individual_t individual)
 {
     return (astarte_object_entry_t){
-        .endpoint = endpoint,
+        .path = path,
         .individual = individual,
     };
 }
 
-astarte_result_t astarte_object_entry_to_endpoint_and_individual(
-    astarte_object_entry_t object_entry, const char **endpoint, astarte_individual_t *individual)
+astarte_result_t astarte_object_entry_to_path_and_individual(
+    astarte_object_entry_t object_entry, const char **path, astarte_individual_t *individual)
 {
-    if (!endpoint || !individual) {
-        ASTARTE_LOG_ERR(
-            "Conversion from Astarte object entry pair to endpoint and individual error.");
+    if (!path || !individual) {
+        ASTARTE_LOG_ERR("Conversion from Astarte object entry to path and individual error.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
-    *endpoint = object_entry.endpoint;
+    *path = object_entry.path;
     *individual = object_entry.individual;
     return ASTARTE_RESULT_OK;
 }
@@ -52,7 +50,7 @@ astarte_result_t astarte_object_entries_serialize(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     for (size_t i = 0; i < entries_length; i++) {
-        ares = astarte_individual_serialize(bson, entries[i].endpoint, entries[i].individual);
+        ares = astarte_individual_serialize(bson, entries[i].path, entries[i].individual);
         if (ares != ASTARTE_RESULT_OK) {
             break;
         }
@@ -105,7 +103,7 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
 
     const astarte_mapping_t *mapping = NULL;
     while ((ares != ASTARTE_RESULT_NOT_FOUND) && (deserialize_idx < bson_doc_length)) {
-        tmp_entries[deserialize_idx].endpoint = inner_elem.name;
+        tmp_entries[deserialize_idx].path = inner_elem.name;
         ares = astarte_interface_get_mapping_from_paths(interface, path, inner_elem.name, &mapping);
         if (ares != ASTARTE_RESULT_OK) {
             goto failure;

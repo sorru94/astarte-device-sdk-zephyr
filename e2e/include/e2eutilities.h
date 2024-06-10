@@ -66,10 +66,10 @@ e2e_interface_data_t *get_e2e_interface_data(
     e2e_interface_data_array_t *interfaces_array, const char *interface_name);
 
 const e2e_individual_data_t *get_e2e_individual_data(
-    const e2e_individual_data_array_t *mapping_array, const char *endpoint);
+    const e2e_individual_data_array_t *individuals_array, const char *path);
 
 const astarte_object_entry_t *get_astarte_object_entry(
-    const e2e_object_entry_array_t *value_pair_array, const char *endpoint);
+    const e2e_object_entry_array_t *entries_array, const char *path);
 
 bool astarte_value_equal(astarte_individual_t *a, astarte_individual_t *b);
 

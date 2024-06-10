@@ -59,7 +59,7 @@ astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interfac
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     if (snprintf(fullpath, fullpath_size, "%s/%s", path1, path2) != fullpath_size - 1) {
-        ASTARTE_LOG_ERR("Failure in formatting the full endpoint path.");
+        ASTARTE_LOG_ERR("Failure in formatting the full path.");
         ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }

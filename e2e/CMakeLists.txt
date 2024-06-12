@@ -5,6 +5,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 set(REQUIRED_BOARD "native_sim")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT BOARD STREQUAL REQUIRED_BOARD)
   message(FATAL_ERROR "End to end tests cannot run on any other board besides ${REQUIRED_BOARD}.")
@@ -38,6 +39,9 @@ target_include_directories(app PRIVATE ${COMMON_DIR}/include)
 FILE(GLOB app_interfaces_sources interfaces/*.c)
 target_sources(app PRIVATE ${app_interfaces_sources})
 target_include_directories(app PRIVATE interfaces)
+
+# add astarte private headers
+target_include_directories(app PRIVATE ${CMAKE_SOURCE_DIR}/../lib/astarte_device_sdk/include)
 
 # add sources
 FILE(GLOB app_sources src/*.c)

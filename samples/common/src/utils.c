@@ -161,3 +161,19 @@ void utils_log_astarte_individual(astarte_individual_t individual)
             break;
     }
 }
+
+void utils_log_astarte_object(astarte_object_entry_t *entries, size_t entries_length)
+{
+    LOG_INF("Astarte object:"); // NOLINT
+
+    for (size_t i = 0; i < entries_length; i++) {
+        const char *mapping_path = NULL;
+        astarte_individual_t individual = { 0 };
+        astarte_result_t astarte_rc
+            = astarte_object_entry_to_path_and_individual(entries[i], &mapping_path, &individual);
+        if (astarte_rc == ASTARTE_RESULT_OK) {
+            LOG_INF("Mapping path: %s", mapping_path); // NOLINT
+            utils_log_astarte_individual(individual);
+        }
+    }
+}

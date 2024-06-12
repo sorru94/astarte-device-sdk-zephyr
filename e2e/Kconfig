@@ -15,6 +15,11 @@ rsource "../Kconfig"
 
 menu "E2E test"
 
+config TLS_CERTIFICATE_PATH
+	string "Path of the tls certificate"
+	help
+	  Path to a certificate, the file byte's will be included in the binary and used for https and mqtts connection
+
 config DEVICE_ID
 	string "Astarte device ID"
     default ""
@@ -41,7 +46,7 @@ config E2E_APPENGINE_URL
 
 config DEVICE_THREAD_STACK_SIZE
     int "Device thread stack size (Bytes)"
-    default 16384
+    default 8192
     help
         Use this setting to change the size of the stack for the thread running the Astarte device.
 
@@ -87,24 +92,19 @@ module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
 
-module = E2E_SETUP
-module-str = Log level for e2e main loop functions
-module-help = Sets log level for e2e main loop functions
+module = RUNNER
+module-str = Log level for e2e runner and command handler
+module-help = Sets log level for e2e runner and command handler
 source "subsys/logging/Kconfig.template.log_config"
 
-module = E2E_UTILITIES
+module = IDATA
+module-str = Log level for e2e idata functions
+module-help = Sets log level for e2e idata functions
+source "subsys/logging/Kconfig.template.log_config"
+
+module = UTILITIES
 module-str = Log level for e2e utilities functions
 module-help = Sets log level for e2e utilities functions
-source "subsys/logging/Kconfig.template.log_config"
-
-module = INDIVIDUAL
-module-str = Log level for datastream device test
-module-help = Sets log level for datastream device test
-source "subsys/logging/Kconfig.template.log_config"
-
-module = OBJECT
-module-str = Log level for aggregates device test
-module-help = Sets log level for aggregates device test
 source "subsys/logging/Kconfig.template.log_config"
 
 module = PROPERTY

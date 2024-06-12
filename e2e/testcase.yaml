@@ -1,0 +1,25 @@
+# (C) Copyright 2024, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  lib.astarte_device_sdk.e2e:
+    filter: CONFIG_SERIAL and dt_chosen_enabled("zephyr,shell-uart")
+    harness: pytest
+    extra_configs:
+      - arch:posix:CONFIG_NATIVE_UART_0_ON_STDINOUT=y
+    harness_config:
+      pytest_dut_scope: "session"
+      record:
+        regex: "\\[(?P<timestamp>.*)\\] \\<(?P<log_level>.*)\\> (?P<module>.*)\\: (?P<message>.*)"
+      pytest_args:
+        - "--color=yes"
+        - "-rA"
+        - "-vvv"
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    tags:
+      - e2e
+      - pytest

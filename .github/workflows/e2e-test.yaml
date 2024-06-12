@@ -56,6 +56,10 @@ jobs:
         with:
           python-version: 3.11
 
+      - name: Set up Python dependencies
+        working-directory: astarte-device-sdk-zephyr/
+        run: pip install -r ./scripts/requirements.txt
+
       - name: Set E2E manifest as defaults
         working-directory: astarte-device-sdk-zephyr
         run: mv west-e2e.yml west.yml
@@ -66,12 +70,16 @@ jobs:
           app-path: astarte-device-sdk-zephyr
           toolchains: x86_64-zephyr-elf
 
+      - name: Check e2e generated interfaces
+        working-directory: astarte-device-sdk-zephyr/
+        run: west generate-interfaces -d ./e2e/interfaces -c ./e2e/interfaces
+
       - name: Setup e2e application configuration values
         working-directory: astarte-device-sdk-zephyr/e2e/
         run: |
           # TODO some devices should also get registered inside the e2e test using the provided api
           DEVICE_ID=$(astartectl utils device-id generate-random)
-          CREDENTIAL_SECRET=$(astartectl pairing agent register "$DEVICE_ID" --compact-output)
+          CREDENTIAL_SECRET=$(astartectl pairing agent register --compact-output -- "$DEVICE_ID")
           PAIRING_TOKEN=$(astartectl utils gen-jwt pairing)
           TOKEN=$(astartectl utils gen-jwt appengine)
           tee -a private.conf << END
@@ -86,27 +94,28 @@ jobs:
           # The dns used must be the one of the zeth interface 
           # Since we are injecting there the correct domain name resolutions
           CONFIG_DNS_SERVER1="192.0.2.2:53"
-          END
           # Write the certificate path so that cmake can successfully generate the .inc file
-          tee CERTIFICATE << END
-          CERTIFICATE_PATH = $ASTARTE_ACTION_CERT
+          CONFIG_TLS_CERTIFICATE_PATH="$ASTARTE_ACTION_CERT"
           END
 
       - name: Start net-setup nat configuration
         working-directory: tools/net-tools
         run: |
-          # Comment the hostnames in /etc/hosts
-          sudo sed '/127\.0\.0\.1 [[:alnum:]]\+\.autotest\.astarte-platform\.org/s/^/# /' -i /etc/hosts
-          # Add dns info to the zephyr net-tools dnsmasq instance
+          # Add the correct dns resolution for zeth dnsmasq
           tee -a dnsmasq_nat.conf << END
-          address=/$ASTARTE_API_BASE/192.0.2.2
-          address=/$ASTARTE_BROKER_BASE/192.0.2.2
+          # do not read /etc/hosts
+          no-hosts
+          # do not bind to loopback address
+          except-interface=lo
+          # add resolution for action astarte dns
+          address=/$ASTARTE_API_BASE/$ASTARTE_BROKER_BASE/192.0.2.2
           END
           sudo ./net-setup.sh start --config nat.conf
 
       - name: Build and run e2e test zephyr application
-        working-directory: astarte-device-sdk-zephyr
-        run: west build -t run -b native_sim ./e2e
+        # We have to launch the command in the e2e directory the script `e2e/pytest/configuration.py` searches for build artifact in that specific direcotry
+        working-directory: astarte-device-sdk-zephyr/e2e
+        run: west twister --force-color --ninja -vvv --inline-logs -p native_sim -T .
 
       - name: Stop net-setup nat configuration
         working-directory: tools/net-tools

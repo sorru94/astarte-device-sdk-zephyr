@@ -278,6 +278,8 @@ static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
+    device->connection_state = DEVICE_DISCONNECTED;
+
     if (device->disconnection_cbk) {
         astarte_device_disconnection_event_t event = {
             .device = device,
@@ -286,8 +288,6 @@ static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 
         device->disconnection_cbk(event);
     }
-
-    device->connection_state = DEVICE_DISCONNECTED;
 }
 
 static void on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_len,

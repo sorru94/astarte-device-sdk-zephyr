@@ -492,6 +492,8 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
         && astarte_mqtt_is_connected(&device->astarte_mqtt)
         && !astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
 
+        device->connection_state = DEVICE_CONNECTED;
+
         if (device->connection_cbk) {
             astarte_device_connection_event_t event = {
                 .device = device,
@@ -500,7 +502,6 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 
             device->connection_cbk(event);
         }
-        device->connection_state = DEVICE_CONNECTED;
     }
 
     return astarte_mqtt_poll(&device->astarte_mqtt);

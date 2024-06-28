@@ -278,6 +278,8 @@ static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
+    device->connection_state = DEVICE_DISCONNECTED;
+
     if (device->disconnection_cbk) {
         astarte_device_disconnection_event_t event = {
             .device = device,
@@ -286,8 +288,6 @@ static void on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
 
         device->disconnection_cbk(event);
     }
-
-    device->connection_state = DEVICE_DISCONNECTED;
 }
 
 static void on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic, size_t topic_len,
@@ -492,6 +492,8 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
         && astarte_mqtt_is_connected(&device->astarte_mqtt)
         && !astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
 
+        device->connection_state = DEVICE_CONNECTED;
+
         if (device->connection_cbk) {
             astarte_device_connection_event_t event = {
                 .device = device,
@@ -500,7 +502,6 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 
             device->connection_cbk(event);
         }
-        device->connection_state = DEVICE_CONNECTED;
     }
 
     return astarte_mqtt_poll(&device->astarte_mqtt);

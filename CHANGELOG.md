@@ -10,21 +10,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - Unreleased
+## [0.6.1] - 2024-06-28
+### Fixed
+- Device state is changed to CONNECTED or DISCONNECTED before calling the appropriate callback.
+
+## [0.6.0] - 2024-06-11
 ### Added
-- Device ID is now a field in the `astarte_device_config_t` and a parameter of the
+- Device ID as a field in the `astarte_device_config_t` and a parameter of the
   `astarte_pairing_register_device` function. This makes it possible to specify a device ID at
   runtime.
 - Utilities functions to convert an UUID to a base64 and base64 url and filename safe string.
+- Preprocessor define `ASTARTE_PAIRING_DEVICE_ID_LEN` representing the fixed length of a
+  device ID string.
 
 ### Changed
 - Renamed the `astarte_value_t` type to `astarte_individual_t` to better reflect its content.
 - Renamed the `astarte_value_pair_t` type to `astarte_object_entry_t` to better reflect its content.
+- Renamed the `mqtt_connected_timeout_ms` field to `mqtt_poll_timeout_ms` in the
+  `astarte_device_config_t` struct.
 
 ### Removed
 - Kconfig option `CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID`. Device ID should be defined using the
   `astarte_device_config_t` struct during device initialization.
-- The typedefined struct `astarte_value_pair_array_t`.
+- The `session_present` flag from the struct `astarte_device_connection_event_t`.
 
 ## [0.5.0] - 2024-04-10
 ### Added

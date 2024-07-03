@@ -95,7 +95,11 @@ typedef enum
     /** @brief Calling a device API while the device is not ready. */
     ASTARTE_RESULT_DEVICE_NOT_READY = 32,
     /** @brief A partial aggregated object has been found. */
-    ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT = 33
+    ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT = 33,
+    /** @brief Error while reading/writing an NVS entry. */
+    ASTARTE_RESULT_NVS_ERROR = 34,
+    /** @brief Astarte key-value storage is full. */
+    ASTARTE_RESULT_KV_STORAGE_FULL = 35
 } astarte_result_t;
 
 #ifdef __cplusplus

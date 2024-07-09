@@ -93,6 +93,18 @@ config ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS
 	  This configuration setting will define the maximum delay for the reconnection backoff
 	  strategy.
 
+config ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+	bool "Permanent storage for Astarte device"
+	depends on ASTARTE_DEVICE_SDK
+	depends on FLASH
+	depends on FLASH_MAP
+	depends on FLASH_PAGE_LAYOUT
+	depends on NVS
+	default y
+	help
+	  This option enables the permanent storage in for the Astarte device.
+	  It requires a partition to be present in flash with the exact name 'astarte_partition'.
+
 menu "Development options"
 
 config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP
@@ -170,6 +182,11 @@ source "subsys/logging/Kconfig.template.log_config"
 module = ASTARTE_DEVICE_SDK_DEVICE
 module-str = Log level for Astarte device SDK device
 module-help = Sets log level for Astarte device SDK device.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_DEVICE_CACHING
+module-str = Log level for Astarte device SDK device caching
+module-help = Sets log level for Astarte device SDK device caching.
 source "subsys/logging/Kconfig.template.log_config"
 
 module = ASTARTE_DEVICE_SDK_UUID

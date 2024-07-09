@@ -99,7 +99,9 @@ typedef enum
     /** @brief Error while reading/writing an NVS entry. */
     ASTARTE_RESULT_NVS_ERROR = 34,
     /** @brief Astarte key-value storage is full. */
-    ASTARTE_RESULT_KV_STORAGE_FULL = 35
+    ASTARTE_RESULT_KV_STORAGE_FULL = 35,
+    /** @brief An outdated introspection has been found in cache. */
+    ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION = 36
 } astarte_result_t;
 
 #ifdef __cplusplus

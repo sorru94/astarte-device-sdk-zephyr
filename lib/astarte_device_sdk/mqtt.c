@@ -240,6 +240,7 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
     }
 
     *astarte_mqtt = (astarte_mqtt_t){ 0 };
+    astarte_mqtt->clean_session = cfg->clean_session;
     astarte_mqtt->connection_timeout_ms = cfg->connection_timeout_ms;
     astarte_mqtt->poll_timeout_ms = cfg->poll_timeout_ms;
     memcpy(
@@ -341,6 +342,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.user_name = NULL;
     astarte_mqtt->client.protocol_version = MQTT_VERSION_3_1_1;
     astarte_mqtt->client.transport.type = MQTT_TRANSPORT_SECURE;
+    astarte_mqtt->client.clean_session = (astarte_mqtt->clean_session) ? 1 : 0;
 
     // MQTT TLS configuration
     sec_tag_t sec_tag_list[] = {
@@ -668,7 +670,7 @@ bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt)
 static void handle_connack_event(
     astarte_mqtt_t *astarte_mqtt, const struct mqtt_connack_param connack)
 {
-    ASTARTE_LOG_DBG("Received CONNACK packet");
+    ASTARTE_LOG_DBG("Received CONNACK packet, session present: %d", connack.session_present_flag);
     // Reset the backoff context for the next connection failure
     backoff_context_init(&astarte_mqtt->backoff_ctx,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,

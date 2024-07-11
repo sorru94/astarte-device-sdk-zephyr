@@ -256,7 +256,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     const char *interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name;
 
-    const char *paths[UTILS_DATA_ELEMENTS] = {
+    const char *paths[] = {
         "/sensor44/binaryblob_endpoint",
         "/sensor44/binaryblobarray_endpoint",
         "/sensor44/boolean_endpoint",
@@ -278,7 +278,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     LOG_INF("Setting some properties using the Astarte device."); // NOLINT
 
-    astarte_individual_t individuals[UTILS_DATA_ELEMENTS]
+    astarte_individual_t individuals[]
         = { astarte_individual_from_binaryblob(
                 (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
               astarte_individual_from_binaryblob_array((const void **) utils_binary_blobs_data,
@@ -302,7 +302,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
               astarte_individual_from_string_array(
                   (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
 
-    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(individuals); i++) {
         LOG_INF("Setting on %s:", paths[i]); // NOLINT
         utils_log_astarte_individual(individuals[i]);
         res = astarte_device_set_property(device, interface_name, paths[i], individuals[i]);
@@ -318,7 +318,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     LOG_INF("Unsetting some properties using the Astarte device."); // NOLINT
 
-    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(individuals); i++) {
         LOG_INF("Unsetting %s:", paths[i]); // NOLINT
         res = astarte_device_unset_property(device, interface_name, paths[i]);
         if (res != ASTARTE_RESULT_OK) {

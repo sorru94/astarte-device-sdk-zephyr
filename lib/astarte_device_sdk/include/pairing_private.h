@@ -16,6 +16,7 @@
 #include "astarte_device_sdk/result.h"
 
 #include "crypto.h"
+#include "mqtt.h"
 #include "tls_credentials.h"
 
 /** @brief Maximum length for the MQTT broker URL in chars.
@@ -36,17 +37,19 @@ extern "C" {
 #endif
 
 /**
- * @brief Fetch the MQTT broker URL from Astarte.
+ * @brief Parse an MQTT broker URL into broker hostname and broker port.
  *
- * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
- * @param[in] device_id Unique identifier to use to register the device instance.
- * @param[in] cred_secr Credential secret to use as authorization token.
- * @param[out] out_url Output buffer where to store the fetched ULR.
- * @param[in] out_url_size Size of the output buffer for the URL.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ * @param[in] http_timeout_ms HTTP timeout value.
+ * @param[in] device_id Device ID to use to obtain the MQTT broker URL.
+ * @param[in] cred_secr Credential secret to use to obtain the MQTT broker URL.
+ * @param[out] broker_hostname Static struct used to store the broker hostname.
+ * @param[out] broker_port Static struct used to store the broker port.
+ * @return ASTARTE_RESULT_OK if publish has been successful, an error code otherwise.
  */
-astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char *device_id,
-    const char *cred_secr, char *out_url, size_t out_url_size);
+astarte_result_t astarte_pairing_get_mqtt_broker_hostname_and_port(int32_t http_timeout_ms,
+    const char *device_id, const char *cred_secr,
+    char broker_hostname[static ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1],
+    char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1]);
 
 /**
  * @brief Fetch the client x509 certificate from Astarte.

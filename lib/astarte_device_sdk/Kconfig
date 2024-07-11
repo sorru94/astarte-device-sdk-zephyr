@@ -234,4 +234,19 @@ module-str = Log level for Astarte device SDK key-value storage
 module-help = Sets log level for Astarte device SDK key-value storage.
 source "subsys/logging/Kconfig.template.log_config"
 
+module = ASTARTE_DEVICE_SDK_DEVICE_RX
+module-str = Log level for Astarte device SDK device reception
+module-help = Sets log level for Astarte device SDK device reception.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_DEVICE_TX
+module-str = Log level for Astarte device SDK device transmission
+module-help = Sets log level for Astarte device SDK device transmission.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_DEVICE_CONNECTION
+module-str = Log level for Astarte device SDK device connection
+module-help = Sets log level for Astarte device SDK device connection.
+source "subsys/logging/Kconfig.template.log_config"
+
 endmenu

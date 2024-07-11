@@ -115,6 +115,19 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
  ***********************************************/
 
 /**
+ * @brief Fetch the MQTT broker URL from Astarte.
+ *
+ * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.
+ * @param[in] device_id Unique identifier to use to register the device instance.
+ * @param[in] cred_secr Credential secret to use as authorization token.
+ * @param[out] out_url Output buffer where to store the fetched ULR.
+ * @param[in] out_url_size Size of the output buffer for the URL.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+static astarte_result_t get_broker_info(int32_t timeout_ms, const char *device_id,
+    const char *cred_secr, char *out_url, size_t out_url_size);
+
+/**
  * @brief Encode the payload for the device registration HTTP request.
  *
  * @param[in] device_id Device ID to be encoded in the payload.
@@ -232,47 +245,46 @@ astarte_result_t astarte_pairing_register_device(
     return parse_register_device_response(resp_buf, out_cred_secr, out_cred_secr_size);
 }
 
-astarte_result_t astarte_pairing_get_broker_info(int32_t timeout_ms, const char *device_id,
-    const char *cred_secr, char *out_url, size_t out_url_size)
+astarte_result_t astarte_pairing_get_mqtt_broker_hostname_and_port(int32_t http_timeout_ms,
+    const char *device_id, const char *cred_secr,
+    char broker_hostname[static ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1],
+    char broker_port[static ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1])
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    // Step 1: check the input parameters
-    if (out_url_size <= ASTARTE_PAIRING_MAX_BROKER_URL_LEN) {
-        ASTARTE_LOG_ERR("Insufficient output buffer size for broker URL.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
-        ASTARTE_LOG_ERR(
-            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-
-    // Step 2: Get the MQTT broker URL
-    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { 0 };
-    int snprintf_rc = snprintf(auth_header, AUTH_HEADER_CRED_SECRET_SIZE,
-        AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
-    if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
-        ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-    const char *header_fields[] = { auth_header, NULL };
-
-    char url[PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1] = { 0 };
-    snprintf_rc = snprintf(url, PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1,
-        PAIRING_DEVICE_MGMT_URL_PREFIX "%s", device_id);
-    if (snprintf_rc != PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN) {
-        ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    char resp_buf[GET_BROKER_INFO_RESPONSE_MAX_SIZE] = { 0 };
-    ares = astarte_http_get(timeout_ms, url, header_fields, resp_buf, sizeof(resp_buf));
+    char broker_url[ASTARTE_PAIRING_MAX_BROKER_URL_LEN + 1] = { 0 };
+    astarte_result_t ares
+        = get_broker_info(http_timeout_ms, device_id, cred_secr, broker_url, sizeof(broker_url));
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in obtaining the MQTT broker URL");
         return ares;
     }
-
-    // Step 3: process the result
-    return parse_get_borker_url_response(resp_buf, out_url, out_url_size);
+    int strncmp_rc = strncmp(broker_url, "mqtts://", strlen("mqtts://"));
+    if (strncmp_rc != 0) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    char *saveptr = NULL;
+    char *broker_url_token = strtok_r(&broker_url[strlen("mqtts://")], ":", &saveptr);
+    if (!broker_url_token) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    int ret = snprintf(
+        broker_hostname, ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN + 1, "%s", broker_url_token);
+    if ((ret <= 0) || (ret > ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN)) {
+        ASTARTE_LOG_ERR("Error encoding broker hostname.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+    broker_url_token = strtok_r(NULL, "/", &saveptr);
+    if (!broker_url_token) {
+        ASTARTE_LOG_ERR("MQTT broker URL is malformed");
+        return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
+    }
+    ret = snprintf(broker_port, ASTARTE_MQTT_MAX_BROKER_PORT_LEN + 1, "%s", broker_url_token);
+    if ((ret <= 0) || (ret > ASTARTE_MQTT_MAX_BROKER_PORT_LEN)) {
+        ASTARTE_LOG_ERR("Error encoding broker port.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
@@ -396,6 +408,49 @@ astarte_result_t astarte_pairing_verify_client_certificate(
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
+
+static astarte_result_t get_broker_info(int32_t timeout_ms, const char *device_id,
+    const char *cred_secr, char *out_url, size_t out_url_size)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    // Step 1: check the input parameters
+    if (out_url_size <= ASTARTE_PAIRING_MAX_BROKER_URL_LEN) {
+        ASTARTE_LOG_ERR("Insufficient output buffer size for broker URL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
+        ASTARTE_LOG_ERR(
+            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    // Step 2: Get the MQTT broker URL
+    char auth_header[AUTH_HEADER_CRED_SECRET_SIZE] = { 0 };
+    int snprintf_rc = snprintf(auth_header, AUTH_HEADER_CRED_SECRET_SIZE,
+        AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
+    if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
+        ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+    const char *header_fields[] = { auth_header, NULL };
+
+    char url[PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1] = { 0 };
+    snprintf_rc = snprintf(url, PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN + 1,
+        PAIRING_DEVICE_MGMT_URL_PREFIX "%s", device_id);
+    if (snprintf_rc != PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN) {
+        ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    char resp_buf[GET_BROKER_INFO_RESPONSE_MAX_SIZE] = { 0 };
+    ares = astarte_http_get(timeout_ms, url, header_fields, resp_buf, sizeof(resp_buf));
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
+    }
+
+    // Step 3: process the result
+    return parse_get_borker_url_response(resp_buf, out_url, out_url_size);
+}
 
 static astarte_result_t encode_register_device_payload(
     const char *device_id, char *out_buff, size_t out_buff_size)

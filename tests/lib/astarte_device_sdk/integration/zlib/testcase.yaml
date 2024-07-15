@@ -1,0 +1,11 @@
+# (C) Copyright 2024, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  lib.astarte_device_sdk.integration.zlib:
+    tags: astarte_device_sdk
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim

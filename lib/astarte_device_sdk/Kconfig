@@ -16,6 +16,7 @@ config ASTARTE_DEVICE_SDK
 	select BASE64
 	select SYS_HASH_MAP
 	select SYS_HASH_FUNC32
+	select ZLIB
 	help
 	  This option enables the Astarte device SDK library
 

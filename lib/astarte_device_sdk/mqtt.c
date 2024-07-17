@@ -259,8 +259,8 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
 
     // Initialize the backoff context
     backoff_context_init(&astarte_mqtt->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, false);
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_MAX_MS, false);
 
     // Initialize the reconnection timepoint
     astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
@@ -650,8 +650,8 @@ static void handle_connack_event(
     ASTARTE_LOG_DBG("Received CONNACK packet, session present: %d", connack.session_present_flag);
     // Reset the backoff context for the next connection failure
     backoff_context_init(&astarte_mqtt->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS, true);
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_MAX_MS, true);
 
     if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;

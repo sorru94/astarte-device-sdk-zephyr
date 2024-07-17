@@ -257,6 +257,7 @@ static void state_machine_connecting_run(astarte_device_handle_t device)
         if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
             ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
             device->connection_state = DEVICE_CONNECTED;
+
             if (device->connection_cbk) {
                 astarte_device_connection_event_t event = {
                     .device = device,
@@ -270,10 +271,20 @@ static void state_machine_connecting_run(astarte_device_handle_t device)
 
 static void state_machine_handshake_error_run(astarte_device_handle_t device)
 {
-    // Run the handshake error state operations
+    if (K_TIMEOUT_EQ(sys_timepoint_timeout(device->reconnection_timepoint), K_NO_WAIT)) {
+        // Repeat the handshake procedure
+        device->connection_state = DEVICE_START_HANDSHAKE;
+
+        // Update backoff for the next attempt
+        uint32_t next_backoff_ms = 0;
+        backoff_get_next(&device->backoff_ctx, &next_backoff_ms);
+        device->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
+    }
 }
 
 static void state_machine_connected_run(astarte_device_handle_t device)
 {
-    // Run the connected state operations
+    backoff_context_init(&device->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS, true);
 }

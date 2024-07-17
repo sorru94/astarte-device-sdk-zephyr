@@ -133,6 +133,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     astarte_mqtt_config.connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     astarte_mqtt_config.poll_timeout_ms = cfg->mqtt_poll_timeout_ms;
     astarte_mqtt_config.refresh_client_cert_cbk = refresh_client_cert_handler;
+    astarte_mqtt_config.on_subscribed_cbk = astarte_device_connection_on_subscribed_handler;
     astarte_mqtt_config.on_connected_cbk = astarte_device_connection_on_connected_handler;
     astarte_mqtt_config.on_disconnected_cbk = astarte_device_connection_on_disconnected_handler;
     astarte_mqtt_config.on_incoming_cbk = astarte_device_rx_on_incoming_handler;

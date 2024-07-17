@@ -96,6 +96,8 @@ struct astarte_device
     void *cbk_user_data;
     /** @brief Connection state of the Astarte device. */
     enum connection_states connection_state;
+    /** @brief Flag signaling a subscription request has failed. */
+    bool subscription_failure;
     /** @brief Base MQTT topic for the device. */
     char base_topic[MQTT_BASE_TOPIC_LEN + 1];
     /** @brief Base MQTT control topic for the device. */

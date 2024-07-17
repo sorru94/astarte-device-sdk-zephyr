@@ -37,8 +37,12 @@ typedef struct astarte_mqtt astarte_mqtt_t;
 /** @brief Function pointer to be used for client certificate refresh. */
 typedef astarte_result_t (*astarte_mqtt_refresh_client_cert_cbk_t)(astarte_mqtt_t *astarte_mqtt);
 
-/** @brief Function pointer to be used for signaling a message has been delivered. */
-typedef void (*astarte_mqtt_msg_delivered_cbk_t)(astarte_mqtt_t *astarte_mqtt, uint16_t message_id);
+/** @brief Function pointer to be used for signaling a publish has been delivered. */
+typedef void (*astarte_mqtt_on_delivered_cbk_t)(astarte_mqtt_t *astarte_mqtt, uint16_t message_id);
+
+/** @brief Function pointer to be used for signaling a subscription has been delivered. */
+typedef void (*astarte_mqtt_on_subscribed_cbk_t)(
+    astarte_mqtt_t *astarte_mqtt, uint16_t message_id, enum mqtt_suback_return_code return_code);
 
 /** @brief Function pointer to notify the user that the MQTT connection has been established. */
 typedef void (*astarte_mqtt_on_connected_cbk_t)(
@@ -83,8 +87,10 @@ typedef struct
     char client_id[ASTARTE_MQTT_CLIENT_ID_LEN + 1];
     /** @brief Callback used to check if the client certificate is valid. */
     astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
-    /** @brief Callback used to check if transmitted messages have been delivered. */
-    astarte_mqtt_msg_delivered_cbk_t msg_delivered_cbk;
+    /** @brief Callback used to check if transmitted publish have been delivered. */
+    astarte_mqtt_on_delivered_cbk_t on_delivered_cbk;
+    /** @brief Callback used to check if transmitted subscriptions have been delivered. */
+    astarte_mqtt_on_subscribed_cbk_t on_subscribed_cbk;
     /** @brief Callback used to notify the user that MQTT connection has been established. */
     astarte_mqtt_on_connected_cbk_t on_connected_cbk;
     /** @brief Callback used to notify the user that MQTT connection has been terminated. */
@@ -128,8 +134,10 @@ struct astarte_mqtt
     astarte_mqtt_connection_states_t connection_state;
     /** @brief Callback used to check if the client certificate is valid. */
     astarte_mqtt_refresh_client_cert_cbk_t refresh_client_cert_cbk;
-    /** @brief Callback used to check if transmitted messages have been delivered. */
-    astarte_mqtt_msg_delivered_cbk_t msg_delivered_cbk;
+    /** @brief Callback used to check if transmitted publish have been delivered. */
+    astarte_mqtt_on_delivered_cbk_t on_delivered_cbk;
+    /** @brief Callback used to check if transmitted subscriptions have been delivered. */
+    astarte_mqtt_on_subscribed_cbk_t on_subscribed_cbk;
     /** @brief Configuration struct for the hashmap used to cache outgoing MQTT messages. */
     struct sys_hashmap_config out_msg_map_config;
     /** @brief Data struct for the hashmap used to cache outgoing MQTT messages. */
@@ -202,9 +210,8 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt);
  * @param[in] max_qos Maximum QoS level at which the server can send application messages.
  * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
  * message delivered callback to wait for delivery of messages.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_subscribe(
+void astarte_mqtt_subscribe(
     astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id);
 
 /**
@@ -217,9 +224,8 @@ astarte_result_t astarte_mqtt_subscribe(
  * @param[in] qos QoS to be used for the publish.
  * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
  * message delivered callback to wait for delivery of messages.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
+void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
     size_t data_size, int qos, uint16_t *out_message_id);
 
 /**

@@ -248,7 +248,8 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
     memcpy(astarte_mqtt->broker_port, cfg->broker_port, sizeof(astarte_mqtt->broker_port));
     memcpy(astarte_mqtt->client_id, cfg->client_id, sizeof(astarte_mqtt->client_id));
     astarte_mqtt->refresh_client_cert_cbk = cfg->refresh_client_cert_cbk;
-    astarte_mqtt->msg_delivered_cbk = cfg->msg_delivered_cbk;
+    astarte_mqtt->on_delivered_cbk = cfg->on_delivered_cbk;
+    astarte_mqtt->on_subscribed_cbk = cfg->on_subscribed_cbk;
     astarte_mqtt->on_connected_cbk = cfg->on_connected_cbk;
     astarte_mqtt->on_disconnected_cbk = cfg->on_disconnected_cbk;
     astarte_mqtt->on_incoming_cbk = cfg->on_incoming_cbk;
@@ -443,23 +444,24 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_mqtt_subscribe(
+void astarte_mqtt_subscribe(
     astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
-        ASTARTE_LOG_ERR("Subscription to a topic is not allowed when the client is not connected.");
-        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
-        goto exit;
-    }
-
     uint16_t message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+
+    mqtt_caching_message_t message = {
+        .type = MQTT_CACHING_SUBSCRIPTION_ENTRY,
+        .topic = (char *) topic,
+        .data = NULL,
+        .data_size = 0,
+        .qos = max_qos,
+    };
+    mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
 
     struct mqtt_topic topics[] = { {
         .topic = { .utf8 = topic, .size = strlen(topic) },
@@ -471,75 +473,35 @@ astarte_result_t astarte_mqtt_subscribe(
         .message_id = message_id,
     };
 
-    int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
-        ares = ASTARTE_RESULT_MQTT_ERROR;
-        goto exit;
-    }
-
-    ASTARTE_LOG_DBG("SUBSCRIBED to %s", topic);
-
-    mqtt_caching_message_t message = {
-        .type = MQTT_CACHING_SUBSCRIPTION_ENTRY,
-        .topic = (char *) topic,
-        .data = NULL,
-        .data_size = 0,
-        .qos = max_qos,
-    };
-    mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
-
     if (out_message_id) {
         *out_message_id = message_id;
     }
 
-exit:
+    int ret = mqtt_subscribe(&astarte_mqtt->client, &ctrl_sub_list);
+    if (ret != 0) {
+        ASTARTE_LOG_ERR("MQTT subscription failed: %s, %d", strerror(-ret), ret);
+    } else {
+        ASTARTE_LOG_DBG("SUBSCRIBED to %s", topic);
+    }
+
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return ares;
 }
 
-astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
+void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
     size_t data_size, int qos, uint16_t *out_message_id)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    if (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTED) {
-        ASTARTE_LOG_ERR("Publish to a topic is not allowed when the client is not connected.");
-        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
-        goto exit;
-    }
-
     uint16_t message_id = 0;
     if (qos > 0) {
         message_id = mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
     }
-
-    struct mqtt_publish_param msg = { 0 };
-    msg.retain_flag = 0U;
-    msg.message.topic.topic.utf8 = topic;
-    msg.message.topic.topic.size = strlen(topic);
-    msg.message.topic.qos = qos;
-    msg.message.payload.data = data;
-    msg.message.payload.len = data_size;
-    msg.message_id = message_id;
-    int ret = mqtt_publish(&astarte_mqtt->client, &msg);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("MQTT publish failed: %s, %d", strerror(-ret), ret);
-        ares = ASTARTE_RESULT_MQTT_ERROR;
-        goto exit;
-    }
-
-    ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
-        msg.message_id, msg.message.topic.qos, data_size);
-    ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
 
     if (qos > 0) {
         mqtt_caching_message_t message = {
@@ -556,12 +518,27 @@ astarte_result_t astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *
         *out_message_id = message_id;
     }
 
-exit:
+    struct mqtt_publish_param msg = { 0 };
+    msg.retain_flag = 0U;
+    msg.message.topic.topic.utf8 = topic;
+    msg.message.topic.topic.size = strlen(topic);
+    msg.message.topic.qos = qos;
+    msg.message.payload.data = data;
+    msg.message.payload.len = data_size;
+    msg.message_id = message_id;
+    int ret = mqtt_publish(&astarte_mqtt->client, &msg);
+    if (ret != 0) {
+        ASTARTE_LOG_ERR("MQTT publish failed: %s, %d", strerror(-ret), ret);
+    } else {
+        ASTARTE_LOG_DBG("PUBLISHED on topic \"%s\" [ id: %u qos: %u ], payload: %u B", topic,
+            msg.message_id, msg.message.topic.qos, data_size);
+        ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
+    }
+
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
-    return ares;
 }
 
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
@@ -805,8 +782,8 @@ static void handle_puback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_puback
 
     mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
 
-    if (astarte_mqtt->msg_delivered_cbk) {
-        astarte_mqtt->msg_delivered_cbk(astarte_mqtt, message_id);
+    if (astarte_mqtt->on_delivered_cbk) {
+        astarte_mqtt->on_delivered_cbk(astarte_mqtt, message_id);
     }
 }
 static void handle_pubrec_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrec_param pubrec)
@@ -830,8 +807,8 @@ static void handle_pubcomp_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubco
 
     mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
 
-    if (astarte_mqtt->msg_delivered_cbk) {
-        astarte_mqtt->msg_delivered_cbk(astarte_mqtt, message_id);
+    if (astarte_mqtt->on_delivered_cbk) {
+        astarte_mqtt->on_delivered_cbk(astarte_mqtt, message_id);
     }
 }
 static void handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_suback_param suback)
@@ -841,7 +818,13 @@ static void handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_suback
 
     mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
 
-    if (astarte_mqtt->msg_delivered_cbk) {
-        astarte_mqtt->msg_delivered_cbk(astarte_mqtt, message_id);
+    if (astarte_mqtt->on_subscribed_cbk) {
+        enum mqtt_suback_return_code return_code = MQTT_SUBACK_FAILURE;
+        if (suback.return_codes.len == 0) {
+            ASTARTE_LOG_ERR("Missing return code for SUBACK message (%u)", message_id);
+        } else {
+            return_code = (enum mqtt_suback_return_code) * suback.return_codes.data;
+        }
+        astarte_mqtt->on_subscribed_cbk(astarte_mqtt, message_id, return_code);
     }
 }

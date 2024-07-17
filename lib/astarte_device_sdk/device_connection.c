@@ -5,6 +5,10 @@
  */
 #include "device_connection.h"
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include "device_caching.h"
+#endif
+
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(
     device_connection, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CONNECTION_LOG_LEVEL);
@@ -23,8 +27,9 @@ static void setup_subscriptions(astarte_device_handle_t device);
  * @brief Send the introspection for the device.
  *
  * @param[in] device Handle to the device instance.
+ * @param[in] intr_srt The stringified version of the introspection to transmit.
  */
-static void send_introspection(astarte_device_handle_t device);
+static void send_introspection(astarte_device_handle_t device, char *intr_srt);
 /**
  * @brief Send the emptycache message to Astarte.
  *
@@ -197,31 +202,11 @@ static void setup_subscriptions(astarte_device_handle_t device)
     }
 }
 
-static void send_introspection(astarte_device_handle_t device)
+static void send_introspection(astarte_device_handle_t device, char *intr_srt)
 {
     const char *topic = device->base_topic;
-
-    char *intr_str = NULL;
-    size_t intr_str_size = introspection_get_string_size(&device->introspection);
-
-    // if introspection size is > 4KiB print a warning
-    const size_t introspection_size_warn_level = 4096;
-    if (intr_str_size > introspection_size_warn_level) {
-        ASTARTE_LOG_WRN("The introspection size is > 4KiB");
-    }
-
-    intr_str = calloc(intr_str_size, sizeof(char));
-    if (!intr_str) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        goto exit;
-    }
-    introspection_fill_string(&device->introspection, intr_str, intr_str_size);
-
-    ASTARTE_LOG_DBG("Publishing introspection: %s", intr_str);
-    astarte_mqtt_publish(&device->astarte_mqtt, topic, intr_str, strlen(intr_str), 2, NULL);
-
-exit:
-    free(intr_str);
+    ASTARTE_LOG_DBG("Publishing introspection: %s", intr_srt);
+    astarte_mqtt_publish(&device->astarte_mqtt, topic, intr_srt, strlen(intr_srt), 2, NULL);
 }
 
 static void send_emptycache(astarte_device_handle_t device)
@@ -233,40 +218,91 @@ static void send_emptycache(astarte_device_handle_t device)
 
 static void state_machine_start_handshake_run(astarte_device_handle_t device)
 {
+    char *intr_str = NULL;
+    size_t intr_str_size = introspection_get_string_size(&device->introspection);
+
+    intr_str = calloc(intr_str_size, sizeof(char));
+    if (!intr_str) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        goto exit;
+    }
+    introspection_fill_string(&device->introspection, intr_str, intr_str_size);
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    if (device->mqtt_session_present_flag != 0) {
+        astarte_result_t ares = astarte_device_caching_introspection_check(intr_str, intr_str_size);
+        if (ares == ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+            device->connection_state = DEVICE_CONNECTED;
+            goto exit;
+        }
+    }
+#else
     if (device->mqtt_session_present_flag != 0) {
         ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
         device->connection_state = DEVICE_CONNECTED;
-    } else {
-        device->subscription_failure = false;
-        setup_subscriptions(device);
-        send_introspection(device);
-        send_emptycache(device);
-        // TODO: send device owned props
-        ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
-        device->connection_state = DEVICE_END_HANDSHAKE;
+        goto exit;
     }
+#endif
+
+    device->subscription_failure = false;
+    setup_subscriptions(device);
+    send_introspection(device, intr_str);
+    send_emptycache(device);
+    // TODO: send device owned props
+    ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
+    device->connection_state = DEVICE_END_HANDSHAKE;
+
+exit:
+    free(intr_str);
 }
 
 static void state_machine_end_handshake_run(astarte_device_handle_t device)
 {
+    char *intr_str = NULL;
     if (device->subscription_failure) {
         ASTARTE_LOG_ERR("Subscription request has been denied.");
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-    } else {
-        if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
-            ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-            device->connection_state = DEVICE_CONNECTED;
+        goto exit;
+    }
+    if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+        device->connection_state = DEVICE_CONNECTED;
 
-            if (device->connection_cbk) {
-                astarte_device_connection_event_t event = {
-                    .device = device,
-                    .user_data = device->cbk_user_data,
-                };
-                device->connection_cbk(event);
-            }
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+
+        size_t intr_str_size = introspection_get_string_size(&device->introspection);
+        intr_str = calloc(intr_str_size, sizeof(char));
+        if (!intr_str) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
+            device->connection_state = DEVICE_HANDSHAKE_ERROR;
+            goto exit;
+        }
+        introspection_fill_string(&device->introspection, intr_str, intr_str_size);
+
+        astarte_result_t ares = astarte_device_caching_introspection_check(intr_str, intr_str_size);
+        if (ares == ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION) {
+            ASTARTE_LOG_DBG("Introspection requires updating.");
+            ares = astarte_device_caching_introspection_store(intr_str, intr_str_size);
+        }
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_DBG("Introspection update failed: %s", astarte_result_to_name(ares));
+        }
+#endif
+
+        if (device->connection_cbk) {
+            astarte_device_connection_event_t event = {
+                .device = device,
+                .user_data = device->cbk_user_data,
+            };
+            device->connection_cbk(event);
         }
     }
+
+exit:
+    free(intr_str);
 }
 
 static void state_machine_handshake_error_run(astarte_device_handle_t device)

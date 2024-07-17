@@ -194,7 +194,15 @@ size_t introspection_get_string_size(introspection_t *introspection)
     }
 
     // MAX to correctly handle the case of no interfaces
-    return MAX(1, len);
+    len = MAX(1, len);
+
+    // If introspection size is > 4KiB print a warning
+    const size_t introspection_size_warn_level = 4096;
+    if (len > introspection_size_warn_level) {
+        ASTARTE_LOG_WRN("The introspection size is > 4KiB");
+    }
+
+    return len;
 }
 
 void introspection_fill_string(introspection_t *introspection, char *buffer, size_t buffer_size)

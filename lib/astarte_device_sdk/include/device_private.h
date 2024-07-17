@@ -29,6 +29,8 @@
 #define MQTT_CONTROL_EMPTY_CACHE_TOPIC_SUFFIX MQTT_CONTROL_TOPIC_SUFFIX "/emptyCache"
 /** @brief Suffix to be used for the consumer properties control MQTT topic. */
 #define MQTT_CONTROL_CONSUMER_PROP_TOPIC_SUFFIX MQTT_CONTROL_TOPIC_SUFFIX "/consumer/properties"
+/** @brief Suffix to be used for the producer properties control MQTT topic. */
+#define MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX MQTT_CONTROL_TOPIC_SUFFIX "/producer/properties"
 
 /** @brief Size in chars of the #MQTT_TOPIC_PREFIX string. */
 #define MQTT_TOPIC_PREFIX_LEN (sizeof(MQTT_TOPIC_PREFIX) - 1)
@@ -50,6 +52,12 @@
 /** @brief Size in chars of the consumer properties control topic. */
 #define MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN                                                       \
     (MQTT_BASE_TOPIC_LEN + MQTT_CONTROL_CONSUMER_PROP_TOPIC_SUFFIX_LEN)
+/** @brief Size in chars of the #MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX string. */
+#define MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX_LEN                                                \
+    (sizeof(MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX) - 1)
+/** @brief Size in chars of the consumer properties control topic. */
+#define MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN                                                       \
+    (MQTT_BASE_TOPIC_LEN + MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX_LEN)
 
 /** @brief Connection statuses for the Astarte device. */
 enum connection_states
@@ -119,6 +127,8 @@ struct astarte_device
     char control_empty_cache_topic[MQTT_CONTROL_EMPTY_CACHE_TOPIC_LEN + 1];
     /** @brief Subscription topic for control consumer properties. */
     char control_consumer_prop_topic[MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN + 1];
+    /** @brief Publish topic for control producer properties. */
+    char control_producer_prop_topic[MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN + 1];
 };
 
 #endif // DEVICE_PRIVATE_H

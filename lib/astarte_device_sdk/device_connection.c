@@ -31,6 +31,30 @@ static void send_introspection(astarte_device_handle_t device);
  * @param[in] device Handle to the device instance.
  */
 static void send_emptycache(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_START_HANDSHAKE.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_start_handshake_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_CONNECTING.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_connecting_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_HANDSHAKE_ERROR.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_handshake_error_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_CONNECTED.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_connected_run(astarte_device_handle_t device);
 
 /************************************************
  *         Global functions definitions         *
@@ -120,45 +144,21 @@ void astarte_device_connection_on_subscribed_handler(
 astarte_result_t astarte_device_connection_poll(astarte_device_handle_t device)
 {
     switch (device->connection_state) {
-        case DEVICE_START_HANDSHAKE:
-            if (device->mqtt_session_present_flag != 0) {
-                ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-                device->connection_state = DEVICE_CONNECTED;
-            } else {
-                device->subscription_failure = false;
-                setup_subscriptions(device);
-                send_introspection(device);
-                send_emptycache(device);
-                // TODO: send device owned props
-                ASTARTE_LOG_DBG("Device connection state -> CONNECTING.");
-                device->connection_state = DEVICE_CONNECTING;
-            }
-            break;
-        case DEVICE_CONNECTING:
-            if (device->subscription_failure) {
-                ASTARTE_LOG_ERR("Subscription request has been denied.");
-                ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
-                device->connection_state = DEVICE_HANDSHAKE_ERROR;
-            } else {
-                if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
-                    ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-                    device->connection_state = DEVICE_CONNECTED;
-                    if (device->connection_cbk) {
-                        astarte_device_connection_event_t event = {
-                            .device = device,
-                            .user_data = device->cbk_user_data,
-                        };
-                        device->connection_cbk(event);
-                    }
-                }
-            }
-            break;
-        case DEVICE_HANDSHAKE_ERROR:
-            // TODO: use the backoff time to attempt a reconnection
-            break;
         case DEVICE_DISCONNECTED:
         case DEVICE_MQTT_CONNECTING:
+            break;
+        case DEVICE_START_HANDSHAKE:
+            state_machine_start_handshake_run(device);
+            break;
+        case DEVICE_CONNECTING:
+            state_machine_connecting_run(device);
+            break;
+        case DEVICE_HANDSHAKE_ERROR:
+            state_machine_handshake_error_run(device);
+            break;
         case DEVICE_CONNECTED:
+            state_machine_connected_run(device);
+            break;
         default: // nop
             break;
     }
@@ -229,4 +229,51 @@ static void send_emptycache(astarte_device_handle_t device)
     const char *topic = device->control_empty_cache_topic;
     ASTARTE_LOG_DBG("Sending emptyCache to %s", topic);
     astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2, NULL);
+}
+
+static void state_machine_start_handshake_run(astarte_device_handle_t device)
+{
+    if (device->mqtt_session_present_flag != 0) {
+        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+        device->connection_state = DEVICE_CONNECTED;
+    } else {
+        device->subscription_failure = false;
+        setup_subscriptions(device);
+        send_introspection(device);
+        send_emptycache(device);
+        // TODO: send device owned props
+        ASTARTE_LOG_DBG("Device connection state -> CONNECTING.");
+        device->connection_state = DEVICE_CONNECTING;
+    }
+}
+
+static void state_machine_connecting_run(astarte_device_handle_t device)
+{
+    if (device->subscription_failure) {
+        ASTARTE_LOG_ERR("Subscription request has been denied.");
+        ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
+        device->connection_state = DEVICE_HANDSHAKE_ERROR;
+    } else {
+        if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+            ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+            device->connection_state = DEVICE_CONNECTED;
+            if (device->connection_cbk) {
+                astarte_device_connection_event_t event = {
+                    .device = device,
+                    .user_data = device->cbk_user_data,
+                };
+                device->connection_cbk(event);
+            }
+        }
+    }
+}
+
+static void state_machine_handshake_error_run(astarte_device_handle_t device)
+{
+    // Run the handshake error state operations
+}
+
+static void state_machine_connected_run(astarte_device_handle_t device)
+{
+    // Run the connected state operations
 }

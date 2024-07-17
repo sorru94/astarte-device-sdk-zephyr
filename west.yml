@@ -9,9 +9,15 @@ manifest:
   remotes:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
+    - name: secomind
+      url-base: https://github.com/secomind
 
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
       revision: v3.6.0
       import: true
+    - name: zlib-zephyr
+      remote: secomind
+      revision: release-v1.3.1
+      path: modules/zlib

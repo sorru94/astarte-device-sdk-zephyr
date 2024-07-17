@@ -5,6 +5,7 @@
  */
 #include "astarte_device_sdk/device.h"
 
+#include "device_caching.h"
 #include "device_connection.h"
 #include "device_private.h"
 #include "device_rx.h"
@@ -260,6 +261,32 @@ astarte_result_t astarte_device_unset_property(
     }
 
     return astarte_device_tx_unset_property(device, interface_name, path);
+}
+
+astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
+    void *user_data)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_individual_t individual = { 0 };
+    uint32_t out_major = 0U;
+    ares = astarte_device_caching_property_load(interface_name, path, &out_major, &individual);
+    if (ares != ASTARTE_RESULT_OK) {
+        if (ares != ASTARTE_RESULT_NOT_FOUND) {
+            ASTARTE_LOG_ERR("Failed getting property: %s.", astarte_result_to_name(ares));
+        }
+        return ares;
+    }
+
+    astarte_device_property_loader_event_t event = { .device = device,
+        .interface_name = interface_name,
+        .path = path,
+        .individual = individual,
+        .user_data = user_data };
+    loader_cbk(event);
+
+    astarte_device_caching_property_destroy_loaded(individual);
+    return ares;
 }
 
 /************************************************

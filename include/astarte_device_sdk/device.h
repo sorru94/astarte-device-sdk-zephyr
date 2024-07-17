@@ -98,6 +98,19 @@ typedef void (*astarte_device_property_set_cbk_t)(astarte_device_property_set_ev
 /** @brief Function pointer for property unset events. */
 typedef void (*astarte_device_property_unset_cbk_t)(astarte_device_data_event_t event);
 
+/** @brief Context for a single property load event. */
+typedef struct
+{
+    astarte_device_handle_t device; /**< Handle to the device triggering the event */
+    const char *interface_name; /**< Interface name for the property being loaded. */
+    const char *path; /**< Path for the property being loaded. */
+    astarte_individual_t individual; /**< Individual data of the property being loaded. */
+    void *user_data; /**< User data as passed to #astarte_device_get_property. */
+} astarte_device_property_loader_event_t;
+
+/** @brief Function pointer for loading properties. */
+typedef void (*astarte_device_property_loader_cbk_t)(astarte_device_property_loader_event_t event);
+
 /**
  * @brief Configuration struct for an Astarte device.
  *
@@ -264,6 +277,26 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
  */
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path);
+
+/**
+ * @brief Get a property value.
+ *
+ * @details The property should have been received/streamed at least once before calling this
+ * function, otherwise the function will return a not found result.
+ *
+ * The property value will be fetched and passed as a parameter to the @p loader_cbk callback in
+ * the form of an Astarte individual.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface of the property.
+ * @param[in] path Path of the property.
+ * @param[in] loader_cbk Property loader callback function pointer.
+ * @param[in] user_data User data that will be passed to the callback.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
+    void *user_data);
 
 #ifdef __cplusplus
 }

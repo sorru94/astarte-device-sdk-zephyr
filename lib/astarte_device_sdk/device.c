@@ -219,6 +219,11 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_individual_t individual,
     const int64_t *timestamp)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_stream_individual(device, interface_name, path, individual, timestamp);
 }
 
@@ -226,6 +231,11 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_stream_aggregated(
         device, interface_name, path, entries, entries_len, timestamp);
 }
@@ -233,12 +243,22 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_individual_t individual)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_set_property(device, interface_name, path, individual);
 }
 
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called unset property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_unset_property(device, interface_name, path);
 }
 

@@ -7,6 +7,9 @@
 
 #include "bson_serializer.h"
 #include "data_validation.h"
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include "device_caching.h"
+#endif
 #include "individual_private.h"
 #include "object_private.h"
 
@@ -45,12 +48,6 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
 {
     astarte_bson_serializer_t bson = { 0 };
     astarte_result_t ares = ASTARTE_RESULT_OK;
-
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
-        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
-        goto exit;
-    }
 
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
@@ -116,12 +113,6 @@ astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t dev
     astarte_bson_serializer_t outer_bson = { 0 };
     astarte_bson_serializer_t inner_bson = { 0 };
     astarte_result_t ares = ASTARTE_RESULT_OK;
-
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
-        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
-        goto exit;
-    }
 
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
@@ -216,11 +207,6 @@ exit:
 astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_individual_t individual)
 {
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
-    }
-
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
     if (!interface) {
@@ -234,17 +220,20 @@ astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
         return ares;
     }
 
-    return astarte_device_stream_individual(device, interface_name, path, individual, NULL);
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_property_store(
+        interface_name, path, interface->major_version, individual);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed storing the property.");
+    }
+#endif
+
+    return astarte_device_tx_stream_individual(device, interface_name, path, individual, NULL);
 }
 
 astarte_result_t astarte_device_tx_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called unset property function when the device is not connected.");
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
-    }
-
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
     if (!interface) {
@@ -257,6 +246,13 @@ astarte_result_t astarte_device_tx_unset_property(
         ASTARTE_LOG_ERR("Device property unset failed.");
         return ares;
     }
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_property_delete(interface_name, path);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the stored property.");
+    }
+#endif
 
     return publish_data(device, interface_name, path, "", 0, 2);
 }

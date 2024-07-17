@@ -161,6 +161,8 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
+    handle->mqtt_session_present_flag = 0;
+
     *device = handle;
 
     return ares;

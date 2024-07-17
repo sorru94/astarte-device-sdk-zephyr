@@ -38,11 +38,11 @@ static void send_emptycache(astarte_device_handle_t device);
  */
 static void state_machine_start_handshake_run(astarte_device_handle_t device);
 /**
- * @brief State machine runner code for the state DEVICE_CONNECTING.
+ * @brief State machine runner code for the state DEVICE_END_HANDSHAKE.
  *
  * @param[in] device Handle to the device instance.
  */
-static void state_machine_connecting_run(astarte_device_handle_t device);
+static void state_machine_end_handshake_run(astarte_device_handle_t device);
 /**
  * @brief State machine runner code for the state DEVICE_HANDSHAKE_ERROR.
  *
@@ -65,7 +65,7 @@ astarte_result_t astarte_device_connection_connect(astarte_device_handle_t devic
     switch (device->connection_state) {
         case DEVICE_MQTT_CONNECTING:
         case DEVICE_START_HANDSHAKE:
-        case DEVICE_CONNECTING:
+        case DEVICE_END_HANDSHAKE:
             ASTARTE_LOG_WRN("Called connect function when device is connecting.");
             return ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING;
         case DEVICE_CONNECTED:
@@ -150,8 +150,8 @@ astarte_result_t astarte_device_connection_poll(astarte_device_handle_t device)
         case DEVICE_START_HANDSHAKE:
             state_machine_start_handshake_run(device);
             break;
-        case DEVICE_CONNECTING:
-            state_machine_connecting_run(device);
+        case DEVICE_END_HANDSHAKE:
+            state_machine_end_handshake_run(device);
             break;
         case DEVICE_HANDSHAKE_ERROR:
             state_machine_handshake_error_run(device);
@@ -242,12 +242,12 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
         send_introspection(device);
         send_emptycache(device);
         // TODO: send device owned props
-        ASTARTE_LOG_DBG("Device connection state -> CONNECTING.");
-        device->connection_state = DEVICE_CONNECTING;
+        ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
+        device->connection_state = DEVICE_END_HANDSHAKE;
     }
 }
 
-static void state_machine_connecting_run(astarte_device_handle_t device)
+static void state_machine_end_handshake_run(astarte_device_handle_t device)
 {
     if (device->subscription_failure) {
         ASTARTE_LOG_ERR("Subscription request has been denied.");

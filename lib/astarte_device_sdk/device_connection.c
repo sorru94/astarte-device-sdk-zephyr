@@ -31,6 +31,30 @@ static void send_introspection(astarte_device_handle_t device);
  * @param[in] device Handle to the device instance.
  */
 static void send_emptycache(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_START_HANDSHAKE.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_start_handshake_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_END_HANDSHAKE.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_end_handshake_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_HANDSHAKE_ERROR.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_handshake_error_run(astarte_device_handle_t device);
+/**
+ * @brief State machine runner code for the state DEVICE_CONNECTED.
+ *
+ * @param[in] device Handle to the device instance.
+ */
+static void state_machine_connected_run(astarte_device_handle_t device);
 
 /************************************************
  *         Global functions definitions         *
@@ -39,7 +63,9 @@ static void send_emptycache(astarte_device_handle_t device);
 astarte_result_t astarte_device_connection_connect(astarte_device_handle_t device)
 {
     switch (device->connection_state) {
-        case DEVICE_CONNECTING:
+        case DEVICE_MQTT_CONNECTING:
+        case DEVICE_START_HANDSHAKE:
+        case DEVICE_END_HANDSHAKE:
             ASTARTE_LOG_WRN("Called connect function when device is connecting.");
             return ASTARTE_RESULT_MQTT_CLIENT_ALREADY_CONNECTING;
         case DEVICE_CONNECTED:
@@ -51,14 +77,19 @@ astarte_result_t astarte_device_connection_connect(astarte_device_handle_t devic
 
     astarte_result_t ares = astarte_mqtt_connect(&device->astarte_mqtt);
     if (ares == ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_DBG("Device connection state -> CONNECTING.");
-        device->connection_state = DEVICE_CONNECTING;
+        ASTARTE_LOG_DBG("Device connection state -> MQTT_CONNECTING.");
+        device->connection_state = DEVICE_MQTT_CONNECTING;
     }
     return ares;
 }
 
 astarte_result_t astarte_device_connection_disconnect(astarte_device_handle_t device)
 {
+    if (device->connection_state == DEVICE_DISCONNECTED) {
+        ASTARTE_LOG_ERR("Disconnection request for a disconnected client will be ignored.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_mqtt_disconnect(&device->astarte_mqtt);
 }
 
@@ -67,19 +98,10 @@ void astarte_device_connection_on_connected_handler(
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
 
-    if (connack_param.session_present_flag != 0) {
-        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-        device->connection_state = DEVICE_CONNECTED;
-        return;
-    }
+    ASTARTE_LOG_DBG("Device connection state -> START_HANDSHAKE.");
+    device->connection_state = DEVICE_START_HANDSHAKE;
 
-    setup_subscriptions(device);
-    send_introspection(device);
-    send_emptycache(device);
-    // TODO: send device owned props
-
-    ASTARTE_LOG_DBG("Device connection state -> CONNECTING.");
-    device->connection_state = DEVICE_CONNECTING;
+    device->mqtt_session_present_flag = connack_param.session_present_flag;
 }
 
 void astarte_device_connection_on_disconnected_handler(astarte_mqtt_t *astarte_mqtt)
@@ -94,28 +116,51 @@ void astarte_device_connection_on_disconnected_handler(astarte_mqtt_t *astarte_m
             .device = device,
             .user_data = device->cbk_user_data,
         };
-
         device->disconnection_cbk(event);
+    }
+}
+
+void astarte_device_connection_on_subscribed_handler(
+    astarte_mqtt_t *astarte_mqtt, uint16_t message_id, enum mqtt_suback_return_code return_code)
+{
+    (void) message_id;
+    struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);
+
+    switch (return_code) {
+        case MQTT_SUBACK_SUCCESS_QoS_0:
+        case MQTT_SUBACK_SUCCESS_QoS_1:
+        case MQTT_SUBACK_SUCCESS_QoS_2:
+            break;
+        case MQTT_SUBACK_FAILURE:
+            device->subscription_failure = true;
+            break;
+        default:
+            device->subscription_failure = true;
+            ASTARTE_LOG_ERR("Invalid SUBACK return code.");
+            break;
     }
 }
 
 astarte_result_t astarte_device_connection_poll(astarte_device_handle_t device)
 {
-    if ((device->connection_state == DEVICE_CONNECTING)
-        && astarte_mqtt_is_connected(&device->astarte_mqtt)
-        && !astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
-
-        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-        device->connection_state = DEVICE_CONNECTED;
-
-        if (device->connection_cbk) {
-            astarte_device_connection_event_t event = {
-                .device = device,
-                .user_data = device->cbk_user_data,
-            };
-
-            device->connection_cbk(event);
-        }
+    switch (device->connection_state) {
+        case DEVICE_DISCONNECTED:
+        case DEVICE_MQTT_CONNECTING:
+            break;
+        case DEVICE_START_HANDSHAKE:
+            state_machine_start_handshake_run(device);
+            break;
+        case DEVICE_END_HANDSHAKE:
+            state_machine_end_handshake_run(device);
+            break;
+        case DEVICE_HANDSHAKE_ERROR:
+            state_machine_handshake_error_run(device);
+            break;
+        case DEVICE_CONNECTED:
+            state_machine_connected_run(device);
+            break;
+        default: // nop
+            break;
     }
 
     return astarte_mqtt_poll(&device->astarte_mqtt);
@@ -127,15 +172,9 @@ astarte_result_t astarte_device_connection_poll(astarte_device_handle_t device)
 
 static void setup_subscriptions(astarte_device_handle_t device)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
     const char *topic = device->control_consumer_prop_topic;
-    uint16_t message_id = 0;
     ASTARTE_LOG_DBG("Subscribing to: %s", topic);
-    ares = astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, &message_id);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
-        return;
-    }
+    astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, NULL);
 
     for (introspection_node_t *iterator = introspection_iter(&device->introspection);
          iterator != NULL; iterator = introspection_iter_next(&device->introspection, iterator)) {
@@ -152,12 +191,7 @@ static void setup_subscriptions(astarte_device_handle_t device)
             }
 
             ASTARTE_LOG_DBG("Subscribing to: %s", topic);
-            ares = astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, &message_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Error in MQTT subscription to topic %s.", topic);
-                free(topic);
-                return;
-            }
+            astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, NULL);
             free(topic);
         }
     }
@@ -165,46 +199,92 @@ static void setup_subscriptions(astarte_device_handle_t device)
 
 static void send_introspection(astarte_device_handle_t device)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
     const char *topic = device->base_topic;
 
-    char *introspection_str = NULL;
-    size_t introspection_str_size = introspection_get_string_size(&device->introspection);
+    char *intr_str = NULL;
+    size_t intr_str_size = introspection_get_string_size(&device->introspection);
 
     // if introspection size is > 4KiB print a warning
     const size_t introspection_size_warn_level = 4096;
-    if (introspection_str_size > introspection_size_warn_level) {
+    if (intr_str_size > introspection_size_warn_level) {
         ASTARTE_LOG_WRN("The introspection size is > 4KiB");
     }
 
-    introspection_str = calloc(introspection_str_size, sizeof(char));
-    if (!introspection_str) {
+    intr_str = calloc(intr_str_size, sizeof(char));
+    if (!intr_str) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         goto exit;
     }
-    introspection_fill_string(&device->introspection, introspection_str, introspection_str_size);
+    introspection_fill_string(&device->introspection, intr_str, intr_str_size);
 
-    uint16_t message_id = 0;
-    ASTARTE_LOG_DBG("Publishing introspection: %s", introspection_str);
-    ares = astarte_mqtt_publish(
-        &device->astarte_mqtt, topic, introspection_str, strlen(introspection_str), 2, &message_id);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Error publishing introspection.");
-    }
+    ASTARTE_LOG_DBG("Publishing introspection: %s", intr_str);
+    astarte_mqtt_publish(&device->astarte_mqtt, topic, intr_str, strlen(intr_str), 2, NULL);
 
 exit:
-    free(introspection_str);
+    free(intr_str);
 }
 
 static void send_emptycache(astarte_device_handle_t device)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
     const char *topic = device->control_empty_cache_topic;
-    uint16_t message_id = 0;
     ASTARTE_LOG_DBG("Sending emptyCache to %s", topic);
-    ares = astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2, &message_id);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Error publishing empty cache.");
+    astarte_mqtt_publish(&device->astarte_mqtt, topic, "1", strlen("1"), 2, NULL);
+}
+
+static void state_machine_start_handshake_run(astarte_device_handle_t device)
+{
+    if (device->mqtt_session_present_flag != 0) {
+        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+        device->connection_state = DEVICE_CONNECTED;
+    } else {
+        device->subscription_failure = false;
+        setup_subscriptions(device);
+        send_introspection(device);
+        send_emptycache(device);
+        // TODO: send device owned props
+        ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
+        device->connection_state = DEVICE_END_HANDSHAKE;
     }
+}
+
+static void state_machine_end_handshake_run(astarte_device_handle_t device)
+{
+    if (device->subscription_failure) {
+        ASTARTE_LOG_ERR("Subscription request has been denied.");
+        ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
+        device->connection_state = DEVICE_HANDSHAKE_ERROR;
+    } else {
+        if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+            ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
+            device->connection_state = DEVICE_CONNECTED;
+
+            if (device->connection_cbk) {
+                astarte_device_connection_event_t event = {
+                    .device = device,
+                    .user_data = device->cbk_user_data,
+                };
+                device->connection_cbk(event);
+            }
+        }
+    }
+}
+
+static void state_machine_handshake_error_run(astarte_device_handle_t device)
+{
+    if (K_TIMEOUT_EQ(sys_timepoint_timeout(device->reconnection_timepoint), K_NO_WAIT)) {
+        // Repeat the handshake procedure
+        device->connection_state = DEVICE_START_HANDSHAKE;
+
+        // Update backoff for the next attempt
+        uint32_t next_backoff_ms = 0;
+        backoff_get_next(&device->backoff_ctx, &next_backoff_ms);
+        device->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
+    }
+}
+
+static void state_machine_connected_run(astarte_device_handle_t device)
+{
+    backoff_context_init(&device->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS, true);
 }

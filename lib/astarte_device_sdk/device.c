@@ -133,6 +133,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     astarte_mqtt_config.connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     astarte_mqtt_config.poll_timeout_ms = cfg->mqtt_poll_timeout_ms;
     astarte_mqtt_config.refresh_client_cert_cbk = refresh_client_cert_handler;
+    astarte_mqtt_config.on_subscribed_cbk = astarte_device_connection_on_subscribed_handler;
     astarte_mqtt_config.on_connected_cbk = astarte_device_connection_on_connected_handler;
     astarte_mqtt_config.on_disconnected_cbk = astarte_device_connection_on_disconnected_handler;
     astarte_mqtt_config.on_incoming_cbk = astarte_device_rx_on_incoming_handler;
@@ -159,6 +160,13 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     if (ares != ASTARTE_RESULT_OK) {
         goto failure;
     }
+
+    // Initialize the handle data to be used during the handshake with Astarte
+    handle->mqtt_session_present_flag = 0;
+    handle->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
+    backoff_context_init(&handle->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS, true);
 
     *device = handle;
 

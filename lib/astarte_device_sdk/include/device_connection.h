@@ -61,6 +61,18 @@ void astarte_device_connection_on_connected_handler(
 void astarte_device_connection_on_disconnected_handler(astarte_mqtt_t *astarte_mqtt);
 
 /**
+ * @brief Handler for a SUBACK event.
+ *
+ * @details This function can be used as a SUBACK event handler for the Astarte MQTT client.
+ *
+ * @param[in] astarte_mqtt Astarte MQTT client context.
+ * @param[in] message_id Message ID for the SUBACK message.
+ * @param[in] return_code Return code of the SUBACK message.
+ */
+void astarte_device_connection_on_subscribed_handler(
+    astarte_mqtt_t *astarte_mqtt, uint16_t message_id, enum mqtt_suback_return_code return_code);
+
+/**
  * @brief Poll the device connection status, it will also poll the Astarte MQTT client.
  *
  * @param[in] device Device instance to poll.

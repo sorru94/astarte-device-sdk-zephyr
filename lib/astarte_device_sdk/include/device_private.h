@@ -16,6 +16,7 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
+#include "backoff.h"
 #include "introspection.h"
 #include "mqtt.h"
 #include "tls_credentials.h"
@@ -55,8 +56,14 @@ enum connection_states
 {
     /** @brief The device has never been connected or has been disconnected. */
     DEVICE_DISCONNECTED = 0U,
-    /** @brief The device is connecting to Astarte. */
-    DEVICE_CONNECTING,
+    /** @brief The device is connecting to the MQTT broker of Astarte. */
+    DEVICE_MQTT_CONNECTING,
+    /** @brief The device is connected to MQTT and starting the handshake to Astarte. */
+    DEVICE_START_HANDSHAKE,
+    /** @brief The device is connected to MQTT and ending the handshake to Astarte. */
+    DEVICE_END_HANDSHAKE,
+    /** @brief The device is connected to MQTT but incurred in an error in the Astarte hanshake. */
+    DEVICE_HANDSHAKE_ERROR,
     /** @brief The device has fully connected to Astarte. */
     DEVICE_CONNECTED,
 };
@@ -78,6 +85,8 @@ struct astarte_device
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT client handle. */
     astarte_mqtt_t astarte_mqtt;
+    /** @brief Last session present flag from the Astarte MQTT client. */
+    uint8_t mqtt_session_present_flag;
     /** @brief Device introspection. */
     introspection_t introspection;
     /** @brief (optional) User callback for connection events. */
@@ -96,6 +105,12 @@ struct astarte_device
     void *cbk_user_data;
     /** @brief Connection state of the Astarte device. */
     enum connection_states connection_state;
+    /** @brief Flag signaling a subscription request has failed. */
+    bool subscription_failure;
+    /** @brief Backoff context to be used in case of an handshake error with Astarte. */
+    struct backoff_context backoff_ctx;
+    /** @brief Reconnection timepoint to be used in case of an handshake error with Astarte. */
+    k_timepoint_t reconnection_timepoint;
     /** @brief Base MQTT topic for the device. */
     char base_topic[MQTT_BASE_TOPIC_LEN + 1];
     /** @brief Base MQTT control topic for the device. */

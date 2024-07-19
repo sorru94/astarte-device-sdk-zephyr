@@ -79,20 +79,39 @@ config ASTARTE_DEVICE_SDK_REALM_NAME
 	help
 	  Astarte realm name where to connect the device.
 
-config ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_INITIAL_MS
-	int "Reconnection backoff initial delay (ms)"
+config ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_INITIAL_MS
+	int "MQTT reconnection backoff initial delay (ms)"
 	depends on ASTARTE_DEVICE_SDK
 	default 1000
 	help
-	  This configuration setting will define an initial delay for the reconnection backoff strategy.
+	  This configuration setting will define an initial delay for the MQTT reconnection backoff
+	  strategy.
 
-config ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MAX_MS
-	int "Reconnection backoff maximum delay (ms)"
+config ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_MAX_MS
+	int "MQTT reconnection backoff maximum delay (ms)"
+	depends on ASTARTE_DEVICE_SDK
+	default 60000
+	help
+	  This configuration setting will define the maximum delay for the MQTT reconnection backoff
+	  strategy.
+
+config ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS
+	int "Astarte reconnection backoff initial delay (ms)"
+	depends on ASTARTE_DEVICE_SDK
+	default 1000
+	help
+	  This configuration setting will define an initial delay for the reconnection backoff strategy
+	  to Astarte. This backoff strategy will be used when there is no MQTT error but the handshake
+	  with Astarte has failed.
+
+config ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS
+	int "Astarte reconnection backoff maximum delay (ms)"
 	depends on ASTARTE_DEVICE_SDK
 	default 60000
 	help
 	  This configuration setting will define the maximum delay for the reconnection backoff
-	  strategy.
+	  strategy to Astarte. This backoff strategy will be used when there is no MQTT error but the
+	  handshake with Astarte has failed.
 
 config ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 	bool "Permanent storage for Astarte device"

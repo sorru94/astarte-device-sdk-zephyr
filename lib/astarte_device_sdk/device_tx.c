@@ -287,13 +287,8 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    astarte_result_t ares
-        = astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos, NULL);
+    astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos, NULL);
     free(topic);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Error publishing data.");
-        return ares;
-    }
 
     return ASTARTE_RESULT_OK;
 }

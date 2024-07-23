@@ -58,16 +58,21 @@ astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv
 static astarte_result_t parse_property_bson(
     const char *value, uint32_t *out_major, astarte_individual_t *individual);
 /**
- * @brief Append a property to the end of a string.
+ * @brief Append a property to the end of the string.
  *
- * @param[inout] string String to extend.
- * @param[inout] string_size Size of the @p string buffer.
+ * @note This function will append the property only if it's device owned and if it's present in
+ * the introspection.
+ *
+ * @param[in] introspection Introspection to be used to check ownership for the property.
  * @param[in] interface_name Interface name for the property to append.
  * @param[in] path Path for the property to append.
+ * @param[out] str_size Will be set to the size of the extended string.
+ * @param[inout] str_buff Buffer containing the string to extend, if NULL it will be ignored.
+ * @param[in] str_buff_size Size of the @p str_buff buffer.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static astarte_result_t append_property_to_string(
-    char *string, size_t string_size, const char *interface_name, const char *path);
+static astarte_result_t append_property_to_string(introspection_t *introspection,
+    char *interface_name, char *path, size_t *str_size, char *str_buff, size_t str_buff_size);
 
 /************************************************
  *         Global functions definitions         *
@@ -439,7 +444,8 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_device_caching_property_get_string(char *output, size_t *output_size)
+astarte_result_t astarte_device_caching_property_get_device_string(
+    introspection_t *introspection, char *output, size_t *output_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     size_t string_size = 0U;
@@ -481,16 +487,11 @@ astarte_result_t astarte_device_caching_property_get_string(char *output, size_t
             goto error;
         }
 
-        // Update the formed string size
-        string_size += strlen(interface_name) + strlen(path) + 1;
-
-        // Update the formed string
-        if (output) {
-            ares = append_property_to_string(output, *output_size, interface_name, path);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed extending the string: %s", astarte_result_to_name(ares));
-                goto error;
-            }
+        ares = append_property_to_string(
+            introspection, interface_name, path, &string_size, output, *output_size);
+        if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+            ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
+                "Failed appending the property to the string: %s", astarte_result_to_name(ares));
         }
 
         free(interface_name);
@@ -590,20 +591,55 @@ static astarte_result_t parse_property_bson(
     return ares;
 }
 
-static astarte_result_t append_property_to_string(
-    char *string, size_t string_size, const char *interface_name, const char *path)
+static astarte_result_t append_property_to_string(introspection_t *introspection,
+    char *interface_name, char *path, size_t *str_size, char *str_buff, size_t str_buff_size)
 {
-    size_t string_len = strlen(string);
-    if (string_size <= string_len + strlen(";") + strlen(interface_name) + strlen(path)) {
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    // Check if property is device owned
+    const astarte_interface_t *interface = introspection_get(introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_DBG("Purge property from unknown interface: '%s%s'", interface_name, path);
+        ares = astarte_device_caching_property_delete(interface_name, path);
+        if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+            ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
+                "Failed deleting the cached property: %s", astarte_result_to_name(ares));
+        }
+        return ASTARTE_RESULT_NOT_FOUND;
+    }
+
+    if (interface->ownership != ASTARTE_INTERFACE_OWNERSHIP_DEVICE) {
+        return ares;
+    }
+
+    // Update the formed string size
+    *str_size = *str_size + strlen(interface_name) + strlen(path) + 1;
+
+    if (!str_buff) {
+        return ares;
+    }
+
+    if (str_buff_size < *str_size) {
         ASTARTE_LOG_ERR("Insufficient size to extend the string.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
-    if (string_len != 0) {
-        strncat(string, ";", string_size - string_len - 1);
-        string_len = strlen(string);
+    // Points to the NULL terminator char in the string
+    char *str_buff_end = str_buff + strlen(str_buff);
+    // Available number of chars in the buffer (including the NULL terminator)
+    size_t str_buff_avail_size = str_buff_size - strlen(str_buff);
+    if (strlen(str_buff) != 0) {
+        int snprintf_rc = snprintf(str_buff_end, str_buff_avail_size, ";");
+        if (snprintf_rc != strlen(";")) {
+            ASTARTE_LOG_ERR("Couldn't append to the property string.");
+            ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        }
+        str_buff_end += snprintf_rc;
+        str_buff_avail_size -= snprintf_rc;
     }
-    strncat(string, interface_name, string_size - string_len - 1);
-    string_len = strlen(string);
-    strncat(string, path, string_size - string_len - 1);
-    return ASTARTE_RESULT_OK;
+    int snprintf_rc = snprintf(str_buff_end, str_buff_avail_size, "%s%s", interface_name, path);
+    if (snprintf_rc != strlen(str_buff) + strlen(str_buff)) {
+        ASTARTE_LOG_ERR("Couldn't append to the property string.");
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    return ares;
 }

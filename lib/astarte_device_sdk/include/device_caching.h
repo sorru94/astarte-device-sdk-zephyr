@@ -16,6 +16,7 @@
 #include "astarte_device_sdk/individual.h"
 #include "astarte_device_sdk/result.h"
 
+#include "introspection.h"
 #include "kv_storage.h"
 
 /** @brief Iterator struct for stored properties. */
@@ -138,19 +139,21 @@ astarte_result_t astarte_device_caching_property_iterator_get(
     char *path, size_t *path_size);
 
 /**
- * @brief Get the properties string.
+ * @brief Get the device properties string.
  *
- * @details The properties string is a comma separated list of properties full paths.
+ * @details The properties string is a comma separated list of device owned properties full paths.
  * Each property full path is composed by the interface name and path of that property.
  *
- * @param[out] output Buffer where to stroe the computed properties string, can be NULL.
+ * @param[in] introspection Device introspection used to verify ownership of each property.
+ * @param[out] output Buffer where to strore the computed properties string, can be NULL.
  * @param[inout] output_size Size of the @p output buffer. If the @p output parameter is NULL the
  * input value of this parameter will be ignored.
  * The function will store in this variable the size of the computed properties string (including
  * the '\0' terminating char).
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_caching_property_get_string(char *output, size_t *output_size);
+astarte_result_t astarte_device_caching_property_get_device_string(
+    introspection_t *introspection, char *output, size_t *output_size);
 
 #ifdef __cplusplus
 }

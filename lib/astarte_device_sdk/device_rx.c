@@ -5,8 +5,15 @@
  */
 #include "device_rx.h"
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include <zlib.h>
+#endif
+
 #include "bson_deserializer.h"
 #include "data_validation.h"
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include "device_caching.h"
+#endif
 #include "individual_private.h"
 #include "interface_private.h"
 #include "object_private.h"
@@ -14,10 +21,62 @@
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(device_reception, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_RX_LOG_LEVEL);
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+/** @brief Struct used when parsing the received purge properties string into a list. */
+struct allow_node
+{
+    sys_snode_t node;
+    const char *property;
+};
+#endif
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
 
+/**
+ * @brief Handles an incoming generic control message.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] topic The control message topic.
+ * @param[in] data Received data.
+ * @param[in] data_len Length of the data (not including NULL terminator).
+ */
+static void on_control_message(
+    astarte_device_handle_t device, const char *topic, const char *data, size_t data_len);
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+/**
+ * @brief Handles an incoming purge properties control message.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] data Received data.
+ * @param[in] data_len Length of the data (not including NULL terminator).
+ */
+static void on_purge_properties(astarte_device_handle_t device, const char *data, size_t data_len);
+/**
+ * @brief Purge the all the stored server owned properties that are not contained in the allow list.
+ *
+ * @note All the properties that do not belong to an interface contained in the introspection will
+ * be removed as well.
+ *
+ * @param[in] introspection Device's introspection to be used to check ownership of each property.
+ * @param[in] allow_list Purge properties allow list.
+ */
+static void purge_server_properties(introspection_t *introspection, sys_slist_t *allow_list);
+/**
+ * @brief Purge a single stored server owned property if not contained in the allow list.
+ *
+ * @note If the property does not belong to an interface contained in the introspection it will be
+ * removed as well.
+ *
+ * @param[in] introspection Device's introspection to be used to check ownership of each property.
+ * @param[in] interface_name Interface name for the stored property to be removed.
+ * @param[in] path Path for the stored property to be removed.
+ * @param[in] allow_list Purge properties allow list.
+ */
+static void purge_server_property(
+    introspection_t *introspection, char *interface_name, char *path, sys_slist_t *allow_list);
+#endif
 /**
  * @brief Handles an incoming generic data message.
  *
@@ -85,10 +144,8 @@ void astarte_device_rx_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const c
 
     // Control message
     if (strstr(topic, device->control_topic)) {
-        const char *control_subtopic = topic + strlen(device->control_topic);
-        ASTARTE_LOG_DBG("Received control message on control topic %s", control_subtopic);
-        // TODO correctly process control messages
-        (void) control_subtopic;
+        ASTARTE_LOG_DBG("Received control message on control topic %s", topic);
+        on_control_message(device, topic, data, data_len);
         return;
     }
 
@@ -120,6 +177,195 @@ void astarte_device_rx_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const c
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
+
+static void on_control_message(
+    astarte_device_handle_t device, const char *topic, const char *data, size_t data_len)
+{
+    if (strcmp(topic, device->control_consumer_prop_topic) == 0) {
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+        on_purge_properties(device, data, data_len);
+#else
+        (void) device;
+        (void) data;
+        (void) data_len;
+#endif
+    } else {
+        ASTARTE_LOG_ERR("Received unrecognized control message: %s.", topic);
+    }
+}
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+static void on_purge_properties(astarte_device_handle_t device, const char *data, size_t data_len)
+{
+    char *decomp_data = NULL;
+    sys_slist_t allow_list = { 0 };
+    sys_slist_init(&allow_list);
+
+    uLongf decomp_data_len = __builtin_bswap32(*(uint32_t *) data);
+
+    decomp_data = calloc(decomp_data_len + 1, sizeof(char));
+    if (!decomp_data) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        goto exit;
+    }
+
+    if (decomp_data_len != 0) {
+        int uncompress_res = uncompress((char unsigned *) decomp_data, &decomp_data_len,
+            (char unsigned *) data + 4, data_len - 4);
+        if (uncompress_res != Z_OK) {
+            ASTARTE_LOG_ERR("Decompression error %d.", uncompress_res);
+            goto exit;
+        }
+    }
+
+    ASTARTE_LOG_DBG("Received purge properties: '%s'", decomp_data);
+
+    // Parse the received message and fill a list of properties
+    if (decomp_data_len != 0) {
+        char *property = strtok(decomp_data, ";");
+        if (!property) {
+            ASTARTE_LOG_ERR("Error parsing the purge property message %s.", decomp_data);
+            goto exit;
+        }
+        do {
+            struct allow_node *allow_node = calloc(1, sizeof(struct allow_node));
+            if (!allow_node) {
+                ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+                goto exit;
+            }
+            allow_node->property = property;
+            sys_slist_append(&allow_list, &allow_node->node);
+            property = strtok(NULL, ";");
+        } while (property);
+    }
+
+    // Iterate over the stored properties and purge the ones not in the allow list
+    purge_server_properties(&device->introspection, &allow_list);
+
+exit:
+    sys_snode_t *node = NULL;
+    sys_snode_t *safe_node = NULL;
+    SYS_SLIST_FOR_EACH_NODE_SAFE(&allow_list, node, safe_node)
+    {
+        struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
+        free(allow_node);
+    }
+    free(decomp_data);
+}
+
+static void purge_server_properties(introspection_t *introspection, sys_slist_t *allow_list)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    char *interface_name = NULL;
+    char *path = NULL;
+
+    astarte_device_caching_property_iter_t iter = { 0 };
+    ares = astarte_device_caching_property_iterator_init(&iter);
+    if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+        ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
+        goto end;
+    }
+
+    while (ares != ASTARTE_RESULT_NOT_FOUND) {
+        size_t interface_name_size = 0U;
+        size_t path_size = 0U;
+        ares = astarte_device_caching_property_iterator_get(
+            &iter, NULL, &interface_name_size, NULL, &path_size);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
+            goto end;
+        }
+
+        // Allocate space for the name and path
+        interface_name = calloc(interface_name_size, sizeof(char));
+        path = calloc(path_size, sizeof(char));
+        if (!interface_name || !path) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            goto end;
+        }
+
+        ares = astarte_device_caching_property_iterator_get(
+            &iter, interface_name, &interface_name_size, path, &path_size);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
+            goto end;
+        }
+
+        // Purge the property if not in the allow list
+        purge_server_property(introspection, interface_name, path, allow_list);
+
+        free(interface_name);
+        interface_name = NULL;
+        free(path);
+        path = NULL;
+
+        ares = astarte_device_caching_property_iterator_next(&iter);
+        if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+            ASTARTE_LOG_ERR("Iterator next error: %s", astarte_result_to_name(ares));
+            goto end;
+        }
+    }
+
+end:
+    free(interface_name);
+    free(path);
+}
+
+static void purge_server_property(
+    introspection_t *introspection, char *interface_name, char *path, sys_slist_t *allow_list)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    char *property = NULL;
+
+    const astarte_interface_t *interface = introspection_get(introspection, interface_name);
+    if (!interface) {
+        ASTARTE_LOG_DBG("Purging property from unknown interface: '%s%s'", interface_name, path);
+        ares = astarte_device_caching_property_delete(interface_name, path);
+        if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+            ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
+                "Failed deleting the cached property: %s", astarte_result_to_name(ares));
+        }
+        goto end;
+    }
+
+    if (interface->ownership != ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
+        goto end;
+    }
+
+    // Concatenate the interface_name and path
+    property = calloc(strlen(interface_name) + strlen(path) + 1, sizeof(char));
+    if (!property) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        goto end;
+    }
+    int snprintf_rc
+        = snprintf(property, strlen(interface_name) + strlen(path), "%s%s", interface_name, path);
+    if (snprintf_rc != strlen(interface_name) + strlen(path)) {
+        ASTARTE_LOG_ERR("Error encoding interface name and path in a single string.");
+        goto end;
+    }
+
+    // Iterate over the allow list
+    sys_snode_t *node = NULL;
+    SYS_SLIST_FOR_EACH_NODE(allow_list, node)
+    {
+        struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
+        if (strcmp(allow_node->property, property) == 0) {
+            goto end;
+        }
+    }
+
+    ASTARTE_LOG_DBG("Purging property not in allow list: '%s%s'", interface_name, path);
+    ares = astarte_device_caching_property_delete(interface_name, path);
+    if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+        ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed deleting the cached property: %s",
+            astarte_result_to_name(ares));
+    }
+
+end:
+    free(property);
+}
+#endif
 
 static void on_data_message(astarte_device_handle_t device, const char *interface_name,
     const char *path, const char *data, size_t data_len)
@@ -204,9 +450,16 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
 
     astarte_result_t ares = data_validation_unset_property(interface, event.path);
     if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Server property unset failed: %s.", astarte_result_to_name(ares));
+        ASTARTE_LOG_ERR("Server property unset is invalid: %s.", astarte_result_to_name(ares));
         return;
     }
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_property_delete(event.interface_name, event.path);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed deleting the stored server property.");
+    }
+#endif
 
     if (device->property_unset_cbk) {
         device->property_unset_cbk(event);
@@ -231,6 +484,14 @@ static void on_set_property(astarte_device_handle_t device, astarte_device_data_
         ASTARTE_LOG_ERR("Server property data validation failed.");
         return;
     }
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_property_store(
+        data_event.interface_name, data_event.path, interface->major_version, individual);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed storing the server property.");
+    }
+#endif
 
     if (device->property_set_cbk) {
         astarte_device_property_set_event_t set_event = {

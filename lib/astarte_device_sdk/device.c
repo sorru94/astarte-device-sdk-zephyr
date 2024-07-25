@@ -5,6 +5,7 @@
  */
 #include "astarte_device_sdk/device.h"
 
+#include "device_caching.h"
 #include "device_connection.h"
 #include "device_private.h"
 #include "device_rx.h"
@@ -219,6 +220,11 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_individual_t individual,
     const int64_t *timestamp)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_stream_individual(device, interface_name, path, individual, timestamp);
 }
 
@@ -226,6 +232,11 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_stream_aggregated(
         device, interface_name, path, entries, entries_len, timestamp);
 }
@@ -233,13 +244,49 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_individual_t individual)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_set_property(device, interface_name, path, individual);
 }
 
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called unset property function when the device is not connected.");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
     return astarte_device_tx_unset_property(device, interface_name, path);
+}
+
+astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
+    void *user_data)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_individual_t individual = { 0 };
+    uint32_t out_major = 0U;
+    ares = astarte_device_caching_property_load(interface_name, path, &out_major, &individual);
+    if (ares != ASTARTE_RESULT_OK) {
+        if (ares != ASTARTE_RESULT_NOT_FOUND) {
+            ASTARTE_LOG_ERR("Failed getting property: %s.", astarte_result_to_name(ares));
+        }
+        return ares;
+    }
+
+    astarte_device_property_loader_event_t event = { .device = device,
+        .interface_name = interface_name,
+        .path = path,
+        .individual = individual,
+        .user_data = user_data };
+    loader_cbk(event);
+
+    astarte_device_caching_property_destroy_loaded(individual);
+    return ares;
 }
 
 /************************************************
@@ -272,6 +319,13 @@ static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device)
             MQTT_TOPIC_PREFIX "%s" MQTT_CONTROL_CONSUMER_PROP_TOPIC_SUFFIX, device->device_id);
     if (snprintf_rc != MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN) {
         ASTARTE_LOG_ERR("Error encoding Astarte purte properties topic.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+    snprintf_rc
+        = snprintf(device->control_producer_prop_topic, MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN + 1,
+            MQTT_TOPIC_PREFIX "%s" MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX, device->device_id);
+    if (snprintf_rc != MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN) {
+        ASTARTE_LOG_ERR("Error encoding device purge properties topic.");
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
     return ASTARTE_RESULT_OK;

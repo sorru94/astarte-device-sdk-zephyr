@@ -14,10 +14,12 @@
 #include "astarte_device_sdk/result.h"
 
 #include "device_caching.h"
+#include "generated_interfaces.h"
 
 struct astarte_device_sdk_device_caching_fixture
 {
     const struct device *flash_device;
+    introspection_t introspection;
     off_t flash_offset;
     uint16_t flash_sector_size;
     uint16_t flash_sector_count;
@@ -36,6 +38,11 @@ static void *device_caching_test_setup(void)
         = calloc(1, sizeof(struct astarte_device_sdk_device_caching_fixture));
     zassert_not_null(fixture, "Failed allocating test fixture");
 
+    (void) introspection_init(&fixture->introspection);
+    (void) introspection_add(
+        &fixture->introspection, &org_astarteplatform_zephyr_examples_DeviceProperty);
+    (void) introspection_add(
+        &fixture->introspection, &org_astarteplatform_zephyr_examples_ServerProperty);
     fixture->flash_device = FIXED_PARTITION_DEVICE(astarte_partition);
     fixture->flash_offset = FIXED_PARTITION_OFFSET(astarte_partition);
     fixture->flash_sector_count = FIXED_PARTITION_SIZE(astarte_partition) / fp_info.size;
@@ -590,48 +597,47 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_get_properties_st
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
     struct property property_1 = {
-        .interface_name = "first.interface",
-        .path = "/first/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
+        .path = "/12/integer_endpoint",
         .major = 12,
         .individual = astarte_individual_from_integer(11),
     };
     struct property property_2 = {
-        .interface_name = "second.interface",
-        .path = "/third/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
+        .path = "/24/boolean_endpoint",
         .major = 45,
         .individual = astarte_individual_from_boolean(false),
     };
     struct property property_3 = {
-        .interface_name = "first.interface",
-        .path = "/second/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
+        .path = "/45/double_endpoint",
         .major = 12,
         .individual = astarte_individual_from_double(23.4),
     };
     struct property property_4 = {
-        .interface_name = "third.interface",
-        .path = "/fourth/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
+        .path = "/11/double_endpoint",
         .major = 33,
         .individual = astarte_individual_from_double(11.5),
     };
     struct property property_5 = {
-        .interface_name = "fourth.interface",
-        .path = "/fifth/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_ServerProperty.name,
+        .path = "/11/boolean_endpoint",
         .major = 33,
         .individual = astarte_individual_from_boolean(true),
     };
     struct property property_6 = {
-        .interface_name = "fourth.interface",
-        .path = "/sixth/path/to/property",
+        .interface_name = org_astarteplatform_zephyr_examples_ServerProperty.name,
+        .path = "/10/boolean_endpoint",
         .major = 33,
         .individual = astarte_individual_from_boolean(false),
     };
 
-    const char properties_string[] = "fourth.interface/sixth/path/to/property;"
-                                     "fourth.interface/fifth/path/to/property;"
-                                     "third.interface/fourth/path/to/property;"
-                                     "first.interface/second/path/to/property;"
-                                     "second.interface/third/path/to/property;"
-                                     "first.interface/first/path/to/property";
+    const char properties_string[]
+        = "org.astarteplatform.zephyr.examples.DeviceProperty/11/double_endpoint;"
+          "org.astarteplatform.zephyr.examples.DeviceProperty/45/double_endpoint;"
+          "org.astarteplatform.zephyr.examples.DeviceProperty/24/boolean_endpoint;"
+          "org.astarteplatform.zephyr.examples.DeviceProperty/12/integer_endpoint";
     char read_properties_string[ARRAY_SIZE(properties_string)] = { 0 };
 
     // Store a bunch of properties
@@ -655,12 +661,14 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_get_properties_st
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     size_t output_size = 0U;
-    ares = astarte_device_caching_property_get_string(NULL, &output_size);
+    ares = astarte_device_caching_property_get_device_string(
+        &fixture->introspection, NULL, &output_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(output_size, ARRAY_SIZE(properties_string), "Read size:%d", output_size);
 
     output_size = ARRAY_SIZE(properties_string);
-    ares = astarte_device_caching_property_get_string(read_properties_string, &output_size);
+    ares = astarte_device_caching_property_get_device_string(
+        &fixture->introspection, read_properties_string, &output_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(output_size, ARRAY_SIZE(properties_string), "Read size:%d", output_size);
     zassert_mem_equal(properties_string, read_properties_string, ARRAY_SIZE(properties_string),

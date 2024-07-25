@@ -217,7 +217,7 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
                     endpoint=mapping.endpoint,
                     regex_endpoint=re.sub(
                         r"%{([a-zA-Z_][a-zA-Z0-9_]*)}",
-                        r"[a-zA-Z_][a-zA-Z0-9_]*",
+                        r"[^/#+]+",
                         mapping.endpoint,
                     ),
                     type="ASTARTE_MAPPING_TYPE_" + mapping.type.upper(),
@@ -242,7 +242,7 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
             )
             interface_struct = interface_definition_template.substitute(
                 mappings_number=len(interface.mappings),
-                interface_name_sc=interface.name.replace(".", "_"),
+                interface_name_sc=interface.name.replace(".", "_").replace("-", "_"),
                 interface_name=interface.name,
                 version_major=interface.version_major,
                 version_minor=interface.version_minor,
@@ -255,7 +255,7 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
 
             # Fill in the extern definition
             interface_declaration = interface_declaration_template.substitute(
-                interface_name_sc=interface.name.replace(".", "_")
+                interface_name_sc=interface.name.replace(".", "_").replace("-", "_")
             )
             interfaces_declarations.append(interface_declaration)
 

@@ -341,7 +341,8 @@ static void purge_server_property(
     int snprintf_rc
         = snprintf(property, strlen(interface_name) + strlen(path), "%s%s", interface_name, path);
     if (snprintf_rc != strlen(interface_name) + strlen(path)) {
-        ASTARTE_LOG_ERR("Error encoding interface name and path in a single string.");
+        ASTARTE_LOG_ERR("Error encoding interface name '%s' and path '%s' in a single string.",
+            interface_name, path);
         goto end;
     }
 

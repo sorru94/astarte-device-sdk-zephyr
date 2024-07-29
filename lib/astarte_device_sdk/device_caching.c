@@ -492,6 +492,7 @@ astarte_result_t astarte_device_caching_property_get_device_string(
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed appending the property to the string: %s", astarte_result_to_name(ares));
+            goto error;
         }
 
         free(interface_name);
@@ -629,15 +630,17 @@ static astarte_result_t append_property_to_string(introspection_t *introspection
     if (strlen(str_buff) != 0) {
         int snprintf_rc = snprintf(str_buff_end, str_buff_avail_size, ";");
         if (snprintf_rc != strlen(";")) {
-            ASTARTE_LOG_ERR("Couldn't append to the property string.");
+            ASTARTE_LOG_ERR("Couldn't append ';' to the property string. Err %d", snprintf_rc);
             ares = ASTARTE_RESULT_INTERNAL_ERROR;
         }
         str_buff_end += snprintf_rc;
         str_buff_avail_size -= snprintf_rc;
     }
     int snprintf_rc = snprintf(str_buff_end, str_buff_avail_size, "%s%s", interface_name, path);
-    if (snprintf_rc != strlen(str_buff) + strlen(str_buff)) {
-        ASTARTE_LOG_ERR("Couldn't append to the property string.");
+    if (snprintf_rc != strlen(interface_name) + strlen(path)) {
+        ASTARTE_LOG_ERR("Couldn't append encoding interface name '%s' and path '%s' to the "
+                        "property string. Err %d",
+            interface_name, path, snprintf_rc);
         ares = ASTARTE_RESULT_INTERNAL_ERROR;
     }
 

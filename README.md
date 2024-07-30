@@ -88,6 +88,16 @@ west zephyr-export
 pip install -r ~/zephyr-workspace/zephyr/scripts/requirements.txt
 pip install -r ~/zephyr-workspace/astarte-device-sdk-zephyr/scripts/requirements.txt
 ```
+#### Fetching binary blobs for ESP32
+
+If building for an esp32 the binary blobs will need to be downloaded before building the
+application.
+
+```shell
+west blobs fetch hal_espressif
+```
+
+Note: this command should be re-run when updating Zephyr to a newer version
 
 #### Building and running a sample application
 
@@ -109,6 +119,7 @@ And the following command to run on an emulated board or the native simulator:
 ```shell
 west build -t run
 ```
+
 
 #### One time configuration
 

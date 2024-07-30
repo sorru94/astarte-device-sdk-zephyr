@@ -136,15 +136,15 @@ static void handle_ipv4_result(struct net_if *iface)
 
         char buf[NET_IPV4_ADDR_LEN];
 
-        if (iface->config.ip.ipv4->unicast[i].addr_type != NET_ADDR_DHCP) {
+        if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type != NET_ADDR_DHCP) {
             continue;
         }
 
         LOG_INF("IPv4 address: %s\n",
-            net_addr_ntop(
-                AF_INET, &iface->config.ip.ipv4->unicast[i].address.in_addr, buf, sizeof(buf)));
+            net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr, buf,
+                sizeof(buf)));
         LOG_INF("Subnet: %s\n",
-            net_addr_ntop(AF_INET, &iface->config.ip.ipv4->netmask, buf, sizeof(buf)));
+            net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].netmask, buf, sizeof(buf)));
         LOG_INF(
             "Router: %s\n", net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw, buf, sizeof(buf)));
     }

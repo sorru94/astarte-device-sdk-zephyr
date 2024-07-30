@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for Zephyr 3.7.
 
+### Changed
+- Dependencies for the Astarte device SDK library are specified using `depends on` instead of
+  `select`.
+
 ### Removed
 - Support for Zephyr 3.6 in the code samples and tests.
 

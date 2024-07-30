@@ -4,18 +4,18 @@
 
 config ASTARTE_DEVICE_SDK
 	bool "Astarte device SDK"
-	select JSON_LIBRARY
-	select HTTP_CLIENT
-	select NET_SOCKETS
-	select DNS_RESOLVER
-	select NETWORKING
-	select MBEDTLS
-	select MQTT_LIB
-	select MQTT_LIB_TLS
-	select MQTT_CLEAN_SESSION
-	select BASE64
-	select SYS_HASH_MAP
-	select SYS_HASH_FUNC32
+	depends on JSON_LIBRARY
+	depends on HTTP_CLIENT
+	depends on NET_SOCKETS
+	depends on DNS_RESOLVER
+	depends on NETWORKING
+	depends on MBEDTLS
+	depends on MQTT_LIB
+	depends on MQTT_LIB_TLS
+	depends on MQTT_CLEAN_SESSION
+	depends on BASE64
+	depends on SYS_HASH_MAP
+	depends on SYS_HASH_FUNC32
 	select ZLIB
 	help
 	  This option enables the Astarte device SDK library

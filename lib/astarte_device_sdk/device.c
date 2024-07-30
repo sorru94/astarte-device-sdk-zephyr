@@ -130,7 +130,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
 
     ASTARTE_LOG_DBG("Initializing Astarte MQTT client.");
     astarte_mqtt_config_t astarte_mqtt_config = { 0 };
-    astarte_mqtt_config.clean_session = true;
+    astarte_mqtt_config.clean_session = false;
     astarte_mqtt_config.connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     astarte_mqtt_config.poll_timeout_ms = cfg->mqtt_poll_timeout_ms;
     astarte_mqtt_config.refresh_client_cert_cbk = refresh_client_cert_handler;

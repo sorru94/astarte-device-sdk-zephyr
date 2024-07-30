@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.7.0] - Unreleased
 ### Added
 - Support for Zephyr 3.7.
+- Support for MQTT sessions. The device will retain MQTT session information in between connections.
 
 ### Changed
 - Dependencies for the Astarte device SDK library are specified using `depends on` instead of

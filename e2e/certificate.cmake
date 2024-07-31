@@ -2,26 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-set(CERT_CONF_FILE ${APPLICATION_SOURCE_DIR}/CERTIFICATE)
+set(CERTIFICATE_PATH_VAR "CONFIG_TLS_CERTIFICATE_PATH")
 
-if(NOT DEFINED APPLICATION_SOURCE_DIR OR NOT EXISTS ${CERT_CONF_FILE})
+if(NOT DEFINED ${CERTIFICATE_PATH_VAR})
+  message(WARNING "The certificate path variable '${CERTIFICATE_PATH_VAR}' is not defined no certificate include file will be generated")
   return()
 endif()
 
-file(READ ${CERT_CONF_FILE} cert_conf)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CERT_CONF_FILE})
+get_filename_component(certificate_file ${${CERTIFICATE_PATH_VAR}} ABSOLUTE)
 
-string(REGEX MATCH "CERTIFICATE_PATH = (.*)\n" _ ${cert_conf})
-get_filename_component(certificate_file ${CMAKE_MATCH_1} ABSOLUTE)
-
-if(EXISTS ${certificate_file})
-  add_compile_definitions(CMAKE_CUSTOM_GENERATED_CERTIFICATE)
-
-  set(gen_dir ${ZEPHYR_BINARY_DIR}/include/generated/)
-  generate_inc_file_for_target(
-      app
-      ${certificate_file}
-      ${gen_dir}/ca_certificate.inc)
-else()
-  message(WARNING "The specified path in CERTIFICATE: '${certificate_file}' does not exist, the include file won't be generated")
+if(NOT EXISTS ${certificate_file})
+  message(ERROR "The file path '${certificate_file}' specified in '${CERTIFICATE_PATH_VAR}' does not exist, provide a valid file or remove the option")
+  return()
 endif()
+
+generate_inc_file_for_target(
+    app
+    ${certificate_file}
+    ${ZEPHYR_BINARY_DIR}/include/generated/ca_certificate.inc)

@@ -20,6 +20,7 @@
  */
 
 #include <astarte_device_sdk/individual.h>
+#include <astarte_device_sdk/object.h>
 
 #define UTILS_DATA_ELEMENTS 14
 
@@ -45,5 +46,7 @@ extern const char *const utils_string_array_data[2];
  * @param[in] individual The individual to log
  */
 void utils_log_astarte_individual(astarte_individual_t individual);
+
+void utils_log_astarte_object(astarte_object_entry_t *entries, size_t entries_len);
 
 #endif /* UTILS_H */

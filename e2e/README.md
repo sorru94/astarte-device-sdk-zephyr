@@ -22,8 +22,8 @@ Additionally, the `net-setup` script included in Zephyr's `net-tools` will need 
 ./net-setup.sh --config nat.conf
 ```
 
-> :information_source: **CERTIFICATE file** In the e2e folder you'll find the `CERTIFICATE` file
-> You can update the value of the `CERTIFICATE_PATH` property to include a custom certificate
+> :information_source: **CERTIFICATE path** In the Kconfig you'll find `CONFIG_TLS_CERTIFICATE_PATH`
+> You can update the value of this option to include a custom certificate
 > that will be used for the https and mqtts connection.
 
 Before running the test application you must configure it properly:

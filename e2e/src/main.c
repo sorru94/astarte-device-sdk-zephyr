@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 
-#include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
@@ -17,6 +16,8 @@
 #include <nsi_main.h>
 #endif
 
+#include <astarte_device_sdk/pairing.h>
+
 #if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
     || !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
 /**
@@ -26,10 +27,8 @@
  */
 #define MBEDTLS_DEBUG_C
 
-#if defined(CMAKE_CUSTOM_GENERATED_CERTIFICATE)
+#if defined(CONFIG_TLS_CERTIFICATE_PATH)
 #include "ca_certificate_inc.h"
-#else
-#error TLS is enabled but no generated certificate was found: check the CERTIFICATE file content
 #endif
 
 #include <mbedtls/debug.h>
@@ -38,8 +37,8 @@
 
 #include "eth.h"
 
-#include "e2erunner.h"
-#include "e2eutilities.h"
+#include "runner.h"
+#include "utilities.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
@@ -57,12 +56,12 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
  * Constants, static variables and defines
  ***********************************************/
 
-K_THREAD_STACK_DEFINE(eth_thread_stack_area, 4096);
+K_THREAD_STACK_DEFINE(eth_thread_stack_area, 1024);
 static struct k_thread eth_thread_data;
 
 enum e2e_thread_flags
 {
-    THREAD_TERMINATION_FLAG = 0,
+    ETH_THREAD_TERMINATION_FLAG = 0,
 };
 static atomic_t device_thread_flags;
 
@@ -89,11 +88,14 @@ int main(void)
 
 #if !(defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
     || defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
+
+#if !defined(CONFIG_TLS_CERTIFICATE_PATH)
+#error TLS is enabled but no generated certificate was found: check the CONFIG_TLS_CERTIFICATE_PATH option
+#endif
+
     // Add TLS certificate
     tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
         ca_certificate_root, ARRAY_SIZE(ca_certificate_root));
-
-    LOG_INF("The certificate is:\n%s", ca_certificate_root); // NOLINT
 
     // enable mbedtls logging
     mbedtls_debug_set_threshold(1);
@@ -107,26 +109,26 @@ int main(void)
     LOG_INF("Running e2e test."); // NOLINT
     run_e2e_test();
 
-    atomic_set_bit(&device_thread_flags, THREAD_TERMINATION_FLAG);
+    atomic_set_bit(&device_thread_flags, ETH_THREAD_TERMINATION_FLAG);
     CHECK_HALT(k_thread_join(&eth_thread_data, K_FOREVER) != 0,
-        "Failed in waiting for the eth polling thread to terminate.");
+        "Failed while waiting for the eth polling thread to terminate.");
 
     LOG_INF("Returning from the e2e test."); // NOLINT
 
     // we know we are running on POSIX because it is checked at build time (view BUILD_ASSERT)
     nsi_exit(0);
-    return 1;
+    return 0;
 }
 
 static void eth_thread_entry_point(void *unused1, void *unused2, void *unused3)
 {
-    (void) unused1;
-    (void) unused2;
-    (void) unused3;
+    ARG_UNUSED(unused1);
+    ARG_UNUSED(unused2);
+    ARG_UNUSED(unused3);
 
     LOG_INF("Starting eth polling thread"); // NOLINT
 
-    while (!atomic_test_bit(&device_thread_flags, THREAD_TERMINATION_FLAG)) {
+    while (!atomic_test_bit(&device_thread_flags, ETH_THREAD_TERMINATION_FLAG)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_ETH_POLL_PERIOD_MS));
 
         eth_poll();

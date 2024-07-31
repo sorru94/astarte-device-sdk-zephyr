@@ -262,17 +262,7 @@ static void datastream_object_events_handler(astarte_device_datastream_object_ev
 
     LOG_INF("Datastream object event, interface: %s, common path: %s", i_name, i_path); // NOLINT
 
-    LOG_INF("Astarte object:"); // NOLINT
-    for (size_t i = 0; i < entries_length; i++) {
-        const char *mapping_path = NULL;
-        astarte_individual_t individual = { 0 };
-        astarte_result_t astarte_rc
-            = astarte_object_entry_to_path_and_individual(entries[i], &mapping_path, &individual);
-        if (astarte_rc == ASTARTE_RESULT_OK) {
-            LOG_INF("Mapping path: %s", mapping_path); // NOLINT
-            utils_log_astarte_individual(individual);
-        }
-    }
+    utils_log_astarte_object(entries, entries_length);
 }
 
 static void transmit_data(astarte_device_handle_t device)

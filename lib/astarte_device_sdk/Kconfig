@@ -65,14 +65,6 @@ config ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG
 	  The Astarte device SDK will use this TLS security tag to add the client certificate to
 	  Zephyr's cretentials.
 
-config ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID
-	bool "Dynamic generation of the device ID"
-	depends on ASTARTE_DEVICE_SDK
-	default false
-	help
-	  This option enables the dynamic generation of device IDs using hardware information or
-	  starting from a provided namespace.
-
 config ASTARTE_DEVICE_SDK_REALM_NAME
 	string "Realm name"
 	depends on ASTARTE_DEVICE_SDK
@@ -267,6 +259,11 @@ source "subsys/logging/Kconfig.template.log_config"
 module = ASTARTE_DEVICE_SDK_DEVICE_CONNECTION
 module-str = Log level for Astarte device SDK device connection
 module-help = Sets log level for Astarte device SDK device connection.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_DEVICE_ID
+module-str = Log level for Astarte device SDK device ID
+module-help = Sets log level for Astarte device SDK device ID.
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu

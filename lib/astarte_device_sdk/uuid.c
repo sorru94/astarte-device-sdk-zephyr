@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "astarte_device_sdk/uuid.h"
+#include "uuid.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -120,6 +120,21 @@ static void uuid_to_struct(const astarte_uuid_t input, struct uuid *out)
     memcpy(out->node, in_p + UUID_OFFSET_NODE, UUID_LEN_NODE);
 }
 
+void astarte_uuid_generate_v4(astarte_uuid_t out)
+{
+    uint8_t random_result[ASTARTE_UUID_SIZE];
+    sys_rand_get(random_result, ASTARTE_UUID_SIZE);
+
+    struct uuid random_uuid_struct = { 0 };
+    uuid_to_struct(random_result, &random_uuid_struct);
+
+    const unsigned int version = 4U;
+    random_uuid_struct.time_hi_and_version &= UUID_TIME_HI_AND_VERSION_MASK_TIME;
+    random_uuid_struct.time_hi_and_version |= (version << UUID_TIME_HI_AND_VERSION_OFFSET_VERSION);
+
+    uuid_from_struct(&random_uuid_struct, out);
+}
+
 astarte_result_t astarte_uuid_generate_v5(
     const astarte_uuid_t namespace, const void *data, size_t data_size, astarte_uuid_t out)
 {
@@ -155,6 +170,76 @@ astarte_result_t astarte_uuid_generate_v5(
 
     uuid_from_struct(&sha_uuid_struct, out);
 
+    return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_uuid_generate_v5_to_base64url(
+    const astarte_uuid_t namespace, const void *data, size_t data_size, char *out, size_t out_size)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_uuid_t uuid = { 0 };
+
+    ares = astarte_uuid_generate_v5(namespace, data, data_size, uuid);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("UUID V5 generation failed: %s", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    return astarte_uuid_to_base64url(uuid, out, out_size);
+}
+
+astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
+{
+    // Length check
+    if (strlen(input) != ASTARTE_UUID_STR_LEN) {
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    // Sanity check
+    for (int i = 0; i < ASTARTE_UUID_STR_LEN; i++) {
+        char char_i = input[i];
+        // Check that hyphens are in the right place
+        if ((i == UUID_STR_POSITION_FIRST_HYPHEN) || (i == UUID_STR_POSITION_SECOND_HYPHEN)
+            || (i == UUID_STR_POSITION_THIRD_HYPHEN) || (i == UUID_STR_POSITION_FOURTH_HYPHEN)) {
+            if (char_i != '-') {
+                ASTARTE_LOG_WRN("Found invalid character %c in hyphen position %d", char_i, i);
+                return ASTARTE_RESULT_INTERNAL_ERROR;
+            }
+            continue;
+        }
+
+        // checking is the given input is not hexadecimal
+        if (!isxdigit(char_i)) {
+            ASTARTE_LOG_WRN("Found invalid character %c in position %d", char_i, i);
+            return ASTARTE_RESULT_INTERNAL_ERROR;
+        }
+    }
+
+    // Will be used to contain the string representation of a uint16_t (plus the NULL terminator)
+    char tmp[sizeof(uint16_t) + sizeof(uint8_t)] = { 0 };
+    struct uuid uuid_struct = { 0 };
+    const int strtoul_base = 16;
+
+    uuid_struct.time_low = strtoul(input + UUID_STR_OFFSET_TIME_LOW, NULL, strtoul_base);
+    uuid_struct.time_mid = strtoul(input + UUID_STR_OFFSET_TIME_MID, NULL, strtoul_base);
+    uuid_struct.time_hi_and_version
+        = strtoul(input + UUID_STR_OFFSET_TIME_HIGH_AND_VERSION, NULL, strtoul_base);
+
+    tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED];
+    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED + 1];
+    uuid_struct.clock_seq_hi_res = strtoul(tmp, NULL, strtoul_base);
+
+    tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW];
+    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW + 1];
+    uuid_struct.clock_seq_low = strtoul(tmp, NULL, strtoul_base);
+
+    for (int i = 0; i < UUID_LEN_NODE; i++) {
+        tmp[0] = input[UUID_STR_OFFSET_NODE + i * sizeof(uint16_t)];
+        tmp[1] = input[UUID_STR_OFFSET_NODE + i * sizeof(uint16_t) + 1];
+        uuid_struct.node[i] = strtoul(tmp, NULL, strtoul_base);
+    }
+
+    uuid_from_struct(&uuid_struct, out);
     return ASTARTE_RESULT_OK;
 }
 
@@ -234,74 +319,4 @@ astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out,
     out[ASTARTE_UUID_BASE64URL_LEN] = 0;
 
     return ASTARTE_RESULT_OK;
-}
-
-astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
-{
-    // Length check
-    if (strlen(input) != ASTARTE_UUID_STR_LEN) {
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    // Sanity check
-    for (int i = 0; i < ASTARTE_UUID_STR_LEN; i++) {
-        char char_i = input[i];
-        // Check that hyphens are in the right place
-        if ((i == UUID_STR_POSITION_FIRST_HYPHEN) || (i == UUID_STR_POSITION_SECOND_HYPHEN)
-            || (i == UUID_STR_POSITION_THIRD_HYPHEN) || (i == UUID_STR_POSITION_FOURTH_HYPHEN)) {
-            if (char_i != '-') {
-                ASTARTE_LOG_WRN("Found invalid character %c in hyphen position %d", char_i, i);
-                return ASTARTE_RESULT_INTERNAL_ERROR;
-            }
-            continue;
-        }
-
-        // checking is the given input is not hexadecimal
-        if (!isxdigit(char_i)) {
-            ASTARTE_LOG_WRN("Found invalid character %c in position %d", char_i, i);
-            return ASTARTE_RESULT_INTERNAL_ERROR;
-        }
-    }
-
-    // Will be used to contain the string representation of a uint16_t (plus the NULL terminator)
-    char tmp[sizeof(uint16_t) + sizeof(uint8_t)] = { 0 };
-    struct uuid uuid_struct = { 0 };
-    const int strtoul_base = 16;
-
-    uuid_struct.time_low = strtoul(input + UUID_STR_OFFSET_TIME_LOW, NULL, strtoul_base);
-    uuid_struct.time_mid = strtoul(input + UUID_STR_OFFSET_TIME_MID, NULL, strtoul_base);
-    uuid_struct.time_hi_and_version
-        = strtoul(input + UUID_STR_OFFSET_TIME_HIGH_AND_VERSION, NULL, strtoul_base);
-
-    tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED];
-    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_AND_RESERVED + 1];
-    uuid_struct.clock_seq_hi_res = strtoul(tmp, NULL, strtoul_base);
-
-    tmp[0] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW];
-    tmp[1] = input[UUID_STR_OFFSET_CLOCK_SEQ_LOW + 1];
-    uuid_struct.clock_seq_low = strtoul(tmp, NULL, strtoul_base);
-
-    for (int i = 0; i < UUID_LEN_NODE; i++) {
-        tmp[0] = input[UUID_STR_OFFSET_NODE + i * sizeof(uint16_t)];
-        tmp[1] = input[UUID_STR_OFFSET_NODE + i * sizeof(uint16_t) + 1];
-        uuid_struct.node[i] = strtoul(tmp, NULL, strtoul_base);
-    }
-
-    uuid_from_struct(&uuid_struct, out);
-    return ASTARTE_RESULT_OK;
-}
-
-void astarte_uuid_generate_v4(astarte_uuid_t out)
-{
-    uint8_t random_result[ASTARTE_UUID_SIZE];
-    sys_rand_get(random_result, ASTARTE_UUID_SIZE);
-
-    struct uuid random_uuid_struct = { 0 };
-    uuid_to_struct(random_result, &random_uuid_struct);
-
-    const unsigned int version = 4U;
-    random_uuid_struct.time_hi_and_version &= UUID_TIME_HI_AND_VERSION_MASK_TIME;
-    random_uuid_struct.time_hi_and_version |= (version << UUID_TIME_HI_AND_VERSION_OFFSET_VERSION);
-
-    uuid_from_struct(&random_uuid_struct, out);
 }

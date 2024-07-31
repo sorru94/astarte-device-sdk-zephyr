@@ -19,6 +19,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
+#include "astarte_device_sdk/device_id.h"
 #include "astarte_device_sdk/individual.h"
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/object.h"
@@ -129,10 +130,8 @@ typedef struct
     int32_t mqtt_connection_timeout_ms;
     /** @brief Polling timeout for the MQTT client. */
     int32_t mqtt_poll_timeout_ms;
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
     /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
-    char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];
-#endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
+    char device_id[ASTARTE_DEVICE_ID_LEN + 1];
     /** @brief Credential secret to be used for connecting to Astarte. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief Optional callback for a connection event. */

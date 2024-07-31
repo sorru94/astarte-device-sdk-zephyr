@@ -16,6 +16,7 @@
 #include <nsi_main.h>
 #endif
 
+#include <astarte_device_sdk/device_id.h>
 #include <astarte_device_sdk/pairing.h>
 
 #if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
@@ -48,7 +49,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
 BUILD_ASSERT(CONFIG_ARCH_POSIX == 1, "The e2e test needs to run on the native_sim board");
 BUILD_ASSERT(
-    sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1, "Missing device ID in e2e tets");
+    sizeof(CONFIG_DEVICE_ID) == ASTARTE_DEVICE_ID_LEN + 1, "Missing device ID in e2e tets");
 BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
     "Missing credential secret in e2e test");
 

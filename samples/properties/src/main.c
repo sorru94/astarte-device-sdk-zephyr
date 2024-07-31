@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
  *       Checks over configuration values       *
  ***********************************************/
 
-BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1,
+BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_DEVICE_ID_LEN + 1,
     "Missing device ID in datastreams example");
 BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
     "Missing credential secret in datastreams example");
@@ -135,7 +135,7 @@ int main(void)
 #endif
 
     // Create a new instance of an Astarte device
-    char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
+    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
     const astarte_interface_t *interfaces[] = { &org_astarteplatform_zephyr_examples_DeviceProperty,

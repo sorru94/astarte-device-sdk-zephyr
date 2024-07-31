@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
  *       Checks over configuration values       *
  ***********************************************/
 
-BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_PAIRING_DEVICE_ID_LEN + 1,
+BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_DEVICE_ID_LEN + 1,
     "Missing device ID in datastreams example");
 
 /************************************************

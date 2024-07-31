@@ -35,7 +35,7 @@
 /** @brief Size in chars of the #MQTT_TOPIC_PREFIX string. */
 #define MQTT_TOPIC_PREFIX_LEN (sizeof(MQTT_TOPIC_PREFIX) - 1)
 /** @brief Size in chars of the generic base topic. In the form: 'REALM NAME/DEVICE ID' */
-#define MQTT_BASE_TOPIC_LEN (MQTT_TOPIC_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN)
+#define MQTT_BASE_TOPIC_LEN (MQTT_TOPIC_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN)
 /** @brief Size in chars of the #MQTT_CONTROL_TOPIC_SUFFIX string. */
 #define MQTT_CONTROL_TOPIC_SUFFIX_LEN (sizeof(MQTT_CONTROL_TOPIC_SUFFIX) - 1)
 /** @brief Size in chars of the generic control topic. */
@@ -88,7 +88,7 @@ struct astarte_device
     /** @brief Private client key and certificate for mutual TLS authentication (PEM format). */
     astarte_tls_credentials_client_crt_t client_crt;
     /** @brief Unique 128 bits, base64 URL encoded, identifier to associate to a device instance. */
-    char device_id[ASTARTE_PAIRING_DEVICE_ID_LEN + 1];
+    char device_id[ASTARTE_DEVICE_ID_LEN + 1];
     /** @brief Device's credential secret. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
     /** @brief MQTT client handle. */

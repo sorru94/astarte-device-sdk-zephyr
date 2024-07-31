@@ -20,12 +20,9 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
-#include "astarte_device_sdk/uuid.h"
 
 /** Number of characters in the string representation of a Base64 encoded credential secret. */
 #define ASTARTE_PAIRING_CRED_SECR_LEN 44
-/** Number of characters in the string representation of a Base64 encoded device ID. */
-#define ASTARTE_PAIRING_DEVICE_ID_LEN ASTARTE_UUID_BASE64URL_LEN
 
 #ifdef __cplusplus
 extern "C" {

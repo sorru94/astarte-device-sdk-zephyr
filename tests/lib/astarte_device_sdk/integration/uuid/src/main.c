@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <astarte_device_sdk/uuid.h>
+#include "uuid.h"
 
 #include <zephyr/ztest.h>
 

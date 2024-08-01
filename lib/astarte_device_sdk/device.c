@@ -90,9 +90,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     }
 
     handle->http_timeout_ms = cfg->http_timeout_ms;
-#if !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
-    memcpy(handle->device_id, cfg->device_id, ASTARTE_PAIRING_DEVICE_ID_LEN + 1);
-#endif /* !defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
+    memcpy(handle->device_id, cfg->device_id, ASTARTE_DEVICE_ID_LEN + 1);
     memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
     handle->connection_cbk = cfg->connection_cbk;
     handle->disconnection_cbk = cfg->disconnection_cbk;

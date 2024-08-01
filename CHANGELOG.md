@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for Zephyr 3.7.
 - Support for MQTT sessions. The device will retain MQTT session information in between connections.
+- Device ID generation utilities. The functions `astarte_device_id_generate_random` and
+  `astarte_device_id_generate_deterministic` can be added to generate a valid device ID to connect
+  a device to Astarte.
 
 ### Changed
 - Dependencies for the Astarte device SDK library are specified using `depends on` instead of
@@ -21,6 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Removed
 - Support for Zephyr 3.6 in the code samples and tests.
+- The UUID utilities. As their only purpose was to generate device IDs and have been replaced by
+  the `device_id.h` utilities.
 
 ## [0.6.1] - 2024-06-28
 ### Fixed

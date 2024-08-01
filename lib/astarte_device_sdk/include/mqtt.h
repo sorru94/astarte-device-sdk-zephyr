@@ -17,7 +17,7 @@
 #include <zephyr/net/mqtt.h>
 #include <zephyr/sys/hash_map.h>
 
-#include "astarte_device_sdk/pairing.h"
+#include "astarte_device_sdk/device_id.h"
 
 #include "backoff.h"
 
@@ -27,7 +27,7 @@
 #define ASTARTE_MQTT_MAX_BROKER_PORT_LEN 5
 /** @brief Exact length in chars for the MQTT client ID */
 #define ASTARTE_MQTT_CLIENT_ID_LEN                                                                 \
-    (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - 1 + ASTARTE_PAIRING_DEVICE_ID_LEN)
+    (sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/") - 1 + ASTARTE_DEVICE_ID_LEN)
 /** @brief Size for the MQTT transmission and reception buffers */
 #define ASTARTE_MQTT_RX_TX_BUFFER_SIZE 256U
 

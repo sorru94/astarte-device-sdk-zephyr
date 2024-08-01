@@ -23,10 +23,6 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_pairing, CONFIG_ASTARTE_DEVICE_SDK_PAIRING_L
  *       Checks over configuration values       *
  ***********************************************/
 
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID)
-#error "Dynamic generation of device ID is not yet supported"
-#endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID) */
-
 BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME) != 1, "Missing realm name");
 
 // The JSON parser module for Zephyr does not support the null keyword
@@ -96,18 +92,18 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 #define PAIRING_DEVICE_MGMT_URL_PREFIX_LEN (sizeof(PAIRING_DEVICE_MGMT_URL_PREFIX) - 1)
 /** @brief Size in chars of the URL for a 'get broker info' HTTPs request to the pairing APIs. */
 #define PAIRING_DEVICE_GET_BROKER_INFO_URL_LEN                                                     \
-    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN)
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN)
 /** @brief Size in chars of the #PAIRING_DEVICE_CERT_URL_SUFFIX string. */
 #define PAIRING_DEVICE_CERT_URL_SUFFIX_LEN (sizeof(PAIRING_DEVICE_CERT_URL_SUFFIX) - 1)
 /** @brief Size in chars of the URL for a 'get device cert' HTTPs request to the pairing APIs. */
 #define PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN                                                     \
-    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN                            \
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN                                    \
         + PAIRING_DEVICE_CERT_URL_SUFFIX_LEN)
 /** @brief Size in chars of the #PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX string. */
 #define PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX_LEN (sizeof(PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX) - 1)
 /** @brief Size in chars of the URL for a 'verify device cert' HTTPs request to the pairing APIs. */
 #define PAIRING_DEVICE_CERT_CHECK_URL_LEN                                                          \
-    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_PAIRING_DEVICE_ID_LEN                            \
+    (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN                                    \
         + PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX_LEN)
 
 /************************************************
@@ -214,9 +210,9 @@ astarte_result_t astarte_pairing_register_device(
         ASTARTE_LOG_ERR("Registration of a device requires a valid pairing JWT");
         return ASTARTE_RESULT_INVALID_CONFIGURATION;
     }
-    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
+    if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
-            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
+            "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
     if (out_cred_secr_size <= ASTARTE_PAIRING_CRED_SECR_LEN) {
@@ -292,9 +288,9 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
-    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
+    if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
-            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
+            "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
@@ -365,9 +361,9 @@ astarte_result_t astarte_pairing_verify_client_certificate(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: check the configuration and input parameters
-    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
+    if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
-            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
+            "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
@@ -418,9 +414,9 @@ static astarte_result_t get_broker_info(int32_t timeout_ms, const char *device_i
         ASTARTE_LOG_ERR("Insufficient output buffer size for broker URL.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
-    if (strlen(device_id) != ASTARTE_PAIRING_DEVICE_ID_LEN) {
+    if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
-            "Device ID has incorrect length, should be %d chars.", ASTARTE_PAIRING_DEVICE_ID_LEN);
+            "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 

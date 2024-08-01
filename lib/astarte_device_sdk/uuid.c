@@ -78,7 +78,7 @@ struct uuid
     uint8_t node[UUID_LEN_NODE];
 };
 
-static void uuid_from_struct(const struct uuid *input, astarte_uuid_t out)
+static void uuid_from_struct(const struct uuid *input, uuid_t out)
 {
     uint32_t tmp32 = 0U;
     uint16_t tmp16 = 0U;
@@ -99,7 +99,7 @@ static void uuid_from_struct(const struct uuid *input, astarte_uuid_t out)
     memcpy(out_p + UUID_OFFSET_NODE, input->node, UUID_LEN_NODE);
 }
 
-static void uuid_to_struct(const astarte_uuid_t input, struct uuid *out)
+static void uuid_to_struct(const uuid_t input, struct uuid *out)
 {
     uint32_t tmp32 = 0U;
     uint16_t tmp16 = 0U;
@@ -120,10 +120,10 @@ static void uuid_to_struct(const astarte_uuid_t input, struct uuid *out)
     memcpy(out->node, in_p + UUID_OFFSET_NODE, UUID_LEN_NODE);
 }
 
-void astarte_uuid_generate_v4(astarte_uuid_t out)
+void uuid_generate_v4(uuid_t out)
 {
-    uint8_t random_result[ASTARTE_UUID_SIZE];
-    sys_rand_get(random_result, ASTARTE_UUID_SIZE);
+    uint8_t random_result[UUID_SIZE];
+    sys_rand_get(random_result, UUID_SIZE);
 
     struct uuid random_uuid_struct = { 0 };
     uuid_to_struct(random_result, &random_uuid_struct);
@@ -135,8 +135,8 @@ void astarte_uuid_generate_v4(astarte_uuid_t out)
     uuid_from_struct(&random_uuid_struct, out);
 }
 
-astarte_result_t astarte_uuid_generate_v5(
-    const astarte_uuid_t namespace, const void *data, size_t data_size, astarte_uuid_t out)
+astarte_result_t uuid_generate_v5(
+    const uuid_t namespace, const void *data, size_t data_size, uuid_t out)
 {
     const size_t sha_256_bytes = 32;
     uint8_t sha_result[sha_256_bytes];
@@ -148,7 +148,7 @@ astarte_result_t astarte_uuid_generate_v5(
     int mbedtls_err = mbedtls_md_setup(&ctx, md_info, 0);
     // NOLINTBEGIN(hicpp-signed-bitwise) Only using the mbedtls_err to check if zero
     mbedtls_err |= mbedtls_md_starts(&ctx);
-    mbedtls_err |= mbedtls_md_update(&ctx, namespace, ASTARTE_UUID_SIZE);
+    mbedtls_err |= mbedtls_md_update(&ctx, namespace, UUID_SIZE);
     mbedtls_err |= mbedtls_md_update(&ctx, data, data_size);
     mbedtls_err |= mbedtls_md_finish(&ctx, sha_result);
     // NOLINTEND(hicpp-signed-bitwise)
@@ -173,30 +173,30 @@ astarte_result_t astarte_uuid_generate_v5(
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_uuid_generate_v5_to_base64url(
-    const astarte_uuid_t namespace, const void *data, size_t data_size, char *out, size_t out_size)
+astarte_result_t uuid_generate_v5_to_base64url(
+    const uuid_t namespace, const void *data, size_t data_size, char *out, size_t out_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_uuid_t uuid = { 0 };
+    uuid_t uuid = { 0 };
 
-    ares = astarte_uuid_generate_v5(namespace, data, data_size, uuid);
+    ares = uuid_generate_v5(namespace, data, data_size, uuid);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("UUID V5 generation failed: %s", astarte_result_to_name(ares));
         return ares;
     }
 
-    return astarte_uuid_to_base64url(uuid, out, out_size);
+    return uuid_to_base64url(uuid, out, out_size);
 }
 
-astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
+astarte_result_t uuid_from_string(const char *input, uuid_t out)
 {
     // Length check
-    if (strlen(input) != ASTARTE_UUID_STR_LEN) {
+    if (strlen(input) != UUID_STR_LEN) {
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Sanity check
-    for (int i = 0; i < ASTARTE_UUID_STR_LEN; i++) {
+    for (int i = 0; i < UUID_STR_LEN; i++) {
         char char_i = input[i];
         // Check that hyphens are in the right place
         if ((i == UUID_STR_POSITION_FIRST_HYPHEN) || (i == UUID_STR_POSITION_SECOND_HYPHEN)
@@ -243,9 +243,9 @@ astarte_result_t astarte_uuid_from_string(const char *input, astarte_uuid_t out)
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, size_t out_size)
+astarte_result_t uuid_to_string(const uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_STR_LEN + 1;
+    size_t min_out_size = UUID_STR_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -269,16 +269,16 @@ astarte_result_t astarte_uuid_to_string(const astarte_uuid_t uuid, char *out, si
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_uuid_to_base64(const astarte_uuid_t uuid, char *out, size_t out_size)
+astarte_result_t uuid_to_base64(const uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_BASE64_LEN + 1;
+    size_t min_out_size = UUID_BASE64_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     size_t olen = 0;
-    int res = base64_encode(out, out_size, &olen, uuid, ASTARTE_UUID_SIZE);
+    int res = base64_encode(out, out_size, &olen, uuid, UUID_SIZE);
     if (res != 0) {
         ASTARTE_LOG_ERR("Error converting UUID to base 64 string, rc: %d.", res);
         return ASTARTE_RESULT_INTERNAL_ERROR;
@@ -287,9 +287,9 @@ astarte_result_t astarte_uuid_to_base64(const astarte_uuid_t uuid, char *out, si
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out, size_t out_size)
+astarte_result_t uuid_to_base64url(const uuid_t uuid, char *out, size_t out_size)
 {
-    size_t min_out_size = ASTARTE_UUID_BASE64URL_LEN + 1;
+    size_t min_out_size = UUID_BASE64URL_LEN + 1;
     if (out_size < min_out_size) {
         ASTARTE_LOG_ERR("Output buffer should be at least %zu bytes long", min_out_size);
         return ASTARTE_RESULT_INVALID_PARAM;
@@ -297,16 +297,15 @@ astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out,
 
     // Convert UUID to RFC 3548/4648 base 64 notation
     size_t olen = 0;
-    char uuid_base64[ASTARTE_UUID_BASE64_LEN + 1] = { 0 };
-    int res
-        = base64_encode(uuid_base64, ASTARTE_UUID_BASE64_LEN + 1, &olen, uuid, ASTARTE_UUID_SIZE);
+    char uuid_base64[UUID_BASE64_LEN + 1] = { 0 };
+    int res = base64_encode(uuid_base64, UUID_BASE64_LEN + 1, &olen, uuid, UUID_SIZE);
     if (res != 0) {
         ASTARTE_LOG_ERR("Error converting UUID to base 64 string, rc: %d.", res);
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Convert UUID to RFC 4648 sec. 5 URL and filename safe base 64 notation
-    for (size_t i = 0; i < ASTARTE_UUID_BASE64URL_LEN; i++) {
+    for (size_t i = 0; i < UUID_BASE64URL_LEN; i++) {
         if (uuid_base64[i] == '+') {
             uuid_base64[i] = '-';
         }
@@ -315,8 +314,8 @@ astarte_result_t astarte_uuid_to_base64url(const astarte_uuid_t uuid, char *out,
         }
     }
 
-    memcpy(out, uuid_base64, ASTARTE_UUID_BASE64URL_LEN);
-    out[ASTARTE_UUID_BASE64URL_LEN] = 0;
+    memcpy(out, uuid_base64, UUID_BASE64URL_LEN);
+    out[UUID_BASE64URL_LEN] = 0;
 
     return ASTARTE_RESULT_OK;
 }

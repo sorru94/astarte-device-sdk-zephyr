@@ -127,6 +127,13 @@ int main(void)
     }
 #endif
 
+    // Add TLS certificate if required
+#if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
+    || !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
+    tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
+        ca_certificate_root, sizeof(ca_certificate_root));
+#endif
+
     // Initialize NVS driver
     if (nvs_init() != 0) {
         LOG_ERR("NVS intialization failed!"); // NOLINT
@@ -139,13 +146,13 @@ int main(void)
     }
 
     int32_t timeout_ms = 3 * MSEC_PER_SEC;
+    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = { 0 };
     if (has_cred_secr) {
         if (nvs_get_cred_secr(cred_secr, sizeof(cred_secr)) != 0) {
             return -1;
         }
     } else {
-        char device_id[] = CONFIG_DEVICE_ID;
         res = astarte_pairing_register_device(timeout_ms, device_id, cred_secr, sizeof(cred_secr));
         if (res != ASTARTE_RESULT_OK) {
             return -1;
@@ -157,14 +164,8 @@ int main(void)
 
     LOG_INF("Credential secret: '%s'", cred_secr); // NOLINT
 
-    // Add TLS certificate if required
-#if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
-    || !defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT))
-    tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_HTTPS_CA_CERT_TAG, TLS_CREDENTIAL_CA_CERTIFICATE,
-        ca_certificate_root, sizeof(ca_certificate_root));
-#endif
-
     // Create a new instance of an Astarte device
+
     const astarte_interface_t *interfaces[]
         = { &org_astarteplatform_zephyr_examples_DeviceAggregate,
               &org_astarteplatform_zephyr_examples_DeviceDatastream,
@@ -185,6 +186,7 @@ int main(void)
     device_config.property_unset_cbk = properties_unset_events_handler;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
+    memcpy(device_config.device_id, device_id, sizeof(device_id));
     memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
 
     astarte_device_handle_t device = NULL;
@@ -203,7 +205,7 @@ int main(void)
     k_timepoint_t disconnect_timepoint
         = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
     while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
-// Ensure the connectivity is still present
+        // Ensure the connectivity is still present
 #if defined(CONFIG_WIFI)
         wifi_poll();
 #else
@@ -233,21 +235,15 @@ int main(void)
 
 static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
     (void) unused1;
     (void) unused2;
-    astarte_result_t res = ASTARTE_RESULT_OK;
 
     astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
     res = astarte_device_connect(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device connection failure."); // NOLINT
-        return;
-    }
-
-    res = astarte_device_poll(device);
-    if (res != ASTARTE_RESULT_OK) {
-        // First poll should not timeout as we should receive a connection ack.
-        LOG_ERR("Astarte device first poll failure."); // NOLINT
         return;
     }
 

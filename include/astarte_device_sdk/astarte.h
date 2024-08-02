@@ -19,8 +19,8 @@
 /** @brief Major version number */
 #define ASTARTE_DEVICE_SDK_MAJOR 0
 /** @brief Minor version number */
-#define ASTARTE_DEVICE_SDK_MINOR 6
+#define ASTARTE_DEVICE_SDK_MINOR 7
 /** @brief Patch version number */
-#define ASTARTE_DEVICE_SDK_PATCH 1
+#define ASTARTE_DEVICE_SDK_PATCH 0
 
 #endif // ASTARTE_DEVICE_SDK_ASTARTE_H

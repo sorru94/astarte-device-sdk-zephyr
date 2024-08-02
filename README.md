@@ -33,8 +33,9 @@ Second, a new entry should be added to the projects list:
       remote: secomind
       repo-path: astarte-device-sdk-zephyr.git
       path: astarte-device-sdk-zephyr
-      revision: release-0.5
+      revision: v0.7.0
       west-commands: scripts/west-commands.yml
+      import: true
 ```
 Remember to run `west update` after performing changes to the manifest file.
 
@@ -180,7 +181,7 @@ west build -b native_sim -t astarte_generate_interfaces .
 ```
 or simply launch a build of the project.
 
-After this you'll be able to include the generate header file:
+After this you'll be able to include the generated header file:
 ```c
 #include "astarte_generated_interfaces.h"
 ```

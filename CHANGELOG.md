@@ -10,22 +10,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] - Unreleased
+## [0.7.0] - 2024-08-05
 ### Added
 - Support for Zephyr 3.7.
 - Support for MQTT sessions. The device will retain MQTT session information in between connections.
 - Device ID generation utilities. The functions `astarte_device_id_generate_random` and
   `astarte_device_id_generate_deterministic` can be added to generate a valid device ID to connect
   a device to Astarte.
+- Method `astarte_device_get_property`. This method can be used to read values of properties
+  stored in persistent storage.
+- Interface generation target that can be enabled by following
+  [build time interfaces definition generation]
+  (README.md#build-time-interface-definitions-generation).
 
 ### Changed
 - Dependencies for the Astarte device SDK library are specified using `depends on` instead of
   `select`.
+- `ASTARTE_PAIRING_DEVICE_ID_LEN` has been renamed to `ASTARTE_DEVICE_ID_LEN`.
 
 ### Removed
 - Support for Zephyr 3.6 in the code samples and tests.
 - The UUID utilities. As their only purpose was to generate device IDs and have been replaced by
   the `device_id.h` utilities.
+- The configuration option `CONFIG_ASTARTE_DEVICE_SDK_GENERATE_DEVICE_ID`. Generating a device ID
+  should be performed using the `device_id.h` utilities that are always available.
 
 ## [0.6.1] - 2024-06-28
 ### Fixed

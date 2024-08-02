@@ -8,6 +8,8 @@ from enum import Enum
 import time
 from typing import Any
 
+from west import log
+
 from conftest import TestcaseHelper
 
 
@@ -69,4 +71,14 @@ class InterfaceData(ABC):
             send_start = datetime.now(tz=timezone.utc)
             helper.exec_commands(self._get_device_shell_commands(SEND_BASE_COMMAND))
             time.sleep(2)
+
+            # retry two times
+            for i in range(0, 2):
+                try:
+                    self._check_server_received_data(helper, send_start)
+                except (KeyError, ValueError) as e:
+                    log.inf(f"Missing key in server data {e}, retrying...")
+
+                time.sleep(2)
+
             self._check_server_received_data(helper, send_start)

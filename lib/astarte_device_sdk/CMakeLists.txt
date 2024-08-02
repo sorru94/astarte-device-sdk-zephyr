@@ -13,3 +13,7 @@ endif()
 zephyr_library_sources(${lib_sources})
 
 zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
+
+if(CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION)
+    include(generation.cmake)
+endif()

@@ -34,7 +34,7 @@
 #include "log.h"
 #include "utilities.h"
 
-#include "generated_interfaces.h"
+#include "astarte_generated_interfaces.h"
 #include "utils.h"
 
 /************************************************

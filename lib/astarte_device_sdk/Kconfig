@@ -172,6 +172,27 @@ config ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE
 	  Increase this value when sending/receiving large bursts of messages with high QoS on slow
 	  networks.
 
+menu "Code generation"
+
+config ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION
+	bool "Enable build time interface code generation"
+	depends on ASTARTE_DEVICE_SDK
+	default n
+	help
+		Enables the automatic code generation of interfaces data structures.
+		This generation is tied with the build of the project and every time you change the jsons you
+		can re-run the build or build with target `astarte_generate_interfaces` like the following example:
+		`west build -t astarte_generate_interfaces`.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION_INTERFACE_DIRECTORY
+	string "Path to the interface json directory"
+	depends on ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION
+	help
+		This must be set to the path of a directory containing valid interface jsons.
+		Generated interfaces may then be included by adding `#include "astarte_generated_interfaces.h"`.
+
+endmenu
+
 endmenu
 
 menu "Logging options"

@@ -159,6 +159,35 @@ The `generate-interfaces` extension command accepts as input one or more JSON in
 and automatically generates the corresponding C source code.
 Run `west generate-interfaces --help` to learn about the generation options.
 
+#### Build time interface definitions generation
+
+It's also possible to automatically generate the interface definition structs.
+Generated files will be located in the build directory:
+`build/zephyr/include/generated/astarte_generated_interfaces.*`.
+
+This allows an easier management of generated files that won't need to be committed to the vcs.
+Enabling the feature is straight forward and requires setting two configuration values in
+the project `prj.conf` file:
+```plain
+CONFIG_ASTARTE_DEVICE_SDK_CODE_GENERATION=y
+CONFIG_ASTARTE_DEVICE_SDK_CODE_GENERATION_INTERFACE_DIRECTORY="<interface jsons directory>"
+```
+Replace `<interface jsons directory>` with the relative path to the interfaces directory.
+
+After adding the two properties you can run a build targeting `astarte_generate_interfaces`.
+```sh
+west build -b native_sim -t astarte_generate_interfaces .
+```
+or simply launch a build of the project.
+
+After this you'll be able to include the generate header file:
+```c
+#include "astarte_generated_interfaces.h"
+```
+
+For a complete example you can take a look at `e2e/prj.conf` and the `interfaces/` directory.
+The generated interfaces are included in `e2e/src/runner.c`.
+
 ### Code formatting
 
 The code in this module is formatted using `clang-format`.

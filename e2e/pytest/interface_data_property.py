@@ -80,9 +80,10 @@ class PropertyUnset(InterfaceData):
             paramter = prop.split("/")[1]
             endpoint = prop.split("/")[-1]
             try:
-                parameter_object = received_data[paramter]
+                parameter_object = received_data[paramter][endpoint]
                 got_value = decode_value(parameter_object, endpoint)
-            except KeyError:
+            except KeyError as e:
+                log.inf(f"The key is not accessible as expected: {e}")
                 # handled because completety unset interfaces do not return anything
                 got_value = {}
 

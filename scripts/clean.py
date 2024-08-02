@@ -72,9 +72,11 @@ class WestCommandClean(WestCommand):
                 workspace_path.joinpath("build"),
                 module_path.joinpath("build"),
                 module_path.joinpath("doc").joinpath("_build"),
+                module_path.joinpath("e2e").joinpath("build"),
             ]
             + list(Path(workspace_path).glob("twister-out*"))
             + list(Path(module_path).glob("twister-out*"))
+            + list(Path(module_path).joinpath("e2e").glob("twister-out*"))
         )
         for build_dir in build_dirs:
             if build_dir.is_dir():

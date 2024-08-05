@@ -5,7 +5,9 @@
  */
 #include "astarte_device_sdk/device.h"
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 #include "device_caching.h"
+#endif
 #include "device_connection.h"
 #include "device_private.h"
 #include "device_rx.h"
@@ -261,6 +263,7 @@ astarte_result_t astarte_device_unset_property(
     return astarte_device_tx_unset_property(device, interface_name, path);
 }
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
     void *user_data)
@@ -286,6 +289,7 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     astarte_device_caching_property_destroy_loaded(individual);
     return ares;
 }
+#endif
 
 /************************************************
  *         Static functions definitions         *

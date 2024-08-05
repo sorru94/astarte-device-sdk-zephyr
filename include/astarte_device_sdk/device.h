@@ -99,6 +99,7 @@ typedef void (*astarte_device_property_set_cbk_t)(astarte_device_property_set_ev
 /** @brief Function pointer for property unset events. */
 typedef void (*astarte_device_property_unset_cbk_t)(astarte_device_data_event_t event);
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 /** @brief Context for a single property load event. */
 typedef struct
 {
@@ -111,6 +112,7 @@ typedef struct
 
 /** @brief Function pointer for loading properties. */
 typedef void (*astarte_device_property_loader_cbk_t)(astarte_device_property_loader_event_t event);
+#endif
 
 /**
  * @brief Configuration struct for an Astarte device.
@@ -277,6 +279,7 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path);
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 /**
  * @brief Get a property value.
  *
@@ -296,6 +299,7 @@ astarte_result_t astarte_device_unset_property(
 astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
     void *user_data);
+#endif
 
 #ifdef __cplusplus
 }

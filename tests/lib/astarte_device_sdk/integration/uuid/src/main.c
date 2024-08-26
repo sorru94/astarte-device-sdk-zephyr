@@ -8,11 +8,30 @@
 
 #include <zephyr/ztest.h>
 
+#include "astarte_device_sdk/result.h"
+
 #include <string.h>
 
 ZTEST_SUITE(astarte_device_sdk_uuid, NULL, NULL, NULL, NULL, NULL);
 
-ZTEST(astarte_device_sdk_uuid, test_uuid_v5)
+ZTEST(astarte_device_sdk_uuid, test_uuid_v5_generation_example_from_standard)
+{
+    uuid_t namespace;
+    int result;
+    result = uuid_from_string("6ba7b810-9dad-11d1-80b4-00c04fd430c8", namespace);
+    zassert_true(result == 0, "uuid_from_string returned an error");
+    uuid_t out;
+    result = uuid_generate_v5(namespace, "www.example.com", 15, out);
+    zassert_true(result == 0, "uuid_generate_v5 returned an error");
+    char uuid_str[UUID_STR_LEN + 1];
+    result = uuid_to_string(out, uuid_str, UUID_STR_LEN + 1);
+    zassert_true(result == 0, "uuid_from_string returned an error");
+
+    zassert_true(strcmp("2ed6657d-e927-568b-95e1-2665a8aea6a2", uuid_str) == 0,
+        "uuid_str != 2ed6657d-e927-568b-95e1-2665a8aea6a2");
+}
+
+ZTEST(astarte_device_sdk_uuid, test_uuid_v5_generation)
 {
     uuid_t namespace;
     int result;
@@ -161,4 +180,26 @@ ZTEST(astarte_device_sdk_uuid, test_uuid_to_base64url)
     const char expected_first_uuid_v5_base64url[] = "BXWlaVHrV1yv5M5_wDvNxQ";
     zassert_true(strcmp(expected_first_uuid_v5_base64url, first_uuid_v5_base64url) == 0,
         "expected: '%s', gotten: '%s'", expected_first_uuid_v5_base64url, first_uuid_v5_base64url);
+}
+
+ZTEST(astarte_device_sdk_uuid, test_uuid_from_string_errors)
+{
+    int res;
+    uuid_t uuid;
+
+    const char *uuid_string_too_short = "44b35f73-cfbd-43b4-8fef-ca7baea1375";
+    res = uuid_from_string(uuid_string_too_short, uuid);
+    zassert_equal(ASTARTE_RESULT_INVALID_PARAM, res, "uuid_from_string returned incorrect error");
+
+    const char *uuid_string_too_long = "44b35f73-cfbd-43b4-8fef-ca7baea1375f0";
+    res = uuid_from_string(uuid_string_too_long, uuid);
+    zassert_equal(ASTARTE_RESULT_INVALID_PARAM, res, "uuid_from_string returned incorrect error");
+
+    const char *uuid_string_missing_hyphen = "44b35f73-cfbd-43b4-8fef0ca7baea1375f";
+    res = uuid_from_string(uuid_string_missing_hyphen, uuid);
+    zassert_equal(ASTARTE_RESULT_INVALID_PARAM, res, "uuid_from_string returned incorrect error");
+
+    const char *uuid_string_non_hex_digit = "44b35f73-cfLd-43b4-8fef-ca7baea1375f";
+    res = uuid_from_string(uuid_string_non_hex_digit, uuid);
+    zassert_equal(ASTARTE_RESULT_INVALID_PARAM, res, "uuid_from_string returned incorrect error");
 }

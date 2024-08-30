@@ -10,6 +10,8 @@
 /**
  * @file uuid.h
  * @brief Utility functions for the generation and parsing of Universal Unique Identifier.
+ *
+ * @details This driver is compliant with RFC9562: https://datatracker.ietf.org/doc/rfc9562/
  */
 
 #include "astarte_device_sdk/astarte.h"
@@ -76,7 +78,7 @@ astarte_result_t uuid_generate_v5_to_base64url(
     const uuid_t namespace, const void *data, size_t data_size, char *out, size_t out_size);
 
 /**
- * @brief Parse a UUID from its canonical (RFC4122) string representation.
+ * @brief Parse a UUID from its canonical (RFC9562) string representation.
  *
  * @param input A pointer to the string to be parsed.
  * @param out The UUID where the result will be written.
@@ -85,7 +87,7 @@ astarte_result_t uuid_generate_v5_to_base64url(
 astarte_result_t uuid_from_string(const char *input, uuid_t out);
 
 /**
- * @brief Convert a UUID to its canonical (RFC4122) string representation.
+ * @brief Convert a UUID to its canonical (RFC9562) string representation.
  *
  * @param[in] uuid The UUID to convert to string.
  * @param[out] out A pointer to a previously allocated buffer where the result will be written.

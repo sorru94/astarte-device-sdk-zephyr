@@ -19,11 +19,23 @@ performed before connectivity has been achieved.
 flowchart TD
     classDef globStructs stroke:#A52A2A
 
-    DISCONNECTED --> |MQTT disconnection event| DISCONNECTED
-    DISCONNECTED --> |Connection request / MQTT connection event| CONNECTING
-    CONNECTING --> |MQTT disconnection event| DISCONNECTED
-    CONNECTING --> |MQTT connection event| CONNECTING
-    CONNECTING --> |Handshake msg delivered| CONNECTED
+    DISCONNECTED --> |Connection request| MQTT_CONNECTING
+
+    DISCONNECTED --> |MQTT connection event| START_HANDSHAKE
+    MQTT_CONNECTING --> |MQTT connection event| START_HANDSHAKE
+    END_HANDSHAKE --> |MQTT connection event| START_HANDSHAKE
+    CONNECTED --> |MQTT connection event| START_HANDSHAKE
+    HANDSHAKE_ERROR --> |MQTT connection event / Backoff expiration| START_HANDSHAKE
+
+    START_HANDSHAKE --> |Internal error| HANDSHAKE_ERROR
+    START_HANDSHAKE --> |Start handshake success| END_HANDSHAKE
+
+    END_HANDSHAKE --> |Subsription failure / Internal error| HANDSHAKE_ERROR
+    END_HANDSHAKE --> |Hanshake success| CONNECTED
+
+    MQTT_CONNECTING --> |MQTT disconnection event| DISCONNECTED
+    START_HANDSHAKE --> |MQTT disconnection event| DISCONNECTED
+    END_HANDSHAKE --> |MQTT disconnection event| DISCONNECTED
     CONNECTED --> |MQTT disconnection event| DISCONNECTED
-    CONNECTED --> |MQTT connection event| CONNECTING
+    HANDSHAKE_ERROR --> |MQTT disconnection event| DISCONNECTED
 ```

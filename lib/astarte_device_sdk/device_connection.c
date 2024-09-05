@@ -248,12 +248,16 @@ static void send_emptycache(astarte_device_handle_t device)
 
 static void state_machine_start_handshake_run(astarte_device_handle_t device)
 {
+    device->subscription_failure = false;
+
     char *intr_str = NULL;
     size_t intr_str_size = introspection_get_string_size(&device->introspection);
 
     intr_str = calloc(intr_str_size, sizeof(char));
     if (!intr_str) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
+        device->connection_state = DEVICE_HANDSHAKE_ERROR;
         goto exit;
     }
     introspection_fill_string(&device->introspection, intr_str, intr_str_size);
@@ -262,20 +266,19 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     if (device->mqtt_session_present_flag != 0) {
         astarte_result_t ares = astarte_device_caching_introspection_check(intr_str, intr_str_size);
         if (ares == ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-            device->connection_state = DEVICE_CONNECTED;
+            ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
+            device->connection_state = DEVICE_END_HANDSHAKE;
             goto exit;
         }
     }
 #else
     if (device->mqtt_session_present_flag != 0) {
-        ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
-        device->connection_state = DEVICE_CONNECTED;
+        ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE.");
+        device->connection_state = DEVICE_END_HANDSHAKE;
         goto exit;
     }
 #endif
 
-    device->subscription_failure = false;
     setup_subscriptions(device);
     send_introspection(device, intr_str);
     send_emptycache(device);

@@ -14,6 +14,7 @@
 
 /**
  * @defgroup device Device management
+ * @brief Functions for device management.
  * @ingroup astarte_device_sdk
  * @{
  */

@@ -9,11 +9,12 @@
 
 /**
  * @file pairing.h
- * @brief Device pairing.
+ * @brief Functions for device pairing.
  */
 
 /**
  * @defgroup pairing Device pairing
+ * @brief Functions for device pairing.
  * @ingroup astarte_device_sdk
  * @{
  */

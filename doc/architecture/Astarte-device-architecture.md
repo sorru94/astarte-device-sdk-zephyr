@@ -4,7 +4,7 @@ Copyright 2024 SECO Mind Srl
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Astarte device
+# Astarte device architecture
 
 A more in depth description of the architecture of the Astarte device is present in this section.
 
@@ -15,10 +15,8 @@ triggered in the correct moments. Furthermore it ensures no transmission to Asta
 performed before connectivity has been achieved.
 
 ```mermaid
-%%{init: {"flowchart": {"rankSpacing": 100, "padding": 60}} }%%
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     DISCONNECTED --> |Connection request| MQTT_CONNECTING
 
     DISCONNECTED --> |MQTT connection event| START_HANDSHAKE

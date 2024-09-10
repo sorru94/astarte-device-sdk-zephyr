@@ -9,9 +9,13 @@
 
 /**
  * @file device_id.h
- * @brief Utility functions for the generation of Astarte device identifiers.
- *
- * @ingroup utils
+ * @brief Functions for the generation of Astarte device identifiers.
+ */
+
+/**
+ * @defgroup device_id Device ID
+ * @brief Functions for the generation of Astarte device identifiers.
+ * @ingroup astarte_device_sdk
  * @{
  */
 

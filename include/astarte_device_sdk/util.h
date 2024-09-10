@@ -9,9 +9,13 @@
 
 /**
  * @file util.h
- * @brief Utility macros and functions
- *
- * @ingroup utils
+ * @brief Utility macros and functions.
+ */
+
+/**
+ * @defgroup utils Utils
+ * @brief Utility macros and functions.
+ * @ingroup astarte_device_sdk
  * @{
  */
 

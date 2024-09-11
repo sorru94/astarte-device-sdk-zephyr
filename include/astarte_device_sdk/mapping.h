@@ -9,14 +9,14 @@
 
 /**
  * @file mapping.h
- * @brief [Astarte
- * interface
- * mapping](https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#mapping)
- * representation.
+ * @brief Astarte interface mapping representation.
+ * @details See: https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#mapping.
  */
 
 /**
  * @defgroup mapping Mapping
+ * @brief Astarte interface mapping representation.
+ * @details See: https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#mapping.
  * @ingroup astarte_device_sdk
  * @{
  */

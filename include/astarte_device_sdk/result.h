@@ -14,6 +14,7 @@
 
 /**
  * @defgroup results Results
+ * @brief Astarte result types.
  * @ingroup astarte_device_sdk
  * @{
  */

@@ -14,6 +14,7 @@
 
 /**
  * @defgroup individuals Individuals
+ * @brief Definitions for Astarte individual data types.
  * @ingroup astarte_device_sdk
  * @{
  */

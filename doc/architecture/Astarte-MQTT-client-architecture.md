@@ -4,7 +4,7 @@ Copyright 2024 SECO Mind Srl
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Astarte MQTT client
+# Astarte MQTT client architecture
 
 Astarte MQTT client is a soft wrapper around the MQTT client library from Zephyr. It extends the
 functionality of the standard MQTT client.
@@ -18,10 +18,8 @@ the user configurable polling timeout and end at the minimum between the user co
 timeout and twice the keep alive time for the MQTT connection.
 
 ```mermaid
-%%{init: {"flowchart": {"rankSpacing": 100, "padding": 60}} }%%
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     DISCONNECTED --> |Connection request| CONNECTING
     CONNECTING --> |CONNACK reception| CONNECTED
     CONNECTING --> |Disconnection request| DISCONNECTING
@@ -39,9 +37,8 @@ The Astarte MQTT client implements a retry mechanism to ensure subscription mess
 retransmitted.
 
 ```mermaid
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     subgraph Retain message
     S(Send subscription msg)
     W(Waiting for SUBACK)
@@ -63,9 +60,8 @@ properly retransmitted.
 ### QoS 1
 
 ```mermaid
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     subgraph Retain message
     S(Send publish msg)
     W(Waiting for PUBACK)
@@ -82,9 +78,8 @@ flowchart TD
 ### QoS 2
 
 ```mermaid
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     subgraph Retain message
     SPUBLISH(Send publish msg)
     WPUBREC(Waiting for PUBREC)
@@ -115,9 +110,8 @@ PUBACK message back to the MQTT broker.
 QoS 2 publishes require a more complex control flow in the receiver compared to lower QoS levels.
 
 ```mermaid
+%% This is a mermaid graph. Your can render it using the live editor at: https://mermaid.live
 flowchart TD
-    classDef globStructs stroke:#A52A2A
-
     subgraph Retain message
     START(Start)
     SPUBREC(Send PUBREC msg)

@@ -4,7 +4,7 @@
 
 version = 1
 SPDX-PackageName = "Astarte Device SDK Zephyr"
-SPDX-PackageDownloadLocation = "https://github.com/secomind/astarte-device-sdk-zephyr"
+SPDX-PackageDownloadLocation = "https://github.com/astarte-platform/astarte-device-sdk-zephyr"
 
 [[annotations]]
 path = "skipfile.txt"

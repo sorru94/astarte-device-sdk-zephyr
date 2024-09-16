@@ -22,15 +22,15 @@ First, a new remote should be added:
 ```yml
   remotes:
     # ... other remotes ...
-    - name: secomind
-      url-base: https://github.com/secomind
+    - name: astarte-platform
+      url-base: https://github.com/astarte-platform
 ```
 Second, a new entry should be added to the projects list:
 ```yml
   projects:
     # ... other projects ...
     - name: astarte-device-sdk-zephyr
-      remote: secomind
+      remote: astarte-platform
       repo-path: astarte-device-sdk-zephyr.git
       path: astarte-device-sdk-zephyr
       revision: v0.7.1
@@ -65,7 +65,7 @@ python3 -m venv ~/zephyrproject/.venv
 source ~/zephyrproject/.venv/bin/activate
 pip install west
 # Clone the example application repo
-git clone https://github.com/secomind/astarte-device-sdk-zephyr.git ~/zephyrproject/astarte-device-sdk-zephyr
+git clone https://github.com/astarte-platform/astarte-device-sdk-zephyr.git ~/zephyrproject/astarte-device-sdk-zephyr
 ```
 
 #### Initializing the workspace

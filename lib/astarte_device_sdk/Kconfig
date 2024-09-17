@@ -12,7 +12,6 @@ config ASTARTE_DEVICE_SDK
 	depends on MBEDTLS
 	depends on MQTT_LIB
 	depends on MQTT_LIB_TLS
-	depends on MQTT_CLEAN_SESSION
 	depends on BASE64
 	depends on SYS_HASH_MAP
 	depends on SYS_HASH_FUNC32

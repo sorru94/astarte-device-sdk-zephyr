@@ -90,8 +90,8 @@ array a valid CA certificate in the PEM format.
 
 Some of the data configured in the `prj.conf` files could be private.
 Data like wifi passwords or even the astarte credential secret could be configured in a `private.conf` file.
-You can have a `private.conf` file for every of the [samples](https://github.com/secomind/astarte-device-sdk-zephyr/tree/master/samples).
-You can also have a generic `private.conf` defined inside the [common directory](https://github.com/secomind/astarte-device-sdk-zephyr/tree/master/samples/common)
+You can have a `private.conf` file for every of the [samples](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples).
+You can also have a generic `private.conf` defined inside the [common directory](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples/common)
 this configuration will be applied to every sample and it's useful if for you want to the wifi configuration applied to all the examples.
 
 To configure the wifi in a file that is ignored by git you can add the following to `samples/common/private.conf`

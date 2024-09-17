@@ -9,13 +9,14 @@
 
 /**
  * @file interface.h
- * @brief [Astarte
- * interface](https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html)
- * representation.
+ * @brief Astarte interface representation.
+ * @details See: https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html.
  */
 
 /**
  * @defgroup interface Interface
+ * @brief Astarte interface representation.
+ * @details See: https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html
  * @ingroup astarte_device_sdk
  * @{
  */

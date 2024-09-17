@@ -9,11 +9,12 @@
 
 /**
  * @file object.h
- * @brief Definitions for Astarte object data types
+ * @brief Definitions for Astarte object data types.
  */
 
 /**
  * @defgroup objects Objects
+ * @brief Definitions for Astarte object data types.
  * @ingroup astarte_device_sdk
  * @{
  */

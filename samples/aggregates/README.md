@@ -12,7 +12,7 @@ using the provided APIs.
 ## Required configuration
 
 Refer to the
-[generic samples readme](https://github.com/secomind/astarte-device-sdk-zephyr/tree/master/samples/README.md)
+[generic samples readme](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples/README.md)
 to configure correctly the device.
 
 ## Manually send test data

@@ -90,10 +90,10 @@ jobs:
         path: astarte-device-sdk-zephyr/doc/_build/doxygen/html
     - name: Copy HTML documentation
       run: |
-        export DOCS_DIRNAME="device-sdks/zephyr/$(echo ${{ github.ref }} | sed 's,refs/heads/,,' | sed 's/master/snapshot/g' | sed 's/release-//g')/api"
+        export DOCS_DIRNAME="device-sdks/zephyr/$(echo ${{ github.ref }} | sed 's,refs/heads/,,' | sed 's/master/snapshot/g' | sed 's/release-//g')"
         rm -rf docs/$DOCS_DIRNAME
-        mkdir -p docs/$DOCS_DIRNAME
-        cp -r astarte-device-sdk-zephyr/doc/_build/doxygen/html/* docs/$DOCS_DIRNAME/
+        mkdir -p docs/$DOCS_DIRNAME/api
+        cp -r astarte-device-sdk-zephyr/doc/_build/doxygen/html/* docs/$DOCS_DIRNAME/api
     - name: Update symlink
       working-directory: ./docs/device-sdks/zephyr
       run: |

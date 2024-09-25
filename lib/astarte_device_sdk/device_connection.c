@@ -212,7 +212,7 @@ static void setup_subscriptions(astarte_device_handle_t device)
     astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, NULL);
 
     for (introspection_node_t *iterator = introspection_iter(&device->introspection);
-         iterator != NULL; iterator = introspection_iter_next(&device->introspection, iterator)) {
+        iterator != NULL; iterator = introspection_iter_next(&device->introspection, iterator)) {
         const astarte_interface_t *interface = iterator->interface;
 
         if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
@@ -415,7 +415,7 @@ static void send_device_owned_properties(astarte_device_handle_t device)
         free(path);
         path = NULL;
         astarte_device_caching_property_destroy_loaded(individual);
-        individual = (astarte_individual_t){ 0 };
+        individual = (astarte_individual_t) { 0 };
 
         ares = astarte_device_caching_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {

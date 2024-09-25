@@ -246,7 +246,7 @@ e2e_byte_array next_alloc_base64_parameter(char ***args, size_t *argc)
 {
     if (*argc < 1) {
         // no more arguments
-        return (e2e_byte_array){};
+        return (e2e_byte_array) {};
     }
 
     const char *const arg = (*args)[0];
@@ -256,7 +256,7 @@ e2e_byte_array next_alloc_base64_parameter(char ***args, size_t *argc)
     int res = base64_decode(NULL, 0, &byte_array_length, arg, arg_len);
     if (byte_array_length == 0) {
         LOG_ERR("Error while computing base64 decode buffer length: %d", res); // NOLINT
-        return (e2e_byte_array){};
+        return (e2e_byte_array) {};
     }
 
     LOG_DBG("The size of the decoded buffer is: %d", byte_array_length); // NOLINT
@@ -267,13 +267,13 @@ e2e_byte_array next_alloc_base64_parameter(char ***args, size_t *argc)
     res = base64_decode(byte_array, byte_array_length, &byte_array_length, arg, arg_len);
     if (res != 0) {
         LOG_ERR("Error while decoding base64 argument %d", res); // NOLINT
-        return (e2e_byte_array){};
+        return (e2e_byte_array) {};
     }
 
     // move to the next parameter for caller
     *args += 1;
     *argc -= 1;
-    return (e2e_byte_array){
+    return (e2e_byte_array) {
         .buf = byte_array,
         .len = byte_array_length,
     };
@@ -285,7 +285,7 @@ e2e_timestamp_option_t next_timestamp_parameter(char ***args, size_t *argc)
 
     if (*argc < 1) {
         // no more arguments
-        return (e2e_timestamp_option_t){};
+        return (e2e_timestamp_option_t) {};
     }
 
     const char *const arg = (*args)[0];
@@ -294,7 +294,7 @@ e2e_timestamp_option_t next_timestamp_parameter(char ***args, size_t *argc)
     // move to the next parameter for caller
     *args += 1;
     *argc -= 1;
-    return (e2e_timestamp_option_t){
+    return (e2e_timestamp_option_t) {
         .value = timestamp,
         .present = true,
     };

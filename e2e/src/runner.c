@@ -257,7 +257,7 @@ static void device_individual_callback(astarte_device_datastream_individual_even
     idata_get_individual(&expected_data, event.data_event.interface_name, &individual);
 
     for (; individual != NULL;
-         idata_get_individual(&expected_data, event.data_event.interface_name, &individual)) {
+        idata_get_individual(&expected_data, event.data_event.interface_name, &individual)) {
         if (strcmp(individual->path, event.data_event.path) != 0) {
             // skip element if on a different path
             continue;
@@ -313,7 +313,7 @@ static void device_object_callback(astarte_device_datastream_object_event_t even
     idata_get_object(&expected_data, event.data_event.interface_name, &object);
 
     for (; object != NULL;
-         idata_get_object(&expected_data, event.data_event.interface_name, &object)) {
+        idata_get_object(&expected_data, event.data_event.interface_name, &object)) {
         if (strcmp(object->path, event.data_event.path) != 0) {
             // skip element if on a different path
             continue;
@@ -357,7 +357,7 @@ static void device_property_set_callback(astarte_device_property_set_event_t eve
     idata_get_property(&expected_data, event.data_event.interface_name, &property);
 
     for (; property != NULL;
-         idata_get_property(&expected_data, event.data_event.interface_name, &property)) {
+        idata_get_property(&expected_data, event.data_event.interface_name, &property)) {
         if (strcmp(property->path, event.data_event.path) != 0) {
             // skip element if on a different path
             continue;
@@ -464,7 +464,7 @@ static int cmd_expect_individual_handler(const struct shell *sh, size_t argc, ch
 
     // path and individual will be freed by the idata_unit free function
     CHECK_GOTO(idata_add_individual(&expected_data, interface,
-                   (e2e_individual_data_t){
+                   (e2e_individual_data_t) {
                        .individual = individual,
                        .path = path,
                        .timestamp = timestamp,
@@ -517,7 +517,7 @@ static int cmd_expect_object_handler(const struct shell *sh, size_t argc, char *
         "Could not lock expected data mutex");
 
     ASTARTE_LOG_INF("Adding object: ");
-    astarte_object_print(&(e2e_object_entry_array_t){
+    astarte_object_print(&(e2e_object_entry_array_t) {
         .buf = entries,
         .len = entries_length,
     });
@@ -574,7 +574,7 @@ static int cmd_expect_property_set_handler(const struct shell *sh, size_t argc, 
 
     // path and individual will be freed by the idata_unit free function
     CHECK_GOTO(idata_add_property(&expected_data, interface,
-                   (e2e_property_data_t){
+                   (e2e_property_data_t) {
                        .individual = individual,
                        .path = path,
                    })
@@ -616,7 +616,7 @@ static int cmd_expect_property_unset_handler(const struct shell *sh, size_t argc
         "Could not lock expected data mutex");
 
     CHECK_GOTO(idata_add_property(&expected_data, interface,
-                   (e2e_property_data_t){
+                   (e2e_property_data_t) {
                        .path = path,
                        .unset = true,
                    })

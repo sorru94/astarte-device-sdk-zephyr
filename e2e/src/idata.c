@@ -90,7 +90,7 @@ int idata_add_individual(e2e_idata_t *idata, const astarte_interface_t *interfac
     e2e_idata_unit_t *element = calloc(1, sizeof(e2e_idata_unit_t));
     CHECK_HALT(!element, "Could not allocate an e2e_expected_unit_t");
 
-    *element = (e2e_idata_unit_t){
+    *element = (e2e_idata_unit_t) {
         .interface = interface,
         .values.individual = expected_individual,
     };
@@ -112,7 +112,7 @@ int idata_add_property(
     e2e_idata_unit_t *element = calloc(1, sizeof(e2e_idata_unit_t));
     CHECK_HALT(!element, "Could not allocate an e2e_expected_unit_t");
 
-    *element = (e2e_idata_unit_t){
+    *element = (e2e_idata_unit_t) {
         .interface = interface,
         .values.property = expected_property,
     };
@@ -132,7 +132,7 @@ int idata_add_object(
     e2e_idata_unit_t *element = calloc(1, sizeof(e2e_idata_unit_t));
     CHECK_HALT(!element, "Could not allocate an e2e_expected_unit_t");
 
-    *element = (e2e_idata_unit_t){
+    *element = (e2e_idata_unit_t) {
         .interface = interface,
         .values.object = expected_object,
     };

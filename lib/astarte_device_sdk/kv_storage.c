@@ -114,7 +114,7 @@ static astarte_result_t update_stored_pairs(struct nvs_fs *nvs_fs, uint16_t stor
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_kv_storage_init(
+astarte_result_t astarte_kv_storage_new(
     astarte_kv_storage_cfg_t config, const char *namespace, astarte_kv_storage_t *kv_storage)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -136,7 +136,7 @@ astarte_result_t astarte_kv_storage_init(
     kv_storage->flash_sector_count = config.flash_sector_count;
     kv_storage->namespace = namespace_cpy;
 
-    ASTARTE_LOG_DBG("Initialized key pair storage.");
+    ASTARTE_LOG_DBG("Opened key pair storage.");
     ASTARTE_LOG_DBG("    Namespace: %s", namespace);
 
     return ASTARTE_RESULT_OK;
@@ -145,6 +145,12 @@ error:
     free(namespace_cpy);
 
     return ares;
+}
+
+void astarte_kv_storage_destroy(astarte_kv_storage_t kv_storage)
+{
+    free(kv_storage.namespace);
+    ASTARTE_LOG_DBG("Closed key pair storage.");
 }
 
 astarte_result_t astarte_kv_storage_insert(

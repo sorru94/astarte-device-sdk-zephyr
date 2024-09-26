@@ -116,7 +116,6 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
             ares = introspection_add(&handle->introspection, cfg->interfaces[i]);
             if (ares != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(ares));
-                introspection_free(handle->introspection);
                 goto failure;
             }
         }
@@ -174,15 +173,21 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     return ares;
 
 failure:
+    if (handle) {
+        introspection_free(handle->introspection);
+    }
     free(handle);
     return ares;
 }
 
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
-    astarte_result_t ares = astarte_device_disconnect(device);
-    if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    if (device->connection_state != DEVICE_DISCONNECTED) {
+        ares = astarte_device_disconnect(device);
+        if (ares != ASTARTE_RESULT_OK) {
+            return ares;
+        }
     }
 
     ares = astarte_tls_credential_delete();
@@ -191,6 +196,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         return ares;
     }
 
+    introspection_free(device->introspection);
     free(device);
     return ASTARTE_RESULT_OK;
 }

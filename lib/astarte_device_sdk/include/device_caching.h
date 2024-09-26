@@ -105,13 +105,23 @@ astarte_result_t astarte_device_caching_property_delete(
  * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if not found, otherwise an
  * error code.
  */
-astarte_result_t astarte_device_caching_property_iterator_init(
+astarte_result_t astarte_device_caching_property_iterator_new(
     astarte_device_caching_property_iter_t *iter);
+
+/**
+ * @brief Destroy an iterator used to iterate over the stored properties.
+ *
+ * @note The iterator should have been initalized with
+ * #astarte_device_caching_property_iterator_new.
+ *
+ * @param[inout] iter Iterator instance to destroy.
+ */
+void astarte_device_caching_property_iterator_destroy(astarte_device_caching_property_iter_t iter);
 
 /**
  * @brief Advance the iterator over the stored properties.
  *
- * @param[inout] iter Iterator initialized with #astarte_device_caching_property_iterator_init.
+ * @param[inout] iter Iterator initialized with #astarte_device_caching_property_iterator_new.
  * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if not found, otherwise an
  * error code.
  */
@@ -121,7 +131,7 @@ astarte_result_t astarte_device_caching_property_iterator_next(
 /**
  * @brief Get the interface name and path for the property pointed by the iterator.
  *
- * @param[in] iter Iterator initialized with #astarte_device_caching_property_iterator_init.
+ * @param[in] iter Iterator initialized with #astarte_device_caching_property_iterator_new.
  * @param[out] interface_name Buffer where to store the read interface name, can be NULL.
  * @param[inout] interface_name_size Size of the @p interface_name buffer. If the @p interface_name
  * parameter is NULL the input value of this parameter will be ignored.

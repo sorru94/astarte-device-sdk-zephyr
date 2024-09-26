@@ -82,7 +82,7 @@ typedef struct
     /** @brief Flash page sector count */
     uint16_t flash_sector_count;
     /** @brief Namespace used for this key-value storage instance. */
-    const char *namespace;
+    char *namespace;
 } astarte_kv_storage_t;
 
 /** @brief Iterator struct for the key-value pair storage. */
@@ -99,15 +99,25 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize a new instance of the key-value pairs storage driver.
+ * @brief Create a new instance of the key-value pairs storage driver.
+ *
+ * @note After being used the key-value storage instance should be destroyed with
+ * #astarte_kv_storage_destroy.
  *
  * @param[in] config Configuration struct for the storage instance.
  * @param[in] namespace The namespace to be used for this storage instance.
  * @param[out] kv_storage Data struct for the key-value storage instance to initialize.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_kv_storage_init(
+astarte_result_t astarte_kv_storage_new(
     astarte_kv_storage_cfg_t config, const char *namespace, astarte_kv_storage_t *kv_storage);
+
+/**
+ * @brief Destroy an instance of the key-value pairs storage driver.
+ *
+ * @param[inout] kv_storage The storage instance to destroy.
+ */
+void astarte_kv_storage_destroy(astarte_kv_storage_t kv_storage);
 
 /**
  * @brief Insert or update a new key-value pair into storage.

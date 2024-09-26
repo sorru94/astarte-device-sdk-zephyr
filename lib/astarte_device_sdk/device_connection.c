@@ -216,12 +216,20 @@ static void setup_subscriptions(astarte_device_handle_t device)
         const astarte_interface_t *interface = iterator->interface;
 
         if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
-            char *topic = NULL;
-            int ret = asprintf(&topic, CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s/%s/#",
-                device->device_id, interface->name);
-            if (ret < 0) {
-                ASTARTE_LOG_ERR("Error encoding MQTT topic");
-                ASTARTE_LOG_ERR("Might be out of memory %s: %d", __FILE__, __LINE__);
+            size_t topic_len = strlen(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "///#")
+                + ASTARTE_DEVICE_ID_LEN + strlen(interface->name);
+            char *topic = calloc(topic_len + 1, sizeof(char));
+            if (!topic) {
+                ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+                continue;
+            }
+
+            int ret
+                = snprintf(topic, topic_len + 1, CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s/%s/#",
+                    device->device_id, interface->name);
+            if (ret != topic_len) {
+                ASTARTE_LOG_ERR("Error encoding MQTT topic.");
+                free(topic);
                 continue;
             }
 
@@ -365,12 +373,12 @@ static void state_machine_connected_run(astarte_device_handle_t device)
 static void send_device_owned_properties(astarte_device_handle_t device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_device_caching_property_iter_t iter = { 0 };
     char *interface_name = NULL;
     char *path = NULL;
     astarte_individual_t individual = { 0 };
 
-    astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
         goto end;
@@ -426,6 +434,7 @@ static void send_device_owned_properties(astarte_device_handle_t device)
 
 end:
     // Free all data
+    astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
     astarte_device_caching_property_destroy_loaded(individual);

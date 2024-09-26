@@ -256,11 +256,11 @@ exit:
 static void purge_server_properties(introspection_t *introspection, sys_slist_t *allow_list)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_device_caching_property_iter_t iter = { 0 };
     char *interface_name = NULL;
     char *path = NULL;
 
-    astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
         goto end;
@@ -307,6 +307,7 @@ static void purge_server_properties(introspection_t *introspection, sys_slist_t 
     }
 
 end:
+    astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
 }

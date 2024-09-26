@@ -237,14 +237,14 @@ introspection_node_t *introspection_iter_next(
 
 void introspection_free(introspection_t introspection)
 {
-    introspection_node_t *alloc_node = NULL;
-    introspection_node_t *next = NULL;
-
-    SYS_DLIST_FOR_EACH_CONTAINER_SAFE(introspection.list, alloc_node, next, node)
-    {
-        node_free(alloc_node);
+    if (introspection.list) {
+        introspection_node_t *alloc_node = NULL;
+        introspection_node_t *next = NULL;
+        SYS_DLIST_FOR_EACH_CONTAINER_SAFE(introspection.list, alloc_node, next, node)
+        {
+            node_free(alloc_node);
+        }
     }
-
     free(introspection.list);
 }
 

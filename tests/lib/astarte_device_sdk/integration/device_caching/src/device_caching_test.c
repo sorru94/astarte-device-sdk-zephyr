@@ -319,7 +319,7 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate) // NOLIN
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     interface_name_size = 0U;
@@ -388,6 +388,8 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate) // NOLIN
 
     ares = astarte_device_caching_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+
+    astarte_device_caching_property_iterator_destroy(iter);
 }
 
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate_empty) // NOLINT
@@ -395,8 +397,9 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate_empty) //
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
     astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+    astarte_device_caching_property_iterator_destroy(iter);
 }
 
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_delete) // NOLINT
@@ -472,7 +475,7 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_delete) // NOLINT
 
     // Loop over all the stored properties
     astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     interface_name_size = ARRAY_SIZE(interface_name_buffer);
@@ -540,10 +543,11 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_delete) // NOLINT
 
     ares = astarte_device_caching_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+    astarte_device_caching_property_iterator_destroy(iter);
 
     // Loop over all the stored properties
     iter = (astarte_device_caching_property_iter_t) { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     interface_name_size = ARRAY_SIZE(interface_name_buffer);
@@ -590,6 +594,7 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_delete) // NOLINT
 
     ares = astarte_device_caching_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+    astarte_device_caching_property_iterator_destroy(iter);
 }
 
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_get_properties_string) // NOLINT

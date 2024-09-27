@@ -37,7 +37,6 @@ ZTEST(astarte_device_sdk_interface, test_astarte_interface_get_mapping)
     const astarte_mapping_t mappings[3]
         = { {
                 .endpoint = "/binaryblob_endpoint",
-                .regex_endpoint = "/binaryblob_endpoint",
                 .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
                 .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                 .explicit_timestamp = true,
@@ -45,7 +44,6 @@ ZTEST(astarte_device_sdk_interface, test_astarte_interface_get_mapping)
             },
               {
                   .endpoint = "/binaryblobarray_endpoint",
-                  .regex_endpoint = "/binaryblobarray_endpoint",
                   .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
                   .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                   .explicit_timestamp = true,
@@ -53,7 +51,6 @@ ZTEST(astarte_device_sdk_interface, test_astarte_interface_get_mapping)
               },
               {
                   .endpoint = "/boolean_endpoint",
-                  .regex_endpoint = "/boolean_endpoint",
                   .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
                   .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                   .explicit_timestamp = true,

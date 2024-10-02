@@ -49,7 +49,7 @@ config DEVICE_RX_THREAD_STACK_SIZE
 
 config DEVICE_TX_THREAD_STACK_SIZE
     int "Device transmission thread stack size (Bytes)"
-    default 8192
+    default 2048
     help
         Use this setting to change the size of the stack for the thread running the Astarte device
         transmitting functionality.

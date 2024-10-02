@@ -94,17 +94,17 @@ static void connection_callback(astarte_device_connection_event_t event);
  */
 static void disconnection_callback(astarte_device_disconnection_event_t event);
 /**
- * @brief Handler for astarte set property event.
+ * @brief Callback handler for Astarte set property event.
  *
- * @param event Astarte device data event pointer.
+ * @param event Astarte device set property event.
  */
-static void properties_set_events_handler(astarte_device_property_set_event_t event);
+static void set_property_callback(astarte_device_property_set_event_t event);
 /**
- * @brief Handler for astarte unset property event.
+ * @brief Callback handler for Astarte unset property event.
  *
- * @param event Astarte device data event pointer.
+ * @param event Astarte device unset property event.
  */
-static void properties_unset_events_handler(astarte_device_data_event_t event);
+static void unset_property_callback(astarte_device_data_event_t event);
 
 /************************************************
  * Global functions definition
@@ -147,8 +147,8 @@ int main(void)
     device_config.mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = connection_callback;
     device_config.disconnection_cbk = disconnection_callback;
-    device_config.property_set_cbk = properties_set_events_handler;
-    device_config.property_unset_cbk = properties_unset_events_handler;
+    device_config.property_set_cbk = set_property_callback;
+    device_config.property_unset_cbk = unset_property_callback;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.device_id, device_id, sizeof(device_id));
@@ -173,13 +173,12 @@ int main(void)
     k_timepoint_t disconnect_timepoint
         = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
     while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
-// Ensure the connectivity is still present
+        // Ensure the connectivity is still present
 #if defined(CONFIG_WIFI)
         wifi_poll();
 #else
         eth_poll();
 #endif
-
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 
@@ -189,6 +188,13 @@ int main(void)
     // Wait for the Astarte thread to terminate.
     if (k_thread_join(&device_rx_thread_data, K_FOREVER) != 0) {
         LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
+    }
+
+    LOG_INF("Astarte device will now be destroyed."); // NOLINT
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device destroy failure."); // NOLINT
+        return -1;
     }
 
     LOG_INF("Astarte device sample finished."); // NOLINT
@@ -203,21 +209,15 @@ int main(void)
 
 static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
     (void) unused1;
     (void) unused2;
-    astarte_result_t res = ASTARTE_RESULT_OK;
 
     astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
     res = astarte_device_connect(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device connection failure."); // NOLINT
-        return;
-    }
-
-    res = astarte_device_poll(device);
-    if (res != ASTARTE_RESULT_OK) {
-        // First poll should not timeout as we should receive a connection ack.
-        LOG_ERR("Astarte device first poll failure."); // NOLINT
         return;
     }
 
@@ -302,7 +302,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
               astarte_individual_from_string_array(
                   (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
 
-    for (size_t i = 0; i < ARRAY_SIZE(individuals); i++) {
+    for (size_t i = 0; i < MIN(ARRAY_SIZE(individuals), ARRAY_SIZE(paths)); i++) {
         LOG_INF("Setting on %s:", paths[i]); // NOLINT
         utils_log_astarte_individual(individuals[i]);
         res = astarte_device_set_property(device, interface_name, paths[i], individuals[i]);
@@ -318,7 +318,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     LOG_INF("Unsetting some properties using the Astarte device."); // NOLINT
 
-    for (size_t i = 0; i < ARRAY_SIZE(individuals); i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(paths); i++) {
         LOG_INF("Unsetting %s:", paths[i]); // NOLINT
         res = astarte_device_unset_property(device, interface_name, paths[i]);
         if (res != ASTARTE_RESULT_OK) {
@@ -341,7 +341,7 @@ static void disconnection_callback(astarte_device_disconnection_event_t event)
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
-static void properties_set_events_handler(astarte_device_property_set_event_t event)
+static void set_property_callback(astarte_device_property_set_event_t event)
 {
     const char *interface_name = event.data_event.interface_name;
     const char *path = event.data_event.path;
@@ -349,13 +349,10 @@ static void properties_set_events_handler(astarte_device_property_set_event_t ev
 
     LOG_INF("Property set event, interface: %s, path: %s", interface_name, path); // NOLINT
 
-    if (strcmp(interface_name, org_astarteplatform_zephyr_examples_ServerProperty.name) == 0) {
-        // Pretty log the received individual
-        utils_log_astarte_individual(individual);
-    }
+    utils_log_astarte_individual(individual);
 }
 
-static void properties_unset_events_handler(astarte_device_data_event_t event)
+static void unset_property_callback(astarte_device_data_event_t event)
 {
     const char *interface_name = event.interface_name;
     const char *path = event.path;

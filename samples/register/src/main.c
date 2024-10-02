@@ -149,6 +149,7 @@ int main(void)
     char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = { 0 };
     if (has_cred_secr) {
+        LOG_INF("Found credential secred in flash"); // NOLINT
         if (nvs_get_cred_secr(cred_secr, sizeof(cred_secr)) != 0) {
             return -1;
         }
@@ -211,7 +212,6 @@ int main(void)
 #else
         eth_poll();
 #endif
-
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 
@@ -221,6 +221,13 @@ int main(void)
     // Wait for the Astarte thread to terminate.
     if (k_thread_join(&device_thread_data, K_FOREVER) != 0) {
         LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
+    }
+
+    LOG_INF("Astarte device will now be destroyed."); // NOLINT
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device destroy failure."); // NOLINT
+        return -1;
     }
 
     LOG_INF("Astarte device sample finished."); // NOLINT

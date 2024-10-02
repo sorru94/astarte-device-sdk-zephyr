@@ -51,8 +51,10 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 
 #define MAIN_THREAD_SLEEP_MS 500
 
-#define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+K_MSGQ_DEFINE(device_msgq, sizeof(astarte_device_handle_t), 1, 1);
+
+#define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
 static atomic_t device_rx_thread_flags;
 K_THREAD_STACK_DEFINE(device_rx_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
 static struct k_thread device_rx_thread_data;
@@ -68,19 +70,19 @@ static struct k_thread device_tx_thread_data;
 /**
  * @brief Entry point for the Astarte device reception thread.
  *
- * @param device_handle Handle to the Astarte device.
- * @param unused1 Unused parameter.
- * @param unused2 Unused parameter.
+ * @param arg1 Unused argument.
+ * @param arg2 Unused parameter.
+ * @param arg3 Unused parameter.
  */
-static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3);
 /**
  * @brief Entry point for the Astarte device transmission thread.
  *
- * @param device_handle Handle to the Astarte device.
- * @param unused1 Unused parameter.
- * @param unused2 Unused parameter.
+ * @param arg1 Unused argument.
+ * @param arg2 Unused argument.
+ * @param arg3 Unused argument.
  */
-static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3);
 /**
  * @brief Callback handler for Astarte connection events.
  *
@@ -128,40 +130,13 @@ int main(void)
         ca_certificate_root, sizeof(ca_certificate_root));
 #endif
 
-    // Create a new instance of an Astarte device
-    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
-    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
-
-    const astarte_interface_t *interfaces[]
-        = { &org_astarteplatform_zephyr_examples_DeviceDatastream,
-              &org_astarteplatform_zephyr_examples_ServerDatastream };
-
-    astarte_device_config_t device_config = { 0 };
-    device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
-    device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_CONNECTION_TIMEOUT_MS;
-    device_config.mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS;
-    device_config.connection_cbk = connection_callback;
-    device_config.disconnection_cbk = disconnection_callback;
-    device_config.datastream_individual_cbk = datastream_individual_callback;
-    device_config.interfaces = interfaces;
-    device_config.interfaces_size = ARRAY_SIZE(interfaces);
-    memcpy(device_config.device_id, device_id, sizeof(device_id));
-    memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
-
-    astarte_device_handle_t device = NULL;
-    astarte_result_t res = astarte_device_new(&device_config, &device);
-    if (res != ASTARTE_RESULT_OK) {
-        LOG_ERR("Astarte device creation failure."); // NOLINT
-        return -1;
-    }
-
     // Spawn a new thread for the Astarte device
     k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point,
-        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point, NULL,
+        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
     k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point,
-        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point, NULL,
+        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
     // Wait for a predefined operational time.
     k_timepoint_t disconnect_timepoint
@@ -194,14 +169,44 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
+static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 {
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
+
     astarte_result_t res = ASTARTE_RESULT_OK;
 
-    (void) unused1;
-    (void) unused2;
+    // Create a new instance of an Astarte device
+    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
+    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 
-    astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
+    const astarte_interface_t *interfaces[]
+        = { &org_astarteplatform_zephyr_examples_DeviceDatastream,
+              &org_astarteplatform_zephyr_examples_ServerDatastream };
+
+    astarte_device_config_t device_config = { 0 };
+    device_config.http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS;
+    device_config.mqtt_connection_timeout_ms = CONFIG_MQTT_CONNECTION_TIMEOUT_MS;
+    device_config.mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS;
+    device_config.connection_cbk = connection_callback;
+    device_config.disconnection_cbk = disconnection_callback;
+    device_config.datastream_individual_cbk = datastream_individual_callback;
+    device_config.interfaces = interfaces;
+    device_config.interfaces_size = ARRAY_SIZE(interfaces);
+    memcpy(device_config.device_id, device_id, sizeof(device_id));
+    memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
+
+    astarte_device_handle_t device = NULL;
+    res = astarte_device_new(&device_config, &device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device creation failure."); // NOLINT
+        return;
+    }
+
+    // Add the message to the queue for the transmit thread
+    k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+
     res = astarte_device_connect(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device connection failure."); // NOLINT
@@ -228,18 +233,28 @@ static void device_rx_thread_entry_point(void *device_handle, void *unused1, voi
         return;
     }
 
+    LOG_INF("Astarte device will now be destroyed."); // NOLINT
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device destroy failure."); // NOLINT
+        return;
+    }
+
     LOG_INF("Astarte thread will now be terminated."); // NOLINT
 
     k_sleep(K_MSEC(MSEC_PER_SEC));
 }
 
-static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
+static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 {
-    astarte_result_t res = ASTARTE_RESULT_OK;
-    astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
 
-    (void) unused1;
-    (void) unused2;
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
+    astarte_device_handle_t device = NULL;
+    k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
 
     k_sleep(K_SECONDS(CONFIG_DEVICE_TRANSMISSION_DELAY_SECONDS));
 
@@ -247,7 +262,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
     const char *interface_name = org_astarteplatform_zephyr_examples_DeviceDatastream.name;
 
-    astarte_individual_t individuals[UTILS_DATA_ELEMENTS]
+    astarte_individual_t individuals[]
         = { astarte_individual_from_binaryblob(
                 (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
               astarte_individual_from_binaryblob_array((const void **) utils_binary_blobs_data,
@@ -271,7 +286,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
               astarte_individual_from_string_array(
                   (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data)) };
 
-    const char *paths[UTILS_DATA_ELEMENTS] = {
+    const char *paths[] = {
         "/binaryblob_endpoint",
         "/binaryblobarray_endpoint",
         "/boolean_endpoint",
@@ -289,7 +304,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
     };
     const int64_t tms = 1714748755;
 
-    for (size_t i = 0; i < UTILS_DATA_ELEMENTS; i++) {
+    for (size_t i = 0; i < MIN(ARRAY_SIZE(individuals), ARRAY_SIZE(paths)); i++) {
         LOG_INF("Stream on %s:", paths[i]); // NOLINT
         utils_log_astarte_individual(individuals[i]);
         res = astarte_device_stream_individual(
@@ -304,13 +319,13 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
 
 static void connection_callback(astarte_device_connection_event_t event)
 {
-    (void) event;
+    ARG_UNUSED(event);
     LOG_INF("Astarte device connected."); // NOLINT
 }
 
 static void disconnection_callback(astarte_device_disconnection_event_t event)
 {
-    (void) event;
+    ARG_UNUSED(event);
     LOG_INF("Astarte device disconnected"); // NOLINT
 }
 
@@ -322,7 +337,5 @@ static void datastream_individual_callback(astarte_device_datastream_individual_
 
     LOG_INF("Datastream individual event, interface: %s, path: %s", interface_name, path); // NOLINT
 
-    if (strcmp(interface_name, org_astarteplatform_zephyr_examples_ServerDatastream.name) == 0) {
-        utils_log_astarte_individual(individual);
-    }
+    utils_log_astarte_individual(individual);
 }

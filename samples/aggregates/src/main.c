@@ -52,11 +52,14 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 
 #define MAIN_THREAD_SLEEP_MS 500
 
-#define DEVICE_THREAD_FLAGS_TERMINATION 1U
+#define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static atomic_t device_thread_flags;
-K_THREAD_STACK_DEFINE(device_thread_stack_area, CONFIG_DEVICE_THREAD_STACK_SIZE);
-static struct k_thread device_thread_data;
+static atomic_t device_rx_thread_flags;
+K_THREAD_STACK_DEFINE(device_rx_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_rx_thread_data;
+
+K_THREAD_STACK_DEFINE(device_tx_thread_stack_area, CONFIG_DEVICE_TX_THREAD_STACK_SIZE);
+static struct k_thread device_tx_thread_data;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
@@ -64,13 +67,21 @@ static struct k_thread device_thread_data;
  ***********************************************/
 
 /**
- * @brief Entry point for the Astarte device thread.
+ * @brief Entry point for the Astarte device reception thread.
  *
  * @param device_handle Handle to the Astarte device.
  * @param unused1 Unused parameter.
  * @param unused2 Unused parameter.
  */
-static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
+/**
+ * @brief Entry point for the Astarte device transmission thread.
+ *
+ * @param device_handle Handle to the Astarte device.
+ * @param unused1 Unused parameter.
+ * @param unused2 Unused parameter.
+ */
+static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2);
 /**
  * @brief Callback handler for Astarte connection events.
  *
@@ -84,15 +95,11 @@ static void connection_callback(astarte_device_connection_event_t event);
  */
 static void disconnection_callback(astarte_device_disconnection_event_t event);
 /**
- * @brief Handler for astarte datastream object event.
+ * @brief Callback handler for Astarte datastream object event.
  *
- * @param event Astarte device datastream object event pointer.
+ * @param event Astarte device datastream object event.
  */
-static void datastream_object_events_handler(astarte_device_datastream_object_event_t event);
-/**
- * @brief Helper function used to transmit some fixed data to Astarte.
- */
-static void transmit_data(astarte_device_handle_t device);
+static void datastream_object_callback(astarte_device_datastream_object_event_t event);
 
 /************************************************
  * Global functions definition
@@ -136,7 +143,7 @@ int main(void)
     device_config.mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS;
     device_config.connection_cbk = connection_callback;
     device_config.disconnection_cbk = disconnection_callback;
-    device_config.datastream_object_cbk = datastream_object_events_handler;
+    device_config.datastream_object_cbk = datastream_object_callback;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
     memcpy(device_config.device_id, device_id, sizeof(device_id));
@@ -150,40 +157,39 @@ int main(void)
     }
 
     // Spawn a new thread for the Astarte device
-    k_thread_create(&device_thread_data, device_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_thread_stack_area), device_thread_entry_point, (void *) device,
-        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point,
+        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point,
+        (void *) device, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
     // Wait for a predefined operational time.
     k_timepoint_t disconnect_timepoint
         = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_OPERATIONAL_TIME_SECONDS));
-    k_timepoint_t transmit_timepoint
-        = sys_timepoint_calc(K_SECONDS(CONFIG_DEVICE_TRANSMISSION_DELAY_SECONDS));
-    bool transmission_performed = false;
     while (!K_TIMEOUT_EQ(sys_timepoint_timeout(disconnect_timepoint), K_NO_WAIT)) {
-        if ((!transmission_performed)
-            && (K_TIMEOUT_EQ(sys_timepoint_timeout(transmit_timepoint), K_NO_WAIT))) {
-            LOG_INF("Transmitting some data using the Astarte device."); // NOLINT
-            transmit_data(device);
-            transmission_performed = true;
-        }
-
-// Ensure the connectivity is still present
+        // Ensure the connectivity is still present
 #if defined(CONFIG_WIFI)
         wifi_poll();
 #else
         eth_poll();
 #endif
-
         k_sleep(K_MSEC(MAIN_THREAD_SLEEP_MS));
     }
 
     // Signal to the Astarte thread that is should terminate.
-    atomic_set_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION);
+    atomic_set_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION);
 
     // Wait for the Astarte thread to terminate.
-    if (k_thread_join(&device_thread_data, K_FOREVER) != 0) {
+    if (k_thread_join(&device_rx_thread_data, K_FOREVER) != 0) {
         LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
+    }
+
+    LOG_INF("Astarte device will now be destroyed."); // NOLINT
+    res = astarte_device_destroy(device);
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Astarte device destroy failure."); // NOLINT
+        return -1;
     }
 
     LOG_INF("Astarte device sample finished."); // NOLINT
@@ -196,11 +202,12 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void device_thread_entry_point(void *device_handle, void *unused1, void *unused2)
+static void device_rx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
     (void) unused1;
     (void) unused2;
-    astarte_result_t res = ASTARTE_RESULT_OK;
 
     astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
     res = astarte_device_connect(device);
@@ -209,14 +216,7 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
         return;
     }
 
-    res = astarte_device_poll(device);
-    if (res != ASTARTE_RESULT_OK) {
-        // First poll should not timeout as we should receive a connection ack.
-        LOG_ERR("Astarte device first poll failure."); // NOLINT
-        return;
-    }
-
-    while (!atomic_test_bit(&device_thread_flags, DEVICE_THREAD_FLAGS_TERMINATION)) {
+    while (!atomic_test_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
 
         res = astarte_device_poll(device);
@@ -241,32 +241,20 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
     k_sleep(K_MSEC(MSEC_PER_SEC));
 }
 
-static void connection_callback(astarte_device_connection_event_t event)
+static void device_tx_thread_entry_point(void *device_handle, void *unused1, void *unused2)
 {
-    (void) event;
-    LOG_INF("Astarte device connected."); // NOLINT
-}
+    astarte_result_t res = ASTARTE_RESULT_OK;
+    astarte_device_handle_t device = (astarte_device_handle_t) device_handle;
 
-static void disconnection_callback(astarte_device_disconnection_event_t event)
-{
-    (void) event;
-    LOG_INF("Astarte device disconnected"); // NOLINT
-}
+    (void) unused1;
+    (void) unused2;
 
-static void datastream_object_events_handler(astarte_device_datastream_object_event_t event)
-{
-    const char *i_name = event.data_event.interface_name;
-    const char *i_path = event.data_event.path;
-    astarte_object_entry_t *entries = event.entries;
-    size_t entries_length = event.entries_len;
+    k_sleep(K_SECONDS(CONFIG_DEVICE_TRANSMISSION_DELAY_SECONDS));
 
-    LOG_INF("Datastream object event, interface: %s, common path: %s", i_name, i_path); // NOLINT
+    LOG_INF("Transmitting some data using the Astarte device."); // NOLINT
 
-    utils_log_astarte_object(entries, entries_length);
-}
+    const char *interface_name = org_astarteplatform_zephyr_examples_DeviceAggregate.name;
 
-static void transmit_data(astarte_device_handle_t device)
-{
     astarte_object_entry_t entries[] = {
         astarte_object_entry_new("binaryblob_endpoint",
             astarte_individual_from_binaryblob(
@@ -306,10 +294,35 @@ static void transmit_data(astarte_device_handle_t device)
                 (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data))),
     };
 
-    astarte_result_t res = astarte_device_stream_aggregated(device,
-        org_astarteplatform_zephyr_examples_DeviceAggregate.name, "/sensor24", entries,
-        ARRAY_SIZE(entries), NULL);
+    res = astarte_device_stream_aggregated(
+        device, interface_name, "/sensor24", entries, ARRAY_SIZE(entries), NULL);
     if (res != ASTARTE_RESULT_OK) {
-        LOG_ERR("Error streaming the aggregate"); // NOLINT
+        LOG_INF("Astarte device transmission failure."); // NOLINT
     }
+
+    LOG_INF("Transmission completed."); // NOLINT
+}
+
+static void connection_callback(astarte_device_connection_event_t event)
+{
+    (void) event;
+    LOG_INF("Astarte device connected."); // NOLINT
+}
+
+static void disconnection_callback(astarte_device_disconnection_event_t event)
+{
+    (void) event;
+    LOG_INF("Astarte device disconnected"); // NOLINT
+}
+
+static void datastream_object_callback(astarte_device_datastream_object_event_t event)
+{
+    const char *interface_name = event.data_event.interface_name;
+    const char *path = event.data_event.path;
+    astarte_object_entry_t *entries = event.entries;
+    size_t entries_length = event.entries_len;
+
+    LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path); // NOLINT
+
+    utils_log_astarte_object(entries, entries_length);
 }

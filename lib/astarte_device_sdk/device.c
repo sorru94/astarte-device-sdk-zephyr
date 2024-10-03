@@ -103,6 +103,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->cbk_user_data = cfg->cbk_user_data;
 
     // Initializing the connection hashmap and status flags
+    handle->synchronization_completed = false;
     handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");

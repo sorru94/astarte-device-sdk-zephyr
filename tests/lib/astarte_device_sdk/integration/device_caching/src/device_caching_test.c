@@ -149,6 +149,30 @@ static bool astarte_individual_is_equal(astarte_individual_t first, astarte_indi
 ZTEST_SUITE(astarte_device_sdk_device_caching, NULL, device_caching_test_setup,
     device_caching_test_before, device_caching_test_after, device_caching_test_teardown); // NOLINT
 
+ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_synchronization) // NOLINT
+{
+    bool sync = false;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    ares = astarte_device_caching_synchronization_get(&sync);
+    zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+    zassert_equal(sync, false, "sync variable has been modified");
+
+    sync = true;
+    ares = astarte_device_caching_synchronization_get(&sync);
+    zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
+    zassert_equal(sync, true, "sync variable has been modified");
+
+    sync = true;
+    ares = astarte_device_caching_synchronization_set(sync);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+
+    sync = false;
+    ares = astarte_device_caching_synchronization_get(&sync);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+    zassert_equal(sync, true, "Sync variable not set correctly");
+}
+
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_store_introspection) // NOLINT
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;

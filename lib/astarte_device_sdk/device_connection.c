@@ -332,6 +332,10 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         device->connection_state = DEVICE_CONNECTED;
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+        astarte_result_t ares = astarte_device_caching_synchronization_set(true);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Synchronization state set failure %s.", astarte_result_to_name(ares));
+        }
 
         size_t intr_str_size = introspection_get_string_size(&device->introspection);
         intr_str = calloc(intr_str_size, sizeof(char));
@@ -343,7 +347,7 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         }
         introspection_fill_string(&device->introspection, intr_str, intr_str_size);
 
-        astarte_result_t ares = astarte_device_caching_introspection_check(intr_str, intr_str_size);
+        ares = astarte_device_caching_introspection_check(intr_str, intr_str_size);
         if (ares == ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION) {
             ASTARTE_LOG_DBG("Introspection requires updating.");
             ares = astarte_device_caching_introspection_store(intr_str, intr_str_size);
@@ -368,6 +372,15 @@ exit:
 
 static void state_machine_handshake_error_run(astarte_device_handle_t device)
 {
+    if (device->synchronization_completed) {
+        device->synchronization_completed = false;
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+        astarte_result_t ares = astarte_device_caching_synchronization_set(false);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Synchronization state set failure %s.", astarte_result_to_name(ares));
+        }
+#endif
+    }
     if (K_TIMEOUT_EQ(sys_timepoint_timeout(device->reconnection_timepoint), K_NO_WAIT)) {
         // Repeat the handshake procedure
         device->connection_state = DEVICE_START_HANDSHAKE;

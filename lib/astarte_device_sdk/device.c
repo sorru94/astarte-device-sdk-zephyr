@@ -103,7 +103,16 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->cbk_user_data = cfg->cbk_user_data;
 
     // Initializing the connection hashmap and status flags
-    handle->synchronization_completed = false;
+
+    bool synchronization_completed = false;
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_synchronization_get(&synchronization_completed);
+    if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+        ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));
+        goto failure;
+    }
+#endif
+    handle->synchronization_completed = synchronization_completed;
     handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");

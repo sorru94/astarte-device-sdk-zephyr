@@ -40,17 +40,26 @@ config DEVICE_TRANSMISSION_DELAY_SECONDS
         Use this setting to change how long after connection the device will transmit some data
         to Astarte.
 
-config DEVICE_THREAD_STACK_SIZE
-    int "Device thread stack size (Bytes)"
-    default 16384
+config DEVICE_RX_THREAD_STACK_SIZE
+    int "Device reception thread stack size (Bytes)"
+    default 12288
     help
-        Use this setting to change the size of the stack for the thread running the Astarte device.
+        Use this setting to change the size of the stack for the thread running the Astarte device
+        receiving functionality.
+
+config DEVICE_TX_THREAD_STACK_SIZE
+    int "Device transmission thread stack size (Bytes)"
+    default 8192
+    help
+        Use this setting to change the size of the stack for the thread running the Astarte device
+        transmitting functionality.
 
 config DEVICE_THREAD_PRIORITY
-    int "Device thread priority"
+    int "Device thread(s) priority"
     default 0
     help
-        Use this setting to change the priority of the thread running the Astarte device.
+        Use this setting to change the priority of the receive and transmit threads running the
+        Astarte device.
 
 config DEVICE_POLL_PERIOD_MS
     int "Device thread polling period (ms)"
@@ -66,13 +75,13 @@ config MQTT_CONNECTION_TIMEOUT_MS
 
 config MQTT_POLL_TIMEOUT_MS
     int "MQTT subsequent polling timeout (ms)"
-    default 200
+    default 500
     help
         Use this setting to change the MQTT polling timeout for subsequent polling operations.
 
 config HTTP_TIMEOUT_MS
     int "HTTP operations timeout (ms)"
-    default 500
+    default 3000
     help
         Use this setting to change the timeout for HTTP requests.
 

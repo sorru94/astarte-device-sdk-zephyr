@@ -23,9 +23,9 @@ ASTARTE_LOG_MODULE_REGISTER(
  * @brief Setup all the MQTT subscriptions for the device.
  *
  * @param[in] device Handle to the device instance.
- * @return 0 when all the subscription messages have been correctly sent, -1 otherwise.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static int setup_subscriptions(astarte_device_handle_t device);
+static astarte_result_t setup_subscriptions(astarte_device_handle_t device);
 /**
  * @brief Send the introspection for the device.
  *
@@ -68,9 +68,9 @@ static void state_machine_connected_run(astarte_device_handle_t device);
  * @brief Send the purge properties message for the device owned properties.
  *
  * @param[in] device Handle to the device instance.
- * @return 0 when the purge properies message has been correctly sent, -1 otherwise.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static int send_purge_device_properties(astarte_device_handle_t device);
+static astarte_result_t send_purge_device_properties(astarte_device_handle_t device);
 /**
  * @brief Send a single property if present in introspection and if device owned.
  *
@@ -89,9 +89,9 @@ static void send_device_owned_property(astarte_device_handle_t device, const cha
  * @brief Send the device owned properties to Astarte.
  *
  * @param[in] device Handle to the device instance.
- * @return 0 when the purge properies message has been correctly sent, -1 otherwise.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static int send_device_owned_properties(astarte_device_handle_t device);
+static astarte_result_t send_device_owned_properties(astarte_device_handle_t device);
 #endif
 
 /************************************************
@@ -208,7 +208,7 @@ astarte_result_t astarte_device_connection_poll(astarte_device_handle_t device)
  *         Static functions definitions         *
  ***********************************************/
 
-static int setup_subscriptions(astarte_device_handle_t device)
+static astarte_result_t setup_subscriptions(astarte_device_handle_t device)
 {
     const char *topic = device->control_consumer_prop_topic;
     ASTARTE_LOG_DBG("Subscribing to: %s", topic);
@@ -224,7 +224,7 @@ static int setup_subscriptions(astarte_device_handle_t device)
             char *topic = calloc(topic_len + 1, sizeof(char));
             if (!topic) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-                return -1;
+                return ASTARTE_RESULT_OUT_OF_MEMORY;
             }
 
             int ret
@@ -233,7 +233,7 @@ static int setup_subscriptions(astarte_device_handle_t device)
             if (ret != topic_len) {
                 ASTARTE_LOG_ERR("Error encoding MQTT topic.");
                 free(topic);
-                return -1;
+                return ASTARTE_RESULT_INTERNAL_ERROR;
             }
 
             ASTARTE_LOG_DBG("Subscribing to: %s", topic);
@@ -241,7 +241,7 @@ static int setup_subscriptions(astarte_device_handle_t device)
             free(topic);
         }
     }
-    return 0;
+    return ASTARTE_RESULT_OK;
 }
 
 static void send_introspection(astarte_device_handle_t device, char *intr_str)
@@ -291,7 +291,7 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     }
 #endif
 
-    if (setup_subscriptions(device) != 0) {
+    if (setup_subscriptions(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
         goto exit;
@@ -299,12 +299,12 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     send_introspection(device, intr_str);
     send_emptycache(device);
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
-    if (send_purge_device_properties(device) != 0) {
+    if (send_purge_device_properties(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
         goto exit;
     }
-    if (send_device_owned_properties(device) != 0) {
+    if (send_device_owned_properties(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
         goto exit;
@@ -400,9 +400,8 @@ static void state_machine_connected_run(astarte_device_handle_t device)
 }
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
-static int send_purge_device_properties(astarte_device_handle_t device)
+static astarte_result_t send_purge_device_properties(astarte_device_handle_t device)
 {
-    int res = 0;
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char *intr_str = NULL;
     uint8_t *payload = NULL;
@@ -412,14 +411,13 @@ static int send_purge_device_properties(astarte_device_handle_t device)
         &device->introspection, NULL, &intr_str_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error getting cached properties string: %s", astarte_result_to_name(ares));
-        res = -1;
         goto exit;
     }
     if (intr_str_size != 0) {
         intr_str = calloc(intr_str_size, sizeof(char));
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            res = -1;
+            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
             goto exit;
         }
 
@@ -427,7 +425,6 @@ static int send_purge_device_properties(astarte_device_handle_t device)
             &device->introspection, intr_str, &intr_str_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Can't get cached properties string: %s", astarte_result_to_name(ares));
-            res = -1;
             goto exit;
         }
     }
@@ -441,7 +438,7 @@ static int send_purge_device_properties(astarte_device_handle_t device)
     payload = calloc(payload_size, sizeof(uint8_t));
     if (!payload) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        res = -1;
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto exit;
     }
     // Fill the first 32 bits of the payload
@@ -452,7 +449,7 @@ static int send_purge_device_properties(astarte_device_handle_t device)
         (char unsigned *) compression_input, compression_input_len);
     if (compress_res != Z_OK) {
         ASTARTE_LOG_ERR("Error compressing the purge properties message %d.", compress_res);
-        res = -1;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }
     // 'astarte_zlib_compress' updates 'compressed_len' to the actual size of the compressed data
@@ -461,7 +458,7 @@ static int send_purge_device_properties(astarte_device_handle_t device)
     if (payload_size > INT_MAX) {
         // MQTT supports sending a maximum payload length of INT_MAX
         ASTARTE_LOG_ERR("Purge properties payload is too long for a single MQTT message.");
-        res = -1;
+        ares = ASTARTE_RESULT_MQTT_ERROR;
         goto exit;
     }
 
@@ -475,7 +472,7 @@ static int send_purge_device_properties(astarte_device_handle_t device)
 exit:
     free(intr_str);
     free(payload);
-    return res;
+    return ares;
 }
 
 static void send_device_owned_property(astarte_device_handle_t device, const char *interface_name,
@@ -501,9 +498,8 @@ static void send_device_owned_property(astarte_device_handle_t device, const cha
     }
 }
 
-static int send_device_owned_properties(astarte_device_handle_t device)
+static astarte_result_t send_device_owned_properties(astarte_device_handle_t device)
 {
-    int res = 0;
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_device_caching_property_iter_t iter = { 0 };
     char *interface_name = NULL;
@@ -513,7 +509,6 @@ static int send_device_owned_properties(astarte_device_handle_t device)
     ares = astarte_device_caching_property_iterator_new(&iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
-        res = -1;
         goto end;
     }
 
@@ -524,7 +519,6 @@ static int send_device_owned_properties(astarte_device_handle_t device)
             &iter, NULL, &interface_name_size, NULL, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            res = -1;
             goto end;
         }
 
@@ -533,7 +527,7 @@ static int send_device_owned_properties(astarte_device_handle_t device)
         path = calloc(path_size, sizeof(char));
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            res = -1;
+            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
             goto end;
         }
 
@@ -541,7 +535,6 @@ static int send_device_owned_properties(astarte_device_handle_t device)
             &iter, interface_name, &interface_name_size, path, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            res = -1;
             goto end;
         }
 
@@ -549,7 +542,6 @@ static int send_device_owned_properties(astarte_device_handle_t device)
         ares = astarte_device_caching_property_load(interface_name, path, &major, &individual);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties load property error: %s", astarte_result_to_name(ares));
-            res = -1;
             goto end;
         }
 
@@ -565,7 +557,6 @@ static int send_device_owned_properties(astarte_device_handle_t device)
         ares = astarte_device_caching_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_ERR("Iterator next error: %s", astarte_result_to_name(ares));
-            res = -1;
             goto end;
         }
     }
@@ -576,6 +567,6 @@ end:
     free(interface_name);
     free(path);
     astarte_device_caching_property_destroy_loaded(individual);
-    return res;
+    return (ares == ASTARTE_RESULT_NOT_FOUND) ? ASTARTE_RESULT_OK : ares;
 }
 #endif

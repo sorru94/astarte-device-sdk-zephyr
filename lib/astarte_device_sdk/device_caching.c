@@ -30,9 +30,7 @@ ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CAC
 #define NVS_PARTITION_SIZE FIXED_PARTITION_SIZE(NVS_PARTITION)
 
 #define SYNCHRONIZATION_NAMESPACE "synchronization_namespace"
-#define SYNCHRONIZATION_KEY "synchronization_string"
-#define SYNCHRONIZATION_VALUE_TRUE "true"
-#define SYNCHRONIZATION_VALUE_FALSE "false"
+#define SYNCHRONIZATION_KEY "synchronization_status"
 #define INTROSPECTION_NAMESPACE "introspection_namespace"
 #define INTROSPECTION_KEY "introspection_string"
 #define PROPERTIES_NAMESPACE "properties_namespace"
@@ -86,7 +84,6 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_kv_storage_t kv_storage = { 0 };
-    size_t read_sync_size = 0;
 
     ASTARTE_LOG_DBG("Getting stored synchronization");
 
@@ -96,7 +93,10 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
         goto exit;
     }
 
-    ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, NULL, &read_sync_size);
+    bool read_sync = false;
+    size_t read_sync_size = sizeof(read_sync);
+
+    ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, &read_sync, &read_sync_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
         goto exit;
@@ -106,24 +106,10 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
         goto exit;
     }
 
-    char read_sync[MAX(sizeof(SYNCHRONIZATION_VALUE_TRUE), sizeof(SYNCHRONIZATION_VALUE_FALSE))]
-        = { 0 };
-
-    ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, read_sync, &read_sync_size);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
-        goto exit;
-    }
-
-    if (strncmp(SYNCHRONIZATION_VALUE_TRUE, read_sync,
-            MIN(sizeof(SYNCHRONIZATION_VALUE_TRUE), read_sync_size))
-        != 0) {
+    if (!read_sync) {
         ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
-        *sync = false;
-        goto exit;
     }
-
-    *sync = true;
+    *sync = read_sync;
 
 exit:
     astarte_kv_storage_destroy(kv_storage);
@@ -136,7 +122,7 @@ astarte_result_t astarte_device_caching_synchronization_set(bool sync)
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_kv_storage_t kv_storage = { 0 };
 
-    ASTARTE_LOG_DBG("Storing synchronization: %s", (sync) ? "true" : "false");
+    ASTARTE_LOG_DBG("Storing synchronization: %s", (sync) ? "synchronized" : "not synchronized");
 
     ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
     if (ares != ASTARTE_RESULT_OK) {
@@ -144,13 +130,7 @@ astarte_result_t astarte_device_caching_synchronization_set(bool sync)
         return ares;
     }
 
-    if (sync) {
-        ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY,
-            SYNCHRONIZATION_VALUE_TRUE, sizeof(SYNCHRONIZATION_VALUE_TRUE));
-    } else {
-        ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY,
-            SYNCHRONIZATION_VALUE_FALSE, sizeof(SYNCHRONIZATION_VALUE_FALSE));
-    }
+    ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY, &sync, sizeof(sync));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching synchronization: %s.", astarte_result_to_name(ares));
     }

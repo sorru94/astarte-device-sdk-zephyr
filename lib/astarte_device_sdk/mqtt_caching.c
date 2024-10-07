@@ -5,6 +5,7 @@
  */
 #include "mqtt_caching.h"
 
+#include "heap.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_DECLARE(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEVEL);
@@ -54,14 +55,14 @@ void mqtt_caching_insert_message(
         goto error;
     }
 
-    map_entry = calloc(1, sizeof(struct mqtt_caching_map_entry));
+    map_entry = astarte_calloc(1, sizeof(struct mqtt_caching_map_entry));
     if (!map_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         goto error;
     }
 
     if (message.topic) {
-        topic_cpy = calloc(strlen(message.topic) + 1, sizeof(char));
+        topic_cpy = astarte_calloc(strlen(message.topic) + 1, sizeof(char));
         if (!topic_cpy) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             goto error;
@@ -70,7 +71,7 @@ void mqtt_caching_insert_message(
     }
 
     if (message.data && (message.data_size != 0)) {
-        data_cpy = calloc(message.data_size, sizeof(uint8_t));
+        data_cpy = astarte_calloc(message.data_size, sizeof(uint8_t));
         if (!data_cpy) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             goto error;
@@ -94,9 +95,9 @@ void mqtt_caching_insert_message(
     return;
 
 error:
-    free(topic_cpy);
-    free(data_cpy);
-    free(map_entry);
+    astarte_free(topic_cpy);
+    astarte_free(data_cpy);
+    astarte_free(map_entry);
 }
 
 bool mqtt_caching_find_message(struct sys_hashmap *map, uint16_t message_id)
@@ -151,12 +152,12 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
         // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(value);
         if (map_entry->message.topic) {
-            free(map_entry->message.topic);
+            astarte_free(map_entry->message.topic);
         }
         if (map_entry->message.data) {
-            free(map_entry->message.data);
+            astarte_free(map_entry->message.data);
         }
-        free(map_entry);
+        astarte_free(map_entry);
     } else {
         ASTARTE_LOG_ERR("Message ID (%d) not found in hashmap.", message_id);
     }

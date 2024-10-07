@@ -10,6 +10,7 @@
 #include "device_caching.h"
 #include "device_tx.h"
 #endif
+#include "heap.h"
 
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(
@@ -221,7 +222,7 @@ static astarte_result_t setup_subscriptions(astarte_device_handle_t device)
         if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
             size_t topic_len = strlen(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "///#")
                 + ASTARTE_DEVICE_ID_LEN + strlen(interface->name);
-            char *topic = calloc(topic_len + 1, sizeof(char));
+            char *topic = astarte_calloc(topic_len + 1, sizeof(char));
             if (!topic) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
                 return ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -232,13 +233,13 @@ static astarte_result_t setup_subscriptions(astarte_device_handle_t device)
                     device->device_id, interface->name);
             if (ret != topic_len) {
                 ASTARTE_LOG_ERR("Error encoding MQTT topic.");
-                free(topic);
+                astarte_free(topic);
                 return ASTARTE_RESULT_INTERNAL_ERROR;
             }
 
             ASTARTE_LOG_DBG("Subscribing to: %s", topic);
             astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, NULL);
-            free(topic);
+            astarte_free(topic);
         }
     }
     return ASTARTE_RESULT_OK;
@@ -265,7 +266,7 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     char *intr_str = NULL;
     size_t intr_str_size = introspection_get_string_size(&device->introspection);
 
-    intr_str = calloc(intr_str_size, sizeof(char));
+    intr_str = astarte_calloc(intr_str_size, sizeof(char));
     if (!intr_str) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
@@ -314,7 +315,7 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     device->connection_state = DEVICE_END_HANDSHAKE;
 
 exit:
-    free(intr_str);
+    astarte_free(intr_str);
 }
 
 static void state_machine_end_handshake_run(astarte_device_handle_t device)
@@ -338,7 +339,7 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         }
 
         size_t intr_str_size = introspection_get_string_size(&device->introspection);
-        intr_str = calloc(intr_str_size, sizeof(char));
+        intr_str = astarte_calloc(intr_str_size, sizeof(char));
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR.");
@@ -367,7 +368,7 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
     }
 
 exit:
-    free(intr_str);
+    astarte_free(intr_str);
 }
 
 static void state_machine_handshake_error_run(astarte_device_handle_t device)
@@ -414,7 +415,7 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
         goto exit;
     }
     if (intr_str_size != 0) {
-        intr_str = calloc(intr_str_size, sizeof(char));
+        intr_str = astarte_calloc(intr_str_size, sizeof(char));
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -435,7 +436,7 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
     uLongf compressed_len = compressBound(compression_input_len);
     // Allocate enough memory for the payload
     size_t payload_size = 4 + compressed_len;
-    payload = calloc(payload_size, sizeof(uint8_t));
+    payload = astarte_calloc(payload_size, sizeof(uint8_t));
     if (!payload) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -470,8 +471,8 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
     astarte_mqtt_publish(&device->astarte_mqtt, topic, payload, payload_size, qos, NULL);
 
 exit:
-    free(intr_str);
-    free(payload);
+    astarte_free(intr_str);
+    astarte_free(payload);
     return ares;
 }
 
@@ -523,8 +524,8 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
         }
 
         // Allocate space for the name and path
-        interface_name = calloc(interface_name_size, sizeof(char));
-        path = calloc(path_size, sizeof(char));
+        interface_name = astarte_calloc(interface_name_size, sizeof(char));
+        path = astarte_calloc(path_size, sizeof(char));
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -547,9 +548,9 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
 
         send_device_owned_property(device, interface_name, path, major, individual);
 
-        free(interface_name);
+        astarte_free(interface_name);
         interface_name = NULL;
-        free(path);
+        astarte_free(path);
         path = NULL;
         astarte_device_caching_property_destroy_loaded(individual);
         individual = (astarte_individual_t) { 0 };
@@ -564,8 +565,8 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
 end:
     // Free all data
     astarte_device_caching_property_iterator_destroy(iter);
-    free(interface_name);
-    free(path);
+    astarte_free(interface_name);
+    astarte_free(path);
     astarte_device_caching_property_destroy_loaded(individual);
     return (ares == ASTARTE_RESULT_NOT_FOUND) ? ASTARTE_RESULT_OK : ares;
 }

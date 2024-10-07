@@ -14,6 +14,7 @@
 
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/result.h"
+#include "heap.h"
 #include "interface_private.h"
 #include "log.h"
 
@@ -85,7 +86,7 @@ astarte_result_t introspection_init(introspection_t *introspection)
     }
 
     *introspection = (introspection_t) {
-        .list = calloc(1, sizeof(sys_dlist_t)),
+        .list = astarte_calloc(1, sizeof(sys_dlist_t)),
     };
 
     if (!introspection->list) {
@@ -245,13 +246,13 @@ void introspection_free(introspection_t introspection)
             node_free(alloc_node);
         }
     }
-    free(introspection.list);
+    astarte_free(introspection.list);
 }
 
 static inline void node_free(introspection_node_t *alloc_node)
 {
     sys_dlist_remove(&alloc_node->node);
-    free((void *) alloc_node);
+    astarte_free((void *) alloc_node);
 }
 
 static introspection_node_t *find_node_by_name(
@@ -332,7 +333,7 @@ static astarte_result_t check_interface_update(introspection_t *introspection,
 static astarte_result_t append_introspection_node(
     introspection_t *introspection, const astarte_interface_t *interface)
 {
-    introspection_node_t *alloc_node = calloc(1, sizeof(introspection_node_t));
+    introspection_node_t *alloc_node = astarte_calloc(1, sizeof(introspection_node_t));
 
     if (!alloc_node) {
         return ASTARTE_RESULT_OUT_OF_MEMORY;

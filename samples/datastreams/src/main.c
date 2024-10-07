@@ -18,6 +18,7 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL); // NOLINT
 
@@ -106,10 +107,40 @@ static void datastream_individual_callback(astarte_device_datastream_individual_
  * Global functions definition
  ***********************************************/
 
+#define PTR_STR_MAXLEN (sizeof(void *) * 2 + 2)
+void thread_foreach_cbk(const struct k_thread *thread, void *user_data)
+{
+    int err = 0;
+    k_tid_t thread_id = (k_tid_t) thread;
+    const char *name = k_thread_name_get(thread_id);
+    char hexname[PTR_STR_MAXLEN + 1];
+    if (!name || name[0] == '\0') {
+        name = hexname;
+        snprintk(hexname, sizeof(hexname), "%p", (void *) thread);
+    }
+
+    size_t unused = 0U;
+    err = k_thread_stack_space_get(thread, &unused);
+    if (err) {
+        LOG_ERR("Could not read the unused space for thread %s", name); // NOLINT
+        unused = 0;
+    }
+
+    if ((strncmp(name, "RX_THREAD", strlen("RX_THREAD")) == 0)
+        || (strncmp(name, "TX_THREAD", strlen("TX_THREAD")) == 0)) {
+        LOG_WRN("Thread %s of stack size: %u and delta: %u", name, thread->stack_info.size,
+            thread->stack_info.delta);
+        LOG_WRN("Stack unused: %u Bytes, stack used %u (%f)", unused,
+            thread->stack_info.size - unused,
+            100.0 * (double) (thread->stack_info.size - unused) / (double) thread->stack_info.size);
+    }
+}
+
 int main(void)
 {
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
+    k_thread_name_set(NULL, "MAIN_THREAD");
 
     // Initialize WiFi/Ethernet driver
 #if defined(CONFIG_WIFI)
@@ -131,12 +162,14 @@ int main(void)
 #endif
 
     // Spawn a new thread for the Astarte device
-    k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
+    k_tid_t rx_tid = k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
         K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point, NULL,
         NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
-    k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
+    k_thread_name_set(rx_tid, "RX_THREAD");
+    k_tid_t tx_tid = k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
         K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point, NULL,
         NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(tx_tid, "TX_THREAD");
 
     // Wait for a predefined operational time.
     k_timepoint_t disconnect_timepoint
@@ -175,6 +208,9 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     ARG_UNUSED(arg2);
     ARG_UNUSED(arg3);
 
+    k_sleep(K_MSEC(MSEC_PER_SEC));
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
     astarte_result_t res = ASTARTE_RESULT_OK;
 
     // Create a new instance of an Astarte device
@@ -204,14 +240,20 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
         return;
     }
 
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
     // Add the message to the queue for the transmit thread
     k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     res = astarte_device_connect(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device connection failure."); // NOLINT
         return;
     }
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     while (!atomic_test_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
@@ -225,7 +267,11 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
         k_sleep(sys_timepoint_timeout(timepoint));
     }
 
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     res = astarte_device_disconnect(device);
     if (res != ASTARTE_RESULT_OK) {
@@ -233,12 +279,16 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
         return;
     }
 
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
     LOG_INF("Astarte device will now be destroyed."); // NOLINT
     res = astarte_device_destroy(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device destroy failure."); // NOLINT
         return;
     }
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     LOG_INF("Astarte thread will now be terminated."); // NOLINT
 
@@ -313,6 +363,8 @@ static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3)
             LOG_INF("Astarte device transmission failure."); // NOLINT
         }
     }
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     LOG_INF("Transmission completed."); // NOLINT
 }

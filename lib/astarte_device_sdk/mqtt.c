@@ -84,6 +84,26 @@ static void handle_pubcomp_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubco
 static void handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_suback_param suback);
 
 /************************************************
+ *               Inline functions               *
+ ***********************************************/
+
+/**
+ * @brief A simple wrapper for realloc(), invariant of which libc provides it.
+ *
+ * @param[in] ptr Memory allocation to reallocate, can be NULL.
+ * @param[in] size New size of the memory allocation.
+ */
+static inline void *hashmap_custom_allocator(void *ptr, size_t size)
+{
+    if (size == 0) {
+        astarte_free(ptr);
+        return NULL;
+    }
+
+    return astarte_realloc(ptr, size);
+}
+
+/************************************************
  *       Callbacks declaration/definition       *
  ***********************************************/
 
@@ -277,7 +297,7 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         .config = &astarte_mqtt->out_msg_map_config,
         .data = &astarte_mqtt->out_msg_map_data,
         .hash_func = sys_hash32,
-        .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
+        .alloc_func = hashmap_custom_allocator,
     };
     // NOLINTNEXTLINE
     astarte_mqtt->in_msg_map_config = (const struct sys_hashmap_config) SYS_HASHMAP_CONFIG(
@@ -288,7 +308,7 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
         .config = &astarte_mqtt->in_msg_map_config,
         .data = &astarte_mqtt->in_msg_map_data,
         .hash_func = sys_hash32,
-        .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
+        .alloc_func = hashmap_custom_allocator,
     };
 
     // Initialize the mutex

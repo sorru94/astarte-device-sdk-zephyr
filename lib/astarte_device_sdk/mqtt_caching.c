@@ -165,5 +165,7 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
 
 void mqtt_caching_clear_messages(struct sys_hashmap *map)
 {
+    ASTARTE_LOG_DBG("Removing all messages from hashmap.");
+
     sys_hashmap_clear(map, NULL, NULL);
 }

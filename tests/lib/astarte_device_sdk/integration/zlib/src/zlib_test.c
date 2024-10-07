@@ -41,7 +41,7 @@ ZTEST(astarte_device_sdk_zlib, test_zlib_compress_empty) // NOLINT
 
     char output_text[ARRAY_SIZE(input_text)] = { 0 };
     uLongf output_text_len = ARRAY_SIZE(output_text);
-    res = uncompress(output_text, &output_text_len, exp_compressed, compressed_len);
+    res = astarte_zlib_uncompress(output_text, &output_text_len, exp_compressed, compressed_len);
     zassert_equal(res, Z_OK, "compress unexpected result: %d", res);
     zassert_mem_equal(output_text, input_text, ARRAY_SIZE(input_text),
         "Incorrectly decompressed data '%s'", output_text);
@@ -77,7 +77,7 @@ ZTEST(astarte_device_sdk_zlib, test_zlib_compress) // NOLINT
 
     char output_text[ARRAY_SIZE(input_text)] = { 0 };
     uLongf output_text_len = ARRAY_SIZE(output_text);
-    res = uncompress(output_text, &output_text_len, exp_compressed, compressed_len);
+    res = astarte_zlib_uncompress(output_text, &output_text_len, exp_compressed, compressed_len);
     zassert_equal(res, Z_OK, "compress unexpected result: %d", res);
     zassert_mem_equal(output_text, input_text, ARRAY_SIZE(input_text),
         "Incorrectly decompressed data '%s'", output_text);

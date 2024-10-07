@@ -5,13 +5,10 @@
  */
 #include "device_rx.h"
 
-#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
-#include <zlib.h>
-#endif
-
 #include "bson_deserializer.h"
 #include "data_validation.h"
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include "astarte_zlib.h"
 #include "device_caching.h"
 #endif
 #include "heap.h"
@@ -211,8 +208,8 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
     }
 
     if (decomp_data_len != 0) {
-        int uncompress_res = uncompress((char unsigned *) decomp_data, &decomp_data_len,
-            (char unsigned *) data + 4, data_len - 4);
+        int uncompress_res = astarte_zlib_uncompress((char unsigned *) decomp_data,
+            &decomp_data_len, (char unsigned *) data + 4, data_len - 4);
         if (uncompress_res != Z_OK) {
             ASTARTE_LOG_ERR("Decompression error %d.", uncompress_res);
             goto exit;

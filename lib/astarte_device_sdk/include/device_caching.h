@@ -33,6 +33,24 @@ extern "C" {
 #endif
 
 /**
+ * @brief Get the synchronization state.
+ *
+ * @param[out] sync Synchronization state, this will be set to true if a proper synchronization
+ * has been previously achieved with Astarte.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_caching_synchronization_get(bool *sync);
+
+/**
+ * @brief Set the synchronization state.
+ *
+ * @param[in] sync Synchronization state, this should be set to true if a proper synchronization
+ * has been achieved with Astarte.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_caching_synchronization_set(bool sync);
+
+/**
  * @brief Cache in the introspection for this device.
  *
  * @param[in] intr Buffer containing the stringified version of the device introspection

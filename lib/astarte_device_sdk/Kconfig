@@ -182,9 +182,9 @@ config ASTARTE_DEVICE_SDK_ADVANCED_HEAP_SIZE
 	int "Size of the dedicate heap for the Astarte devices"
 	depends on ASTARTE_DEVICE_SDK
 	depends on ASTARTE_DEVICE_SDK_ADVANCED_ENABLE_HEAP
-	default 8192
+	default 16384
 	help
-	  This size should be at least 8k for a single device.
+	  This size should be at least 16k for a single device with low throughput requirements.
 
 menu "Code generation"
 

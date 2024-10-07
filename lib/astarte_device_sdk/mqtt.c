@@ -9,6 +9,7 @@
 #include <zephyr/net/socket.h>
 #include <zephyr/net/tls_credentials.h>
 
+#include "getaddrinfo.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEVEL);
@@ -322,7 +323,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     struct zsock_addrinfo hints = { 0 };
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    int getaddrinfo_rc = zsock_getaddrinfo(
+    int getaddrinfo_rc = astarte_getaddrinfo(
         astarte_mqtt->broker_hostname, astarte_mqtt->broker_port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
         ASTARTE_LOG_ERR("Unable to resolve broker address %s", zsock_gai_strerror(getaddrinfo_rc));
@@ -388,7 +389,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 exit:
     // Free the broker address info
     if (broker_addrinfo) {
-        zsock_freeaddrinfo(broker_addrinfo);
+        astarte_freeaddrinfo(broker_addrinfo);
     }
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);

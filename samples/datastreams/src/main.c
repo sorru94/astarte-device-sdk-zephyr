@@ -53,12 +53,21 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
 #define MAIN_THREAD_SLEEP_MS 500
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-K_MSGQ_DEFINE(device_msgq, sizeof(astarte_device_handle_t), 1, 1);
+K_MSGQ_DEFINE(device_msgq, sizeof(astarte_device_handle_t), 6, 1);
 
-#define DEVICE_RX_THREAD_FLAGS_TERMINATION 1U
-static atomic_t device_rx_thread_flags;
-K_THREAD_STACK_DEFINE(device_rx_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
-static struct k_thread device_rx_thread_data;
+#define DEVICE_MANAGEMENT_THREAD_FLAGS_TERMINATION 1U
+static atomic_t device_management_thread_flags;
+
+K_THREAD_STACK_DEFINE(device_instantiation_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_instantiation_thread_data;
+K_THREAD_STACK_DEFINE(device_connection_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_connection_thread_data;
+K_THREAD_STACK_DEFINE(device_polling_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_polling_thread_data;
+K_THREAD_STACK_DEFINE(device_disconnection_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_disconnection_thread_data;
+K_THREAD_STACK_DEFINE(device_destruction_thread_stack_area, CONFIG_DEVICE_RX_THREAD_STACK_SIZE);
+static struct k_thread device_destruction_thread_data;
 
 K_THREAD_STACK_DEFINE(device_tx_thread_stack_area, CONFIG_DEVICE_TX_THREAD_STACK_SIZE);
 static struct k_thread device_tx_thread_data;
@@ -75,7 +84,11 @@ static struct k_thread device_tx_thread_data;
  * @param arg2 Unused parameter.
  * @param arg3 Unused parameter.
  */
-static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3);
+static void device_instantiation_thread_entry_point(void *arg1, void *arg2, void *arg3);
+static void device_connection_thread_entry_point(void *arg1, void *arg2, void *arg3);
+static void device_polling_thread_entry_point(void *arg1, void *arg2, void *arg3);
+static void device_disconnection_thread_entry_point(void *arg1, void *arg2, void *arg3);
+static void device_destruction_thread_entry_point(void *arg1, void *arg2, void *arg3);
 /**
  * @brief Entry point for the Astarte device transmission thread.
  *
@@ -126,7 +139,11 @@ void thread_foreach_cbk(const struct k_thread *thread, void *user_data)
         unused = 0;
     }
 
-    if ((strncmp(name, "RX_THREAD", strlen("RX_THREAD")) == 0)
+    if ((strncmp(name, "INSTANTIATION_THREAD", strlen("INSTANTIATION_THREAD")) == 0)
+        || (strncmp(name, "CONNECTION_THREAD", strlen("CONNECTION_THREAD")) == 0)
+        || (strncmp(name, "POLLING_THREAD", strlen("POLLING_THREAD")) == 0)
+        || (strncmp(name, "DISCONNECTION_THREAD", strlen("DISCONNECTION_THREAD")) == 0)
+        || (strncmp(name, "DESTRUCTION_THREAD", strlen("DESTRUCTION_THREAD")) == 0)
         || (strncmp(name, "TX_THREAD", strlen("TX_THREAD")) == 0)) {
         LOG_WRN("Thread %s of stack size: %u and delta: %u", name, thread->stack_info.size,
             thread->stack_info.delta);
@@ -162,14 +179,12 @@ int main(void)
 #endif
 
     // Spawn a new thread for the Astarte device
-    k_tid_t rx_tid = k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point, NULL,
-        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
-    k_thread_name_set(rx_tid, "RX_THREAD");
-    k_tid_t tx_tid = k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point, NULL,
-        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
-    k_thread_name_set(tx_tid, "TX_THREAD");
+    k_tid_t instantiation_tid
+        = k_thread_create(&device_instantiation_thread_data, device_instantiation_thread_stack_area,
+            K_THREAD_STACK_SIZEOF(device_instantiation_thread_stack_area),
+            device_instantiation_thread_entry_point, NULL, NULL, NULL,
+            CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(instantiation_tid, "INSTANTIATION_THREAD");
 
     // Wait for a predefined operational time.
     k_timepoint_t disconnect_timepoint
@@ -185,10 +200,10 @@ int main(void)
     }
 
     // Signal to the Astarte thread that is should terminate.
-    atomic_set_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION);
+    atomic_set_bit(&device_management_thread_flags, DEVICE_MANAGEMENT_THREAD_FLAGS_TERMINATION);
 
     // Wait for the Astarte thread to terminate.
-    if (k_thread_join(&device_rx_thread_data, K_FOREVER) != 0) {
+    if (k_thread_join(&device_instantiation_thread_data, K_FOREVER) != 0) {
         LOG_ERR("Failed in waiting for the Astarte thread to terminate."); // NOLINT
     }
 
@@ -202,13 +217,12 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
+static void device_instantiation_thread_entry_point(void *arg1, void *arg2, void *arg3)
 {
     ARG_UNUSED(arg1);
     ARG_UNUSED(arg2);
     ARG_UNUSED(arg3);
 
-    k_sleep(K_MSEC(MSEC_PER_SEC));
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
     astarte_result_t res = ASTARTE_RESULT_OK;
@@ -242,10 +256,27 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
-    // Add the message to the queue for the transmit thread
+    // Add the message to the queue for the connect thread
     k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+    k_tid_t connection_tid
+        = k_thread_create(&device_connection_thread_data, device_connection_thread_stack_area,
+            K_THREAD_STACK_SIZEOF(device_connection_thread_stack_area),
+            device_connection_thread_entry_point, NULL, NULL, NULL,
+            CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(connection_tid, "CONNECTION_THREAD");
+}
+static void device_connection_thread_entry_point(void *arg1, void *arg2, void *arg3)
+{
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
+
+    astarte_device_handle_t device = NULL;
+    k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
+    astarte_result_t res = ASTARTE_RESULT_OK;
 
     res = astarte_device_connect(device);
     if (res != ASTARTE_RESULT_OK) {
@@ -255,7 +286,35 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
-    while (!atomic_test_bit(&device_rx_thread_flags, DEVICE_RX_THREAD_FLAGS_TERMINATION)) {
+    // Add the message to the queue for the polling and transmission thread
+    k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+    k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+    k_tid_t polling_tid
+        = k_thread_create(&device_polling_thread_data, device_polling_thread_stack_area,
+            K_THREAD_STACK_SIZEOF(device_polling_thread_stack_area),
+            device_polling_thread_entry_point, NULL, NULL, NULL,
+            CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(polling_tid, "POLLING_THREAD");
+    k_tid_t tx_tid = k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point, NULL,
+        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(tx_tid, "TX_THREAD");
+}
+static void device_polling_thread_entry_point(void *arg1, void *arg2, void *arg3)
+{
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
+
+    astarte_device_handle_t device = NULL;
+    k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
+    while (!atomic_test_bit(
+        &device_management_thread_flags, DEVICE_MANAGEMENT_THREAD_FLAGS_TERMINATION)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
 
         res = astarte_device_poll(device);
@@ -269,10 +328,29 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
-    LOG_INF("End of loop, disconnection imminent."); // NOLINT
+    // Add the message to the queue for the disconnection thread
+    k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+    k_tid_t disconnection_tid
+        = k_thread_create(&device_disconnection_thread_data, device_disconnection_thread_stack_area,
+            K_THREAD_STACK_SIZEOF(device_disconnection_thread_stack_area),
+            device_disconnection_thread_entry_point, NULL, NULL, NULL,
+            CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(disconnection_tid, "DISCONNECTION_THREAD");
+}
+static void device_disconnection_thread_entry_point(void *arg1, void *arg2, void *arg3)
+{
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
+
+    astarte_device_handle_t device = NULL;
+    k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 
+    astarte_result_t res = ASTARTE_RESULT_OK;
+
+    LOG_INF("End of loop, disconnection imminent."); // NOLINT
     res = astarte_device_disconnect(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device disconnection failure."); // NOLINT
@@ -280,6 +358,28 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     }
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
+    // Add the message to the queue for the destruction thread
+    k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
+    k_tid_t destruction_tid
+        = k_thread_create(&device_destruction_thread_data, device_destruction_thread_stack_area,
+            K_THREAD_STACK_SIZEOF(device_destruction_thread_stack_area),
+            device_destruction_thread_entry_point, NULL, NULL, NULL,
+            CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(destruction_tid, "DESTRUCTION_THREAD");
+}
+static void device_destruction_thread_entry_point(void *arg1, void *arg2, void *arg3)
+{
+    ARG_UNUSED(arg1);
+    ARG_UNUSED(arg2);
+    ARG_UNUSED(arg3);
+
+    astarte_device_handle_t device = NULL;
+    k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
+    astarte_result_t res = ASTARTE_RESULT_OK;
 
     LOG_INF("Astarte device will now be destroyed."); // NOLINT
     res = astarte_device_destroy(device);
@@ -289,10 +389,6 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     }
 
     k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
-
-    LOG_INF("Astarte thread will now be terminated."); // NOLINT
-
-    k_sleep(K_MSEC(MSEC_PER_SEC));
 }
 
 static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3)
@@ -301,10 +397,12 @@ static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     ARG_UNUSED(arg2);
     ARG_UNUSED(arg3);
 
-    astarte_result_t res = ASTARTE_RESULT_OK;
-
     astarte_device_handle_t device = NULL;
     k_msgq_get(&device_msgq, (void *) &device, K_FOREVER);
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
+
+    astarte_result_t res = ASTARTE_RESULT_OK;
 
     k_sleep(K_SECONDS(CONFIG_DEVICE_TRANSMISSION_DELAY_SECONDS));
 
@@ -364,9 +462,9 @@ static void device_tx_thread_entry_point(void *arg1, void *arg2, void *arg3)
         }
     }
 
-    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
-
     LOG_INF("Transmission completed."); // NOLINT
+
+    k_thread_foreach_unlocked(thread_foreach_cbk, NULL);
 }
 
 static void connection_callback(astarte_device_connection_event_t event)

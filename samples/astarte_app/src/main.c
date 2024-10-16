@@ -26,11 +26,7 @@
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
 
-#if defined(CONFIG_WIFI)
-#include "wifi.h"
-#else
 #include "eth.h"
-#endif
 
 #include "utils.h"
 
@@ -154,17 +150,12 @@ int main(void)
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
 
-    // Initialize WiFi/Ethernet driver
-#if defined(CONFIG_WIFI)
-    LOG_INF("Initializing WiFi driver."); // NOLINT
-    wifi_init();
-#else
+    // Initialize Ethernet driver
     LOG_INF("Initializing Ethernet driver."); // NOLINT
     if (eth_connect() != 0) {
         LOG_ERR("Connectivity intialization failed!"); // NOLINT
         return -1;
     }
-#endif
 
     // Add TLS certificate if required
 #if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
@@ -184,11 +175,7 @@ int main(void)
 
     while (!atomic_test_bit(&device_thread_flags, THREAD_FLAGS_TX_COMPLETE)) {
         // Ensure the connectivity is still present
-#if defined(CONFIG_WIFI)
-        wifi_poll();
-#else
         eth_poll();
-#endif
         k_sleep(K_MSEC(THREAD_SLEEP_MS));
     }
 

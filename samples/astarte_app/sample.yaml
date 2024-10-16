@@ -15,5 +15,4 @@ tests:
       - mimxrt1060_evkb
       - mimxrt1064_evk
       - stm32h573i_dk
-      - esp_wrover_kit/esp32/procpu
       - native_sim

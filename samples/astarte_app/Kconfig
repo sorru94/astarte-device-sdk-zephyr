@@ -169,24 +169,6 @@ config DEVICE_PROPERTY_UNSET_TRANSMISSION_DELAY_SECONDS
 
 endmenu
 
-menu "Wifi configuration"
-
-config WIFI_SSID
-    string "WiFi SSID"
-    default "myssid"
-    depends on WIFI
-    help
-        SSID (network name) for the example to connect to.
-
-config WIFI_PASSWORD
-    string "WiFi Password"
-    default "mypassword"
-    depends on WIFI
-    help
-        WiFi password (WPA or WPA2) for the example to use.
-
-endmenu
-
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"

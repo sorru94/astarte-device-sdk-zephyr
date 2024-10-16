@@ -95,11 +95,13 @@ Data like wifi passwords or even the astarte credential secret could be configur
 You can have a `private.conf` file in the [astarte_app](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples/astarte_app).
 This file is specified in the `.gitignore` and won't be committed.
 
-To configure the wifi in a file that is ignored by git you can add the following to `samples/astarte_app/private.conf`
+To configure your secrets you can add the following to `samples/astarte_app/private.conf`
+And properly replace `...` with your private data.
 ```conf
-# WiFi credentials
-CONFIG_WIFI_SSID=""
-CONFIG_WIFI_PASSWORD=""
+# Astarte secrets
+CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="..."
+# Sample secrets
+CONFIG_CREDENTIAL_SECRET="..."
 ```
 
 ### Use native_sim with net-tools

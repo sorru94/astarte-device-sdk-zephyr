@@ -19,7 +19,7 @@ Some configuration and cmake utilites are stored in a shared `common` folder tha
 any valid zephyr application. This folder also contains common Astarte interfaces shared by the
 samples and the tests. These interfaces have been designed to be generic in order for the
 `astarte_app` sample to demonstrate as much functionality as possible.
-The interfaces are defined in JSON files contained in the `common/interfaces` folder.
+The interfaces are defined in JSON files contained in the `astarte_app/interfaces` folder.
 In addition to the JSON version of the interfaces, an auto-generated version of the same interfaces
 is contained in the `generated_interfaces` header/source files. Those files have been generated
 running the `west generate-interfaces` command and should not be modified manually.

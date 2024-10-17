@@ -11,14 +11,26 @@ if(NOT BOARD STREQUAL REQUIRED_BOARD)
   message(FATAL_ERROR "End to end tests cannot run on any other board besides ${REQUIRED_BOARD}.")
 endif()
 
-set(COMMON_DIR ../samples/common)
+function(concat_if_exists FILE_PATH STRING_NAME)
+    # Check if the file exists
+    file(GLOB FILE_TO_ADD ${FILE_PATH})
 
-include(${COMMON_DIR}/CommonConfig.cmake)
+    # If the file exists, add it to the list
+    if(EXISTS ${FILE_TO_ADD})
+        set(${STRING_NAME} "${${STRING_NAME}};${FILE_PATH}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# add the sample specific private configuration
+concat_if_exists(${CMAKE_SOURCE_DIR}/private.conf EXTRA_CONF_FILE)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(e2e_test)
 
-include(${COMMON_DIR}/CommonComponents.cmake)
+# add sources and includes from the sample dir
+set(SAMPLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../samples/astarte_app")
+target_sources(app PRIVATE ${SAMPLE_DIR}/src/eth.c ${SAMPLE_DIR}/src/utils.c)
+target_include_directories(app PRIVATE ${SAMPLE_DIR}/include)
 
 # handle generating certificate inc file
 include(certificate.cmake)

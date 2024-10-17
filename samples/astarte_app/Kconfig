@@ -11,8 +11,6 @@ menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
 
-rsource "../../Kconfig"
-
 menu "Sample application"
 
 config DEVICE_ID

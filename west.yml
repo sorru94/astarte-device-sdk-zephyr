@@ -7,15 +7,16 @@ manifest:
     west-commands: scripts/private-west-commands.yml
 
   remotes:
-    - name: zephyrproject-rtos
-      url-base: https://github.com/zephyrproject-rtos
+    - name: sorru94
+      url-base: https://github.com/sorru94
     - name: secomind
       url-base: https://github.com/secomind
 
+
   projects:
     - name: zephyr
-      remote: zephyrproject-rtos
-      revision: v3.7.0
+      remote: sorru94
+      revision: heap-listeners
       import: true
     - name: zlib-zephyr
       remote: secomind

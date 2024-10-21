@@ -110,6 +110,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));
         goto failure;
     }
+    ASTARTE_LOG_DBG("Device synchronization completed '%d'", handle->synchronization_completed);
 #endif
     handle->connection_state = DEVICE_DISCONNECTED;
 

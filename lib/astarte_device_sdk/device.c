@@ -199,6 +199,8 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         }
     }
 
+    astarte_mqtt_clear_all_pending(&device->astarte_mqtt);
+
     ares = astarte_tls_credential_delete();
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(ares));

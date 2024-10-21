@@ -150,12 +150,8 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
     if (sys_hashmap_remove(map, message_id, &value)) {
         // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(value);
-        if (map_entry->message.topic) {
-            free(map_entry->message.topic);
-        }
-        if (map_entry->message.data) {
-            free(map_entry->message.data);
-        }
+        free(map_entry->message.topic);
+        free(map_entry->message.data);
         free(map_entry);
     } else {
         ASTARTE_LOG_ERR("Message ID (%d) not found in hashmap.", message_id);
@@ -164,5 +160,20 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
 
 void mqtt_caching_clear_messages(struct sys_hashmap *map)
 {
+    ASTARTE_LOG_DBG("Removing all messages from hashmap.");
+
+    // Loop over all the messages in the hashmap
+    struct sys_hashmap_iterator iter = { 0 };
+    map->api->iter(map, &iter);
+    while (sys_hashmap_iterator_has_next(&iter)) {
+        iter.next(&iter);
+        // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
+        struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(iter.value);
+        free(map_entry->message.topic);
+        free(map_entry->message.data);
+        free(map_entry);
+    }
+
+    // Clear the internal structures of the map
     sys_hashmap_clear(map, NULL, NULL);
 }

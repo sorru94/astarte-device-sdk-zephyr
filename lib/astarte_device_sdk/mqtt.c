@@ -640,6 +640,12 @@ bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt)
     return !sys_hashmap_is_empty(&astarte_mqtt->out_msg_map);
 }
 
+void astarte_mqtt_clear_all_pending(astarte_mqtt_t *astarte_mqtt)
+{
+    mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
+    mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
+}
+
 /************************************************
  *         Static functions definitions         *
  ***********************************************/

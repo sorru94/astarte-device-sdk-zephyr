@@ -47,6 +47,8 @@
 #endif
 
 #include <zephyr/sys/heap_listener.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/storage/flash_map.h>
 
 /************************************************
  *       Checks over configuration values       *
@@ -235,10 +237,26 @@ void print_heap_allocations(uint64_t heap_events_n)
     }
 }
 
+#define STORAGE_PARTITION storage_partition
+#define STORAGE_PARTITION_DEVICE FIXED_PARTITION_DEVICE(STORAGE_PARTITION)
+#define STORAGE_PARTITION_OFFSET FIXED_PARTITION_OFFSET(STORAGE_PARTITION)
+#define STORAGE_PARTITION_SIZE FIXED_PARTITION_SIZE(STORAGE_PARTITION)
+#define ASTARTE_PARTITION astarte_partition
+#define ASTARTE_PARTITION_DEVICE FIXED_PARTITION_DEVICE(ASTARTE_PARTITION)
+#define ASTARTE_PARTITION_OFFSET FIXED_PARTITION_OFFSET(ASTARTE_PARTITION)
+#define ASTARTE_PARTITION_SIZE FIXED_PARTITION_SIZE(ASTARTE_PARTITION)
+
 int main(void)
 {
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
+
+    int res = 0;
+    res = flash_erase(STORAGE_PARTITION_DEVICE,	STORAGE_PARTITION_OFFSET, STORAGE_PARTITION_SIZE);
+    LOG_INF("Flash erase result %d.", res); // NOLINT
+    res = flash_erase(ASTARTE_PARTITION_DEVICE,	ASTARTE_PARTITION_OFFSET, ASTARTE_PARTITION_SIZE);
+    LOG_INF("Flash erase result %d.", res); // NOLINT
+    return res;
 
     // Initialize Ethernet driver
     LOG_INF("Initializing Ethernet driver."); // NOLINT

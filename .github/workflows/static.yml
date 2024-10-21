@@ -79,7 +79,7 @@ jobs:
         working-directory: astarte-device-sdk-zephyr
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check if generated interfaces are up to date
-        run: west generate-interfaces -c ./astarte-device-sdk-zephyr/samples/common/interfaces
+        run: west generate-interfaces -c ./astarte-device-sdk-zephyr/samples/astarte_app/interfaces
   code-checker:
     runs-on: ubuntu-latest
     concurrency:

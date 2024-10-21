@@ -13,4 +13,8 @@ target_include_directories(app PRIVATE
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
 
-include(${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/samples/common/IncludeInterfaces.cmake)
+# add generated sources and includes for the interfaces
+set(SAMPLES_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../../samples")
+FILE(GLOB app_interfaces_sources ${SAMPLES_DIR}/astarte_app/interfaces/*.c)
+target_sources(app PRIVATE ${app_interfaces_sources})
+target_include_directories(app PRIVATE ${SAMPLES_DIR}/astarte_app/interfaces)

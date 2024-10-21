@@ -327,6 +327,7 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         goto exit;
     }
     if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+        ASTARTE_LOG_DBG("Device synchronization completed.");
         device->synchronization_completed = true;
         ASTARTE_LOG_DBG("Device connection state -> CONNECTED.");
         device->connection_state = DEVICE_CONNECTED;

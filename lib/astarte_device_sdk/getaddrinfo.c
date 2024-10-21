@@ -60,7 +60,7 @@ int astarte_getaddrinfo(const char *host, const char *service, const struct zsoc
     int ret = DNS_EAI_FAIL;
 
 #if defined(ANY_RESOLVER)
-    *res = calloc(AI_ARR_MAX, sizeof(struct zsock_addrinfo));
+    *res = astarte_calloc(AI_ARR_MAX, sizeof(struct zsock_addrinfo));
     if (!(*res)) {
         return DNS_EAI_MEMORY;
     }
@@ -81,7 +81,7 @@ int astarte_getaddrinfo(const char *host, const char *service, const struct zsoc
 
 #if defined(ANY_RESOLVER)
     if (ret) {
-        free(*res);
+        astarte_free(*res);
         *res = NULL;
     }
 #endif
@@ -96,7 +96,7 @@ void astarte_freeaddrinfo(struct zsock_addrinfo *ai)
         return socket_offload_freeaddrinfo(ai);
     }
 
-    free(ai);
+    astarte_free(ai);
 }
 
 /************************************************

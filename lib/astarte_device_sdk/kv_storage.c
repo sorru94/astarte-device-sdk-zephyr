@@ -10,6 +10,7 @@
 
 #include <zephyr/sys/mutex.h>
 
+#include "heap.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_kv_storage, CONFIG_ASTARTE_DEVICE_SDK_KV_STORAGE_LOG_LEVEL);
@@ -122,7 +123,7 @@ astarte_result_t astarte_kv_storage_new(
     size_t namespace_cpy_size = 0U;
 
     namespace_cpy_size = strlen(namespace) + 1;
-    namespace_cpy = calloc(namespace_cpy_size, sizeof(char));
+    namespace_cpy = astarte_calloc(namespace_cpy_size, sizeof(char));
     if (!namespace_cpy) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -142,14 +143,14 @@ astarte_result_t astarte_kv_storage_new(
     return ASTARTE_RESULT_OK;
 
 error:
-    free(namespace_cpy);
+    astarte_free(namespace_cpy);
 
     return ares;
 }
 
 void astarte_kv_storage_destroy(astarte_kv_storage_t kv_storage)
 {
-    free(kv_storage.namespace);
+    astarte_free(kv_storage.namespace);
     ASTARTE_LOG_DBG("Closed key pair storage.");
 }
 
@@ -402,7 +403,7 @@ astarte_result_t astarte_kv_storage_iterator_init(
             goto exit;
         }
 
-        free(namespace);
+        astarte_free(namespace);
         namespace = NULL;
     }
 
@@ -415,7 +416,7 @@ exit:
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    free(namespace);
+    astarte_free(namespace);
     return ares;
 }
 
@@ -457,7 +458,7 @@ astarte_result_t astarte_kv_storage_iterator_next(astarte_kv_storage_iter_t *ite
             goto exit;
         }
 
-        free(namespace);
+        astarte_free(namespace);
         namespace = NULL;
     }
 
@@ -470,7 +471,7 @@ exit:
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    free(namespace);
+    astarte_free(namespace);
     return ares;
 }
 
@@ -585,11 +586,11 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
                 break;
             }
 
-            free(tmp_key);
+            astarte_free(tmp_key);
             tmp_key = NULL;
         }
 
-        free(tmp_namespace);
+        astarte_free(tmp_namespace);
         tmp_namespace = NULL;
     }
     if (!found) {
@@ -599,8 +600,8 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
     *base_id = (uint16_t) (1 + (pair_number * NVS_ENTRIES_FOR_PAIR));
 
 exit:
-    free(tmp_namespace);
-    free(tmp_key);
+    astarte_free(tmp_namespace);
+    astarte_free(tmp_key);
     return ares;
 }
 
@@ -642,9 +643,9 @@ static astarte_result_t relocate_pair(
     }
 
 exit:
-    free(namespace);
-    free(key);
-    free(value);
+    astarte_free(namespace);
+    astarte_free(key);
+    astarte_free(value);
 
     return ares;
 }
@@ -662,7 +663,7 @@ static astarte_result_t get_nvs_entry_with_alloc(
         goto error;
     }
 
-    buff = calloc(buff_size, sizeof(uint8_t));
+    buff = astarte_calloc(buff_size, sizeof(uint8_t));
     if (!buff) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -680,7 +681,7 @@ static astarte_result_t get_nvs_entry_with_alloc(
     return ASTARTE_RESULT_OK;
 
 error:
-    free(buff);
+    astarte_free(buff);
     return ares;
 }
 

@@ -12,6 +12,7 @@
 #include <zephyr/sys/byteorder.h>
 
 #include "bson_types.h"
+#include "heap.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(bson_serializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL);
@@ -64,7 +65,7 @@ static astarte_result_t byte_array_init(astarte_bson_serializer_t *bson, void *b
 {
     bson->capacity = size;
     bson->size = size;
-    bson->buf = malloc(size);
+    bson->buf = astarte_malloc(size);
 
     if (!bson->buf) {
         ASTARTE_LOG_ERR("Cannot allocate memory for BSON payload (size: %zu)!", size);
@@ -79,7 +80,7 @@ static void byte_array_destroy(astarte_bson_serializer_t *bson)
 {
     bson->capacity = 0;
     bson->size = 0;
-    free(bson->buf);
+    astarte_free(bson->buf);
     bson->buf = NULL;
 }
 
@@ -91,13 +92,13 @@ static void byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
             new_capacity = bson->capacity + needed_size;
         }
         bson->capacity = new_capacity;
-        void *new_buf = malloc(new_capacity);
+        void *new_buf = astarte_malloc(new_capacity);
         if (!new_buf) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             abort();
         }
         memcpy(new_buf, bson->buf, bson->size);
-        free(bson->buf);
+        astarte_free(bson->buf);
         bson->buf = new_buf;
     }
 }

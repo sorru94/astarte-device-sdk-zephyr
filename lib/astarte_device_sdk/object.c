@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "bson_types.h"
+#include "heap.h"
 #include "individual_private.h"
 #include "interface_private.h"
 
@@ -87,7 +88,7 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
     }
 
     // Step 2: Allocate sufficient memory for all the astarte object entries
-    tmp_entries = calloc(bson_doc_length, sizeof(astarte_object_entry_t));
+    tmp_entries = astarte_calloc(bson_doc_length, sizeof(astarte_object_entry_t));
     if (!tmp_entries) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -130,7 +131,7 @@ failure:
     for (size_t j = 0; j < deserialize_idx; j++) {
         astarte_individual_destroy_deserialized(tmp_entries[j].individual);
     }
-    free(tmp_entries);
+    astarte_free(tmp_entries);
 
     return ares;
 }
@@ -141,5 +142,5 @@ void astarte_object_entries_destroy_deserialized(
     for (size_t i = 0; i < entries_length; i++) {
         astarte_individual_destroy_deserialized(entries[i].individual);
     }
-    free(entries);
+    astarte_free(entries);
 }

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "heap.h"
 #include "mapping_private.h"
 
 #include "log.h"
@@ -53,7 +54,7 @@ astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interfac
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     const size_t fullpath_size = strlen(path1) + 1 + strlen(path2) + 1;
-    char *fullpath = calloc(fullpath_size, sizeof(char));
+    char *fullpath = astarte_calloc(fullpath_size, sizeof(char));
     if (!fullpath) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -72,7 +73,7 @@ astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interfac
     }
 
 exit:
-    free(fullpath);
+    astarte_free(fullpath);
     return ares;
 }
 

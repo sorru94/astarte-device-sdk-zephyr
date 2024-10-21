@@ -10,6 +10,7 @@
 #include <zephyr/net/tls_credentials.h>
 
 #include "getaddrinfo.h"
+#include "heap.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEVEL);
@@ -760,14 +761,14 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
 
     // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = calloc(topic_len + 1, sizeof(char));
+    char *topic = astarte_calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return;
     }
     memcpy(topic, publish.message.topic.topic.utf8, topic_len);
     astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
-    free(topic);
+    astarte_free(topic);
 }
 static void handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)
 {

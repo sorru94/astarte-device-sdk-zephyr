@@ -110,6 +110,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));
         goto failure;
     }
+    ASTARTE_LOG_DBG("Device synchronization completed '%d'", handle->synchronization_completed);
 #endif
     handle->connection_state = DEVICE_DISCONNECTED;
 
@@ -197,6 +198,8 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
             return ares;
         }
     }
+
+    astarte_mqtt_clear_all_pending(&device->astarte_mqtt);
 
     ares = astarte_tls_credential_delete();
     if (ares != ASTARTE_RESULT_OK) {

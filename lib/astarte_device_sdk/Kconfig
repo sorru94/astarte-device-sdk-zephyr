@@ -14,7 +14,6 @@ config ASTARTE_DEVICE_SDK
 	depends on MQTT_LIB_TLS
 	depends on BASE64
 	depends on SYS_HASH_MAP
-	depends on SYS_HASH_FUNC32
 	select ZLIB
 	help
 	  This option enables the Astarte device SDK library

@@ -33,7 +33,7 @@ Second, a new entry should be added to the projects list:
       remote: astarte-platform
       repo-path: astarte-device-sdk-zephyr.git
       path: astarte-device-sdk-zephyr
-      revision: v0.7.1
+      revision: v0.7.2
       west-commands: scripts/west-commands.yml
       import: true
 ```

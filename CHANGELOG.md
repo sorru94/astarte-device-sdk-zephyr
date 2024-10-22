@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [0.7.2] - Unreleased
+### Removed
+- Dependency to `CONFIG_SYS_HASH_FUNC32` which is not required.
+
 ### Fixed
 - Destroy function properly frees all cached MQTT messages.
 

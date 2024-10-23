@@ -170,6 +170,21 @@ config ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE
 	  Increase this value when sending/receiving large bursts of messages with high QoS on slow
 	  networks.
 
+config ASTARTE_DEVICE_SDK_ADVANCED_ENABLE_HEAP
+	bool "Enable the dedicated heap for the Astarte devices."
+	depends on ASTARTE_DEVICE_SDK
+	default n
+	help
+	  Dynamic allocation will be performed on a dedicated heap.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_HEAP_SIZE
+	int "Size of the dedicate heap for the Astarte devices"
+	depends on ASTARTE_DEVICE_SDK
+	depends on ASTARTE_DEVICE_SDK_ADVANCED_ENABLE_HEAP
+	default 8192
+	help
+	  This size should be at least 8k for a single device.
+
 menu "Code generation"
 
 config ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION

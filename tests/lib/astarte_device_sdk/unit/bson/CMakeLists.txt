@@ -12,5 +12,9 @@ target_include_directories(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/include
 )
 
+target_sources(testbinary PRIVATE
+    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/heap.c
+)
+
 FILE(GLOB test_sources src/*.c)
 target_sources(testbinary PRIVATE ${test_sources})

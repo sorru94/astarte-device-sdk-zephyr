@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "bson_types.h"
+#include "heap.h"
 #include "interface_private.h"
 #include "log.h"
 #include "mapping_private.h"
@@ -418,38 +419,38 @@ void astarte_individual_destroy_deserialized(astarte_individual_t individual)
 {
     switch (individual.tag) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-            free(individual.data.binaryblob.buf);
+            astarte_free(individual.data.binaryblob.buf);
             break;
         case ASTARTE_MAPPING_TYPE_STRING:
-            free((void *) individual.data.string);
+            astarte_free((void *) individual.data.string);
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
-            free(individual.data.integer_array.buf);
+            astarte_free(individual.data.integer_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
-            free(individual.data.longinteger_array.buf);
+            astarte_free(individual.data.longinteger_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
-            free(individual.data.double_array.buf);
+            astarte_free(individual.data.double_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_STRINGARRAY:
             for (size_t i = 0; i < individual.data.string_array.len; i++) {
-                free((void *) individual.data.string_array.buf[i]);
+                astarte_free((void *) individual.data.string_array.buf[i]);
             }
-            free((void *) individual.data.string_array.buf);
+            astarte_free((void *) individual.data.string_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
             for (size_t i = 0; i < individual.data.binaryblob_array.count; i++) {
-                free((void *) individual.data.binaryblob_array.blobs[i]);
+                astarte_free((void *) individual.data.binaryblob_array.blobs[i]);
             }
-            free(individual.data.binaryblob_array.sizes);
-            free((void *) individual.data.binaryblob_array.blobs);
+            astarte_free(individual.data.binaryblob_array.sizes);
+            astarte_free((void *) individual.data.binaryblob_array.blobs);
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
-            free(individual.data.boolean_array.buf);
+            astarte_free(individual.data.boolean_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
-            free(individual.data.datetime_array.buf);
+            astarte_free(individual.data.datetime_array.buf);
             break;
         default:
             break;
@@ -576,7 +577,7 @@ static astarte_result_t deserialize_binaryblob(
     const uint8_t *deserialized
         = astarte_bson_deserializer_element_to_binary(bson_elem, &deserialized_len);
 
-    dyn_deserialized = calloc(deserialized_len, sizeof(uint8_t));
+    dyn_deserialized = astarte_calloc(deserialized_len, sizeof(uint8_t));
     if (!dyn_deserialized) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -588,7 +589,7 @@ static astarte_result_t deserialize_binaryblob(
     return ares;
 
 failure:
-    free(dyn_deserialized);
+    astarte_free(dyn_deserialized);
     return ares;
 }
 
@@ -602,7 +603,7 @@ static astarte_result_t deserialize_string(
     const char *deserialized
         = astarte_bson_deserializer_element_to_string(bson_elem, &deserialized_len);
 
-    dyn_deserialized = calloc(deserialized_len + 1, sizeof(char));
+    dyn_deserialized = astarte_calloc(deserialized_len + 1, sizeof(char));
     if (!dyn_deserialized) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -614,7 +615,7 @@ static astarte_result_t deserialize_string(
     return ares;
 
 failure:
-    free(dyn_deserialized);
+    astarte_free(dyn_deserialized);
     return ares;
 }
 
@@ -704,7 +705,7 @@ static astarte_result_t deserialize_array_##NAME(                               
     astarte_bson_document_t bson_doc, astarte_individual_t *individual, size_t array_length)       \
 {                                                                                                  \
     astarte_result_t ares = ASTARTE_RESULT_OK;                                                     \
-    TYPE *array = calloc(array_length, sizeof(TYPE));                                              \
+    TYPE *array = astarte_calloc(array_length, sizeof(TYPE));                                              \
     if (!array) {                                                                                  \
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);                               \
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;                                                       \
@@ -732,7 +733,7 @@ static astarte_result_t deserialize_array_##NAME(                               
     return ASTARTE_RESULT_OK;                                                                      \
                                                                                                    \
 failure:                                                                                           \
-    free(array);                                                                                   \
+    astarte_free(array);                                                                                   \
     return ares;                                                                                   \
 }
 // NOLINTEND(bugprone-macro-parentheses)
@@ -747,7 +748,7 @@ static astarte_result_t deserialize_array_int64(
     astarte_bson_document_t bson_doc, astarte_individual_t *individual, size_t array_length)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    int64_t *array = calloc(array_length, sizeof(int64_t));
+    int64_t *array = astarte_calloc(array_length, sizeof(int64_t));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -785,7 +786,7 @@ static astarte_result_t deserialize_array_int64(
     return ASTARTE_RESULT_OK;
 
 failure:
-    free(array);
+    astarte_free(array);
     return ares;
 }
 
@@ -794,7 +795,7 @@ static astarte_result_t deserialize_array_string(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     // Step 1: allocate enough memory to contain the array from the BSON file
-    char **array = (char **) calloc(array_length, sizeof(char *));
+    char **array = (char **) astarte_calloc(array_length, sizeof(char *));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -810,7 +811,7 @@ static astarte_result_t deserialize_array_string(
 
     uint32_t deser_len = 0;
     const char *deser = astarte_bson_deserializer_element_to_string(inner_elem, &deser_len);
-    array[0] = calloc(deser_len + 1, sizeof(char));
+    array[0] = astarte_calloc(deser_len + 1, sizeof(char));
     if (!array[0]) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -826,7 +827,7 @@ static astarte_result_t deserialize_array_string(
 
         deser_len = 0;
         const char *deser = astarte_bson_deserializer_element_to_string(inner_elem, &deser_len);
-        array[i] = calloc(deser_len + 1, sizeof(char));
+        array[i] = astarte_calloc(deser_len + 1, sizeof(char));
         if (!array[i]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -845,10 +846,10 @@ static astarte_result_t deserialize_array_string(
 failure:
     if (array) {
         for (size_t i = 0; i < array_length; i++) {
-            free(array[i]);
+            astarte_free(array[i]);
         }
     }
-    free((void *) array);
+    astarte_free((void *) array);
     return ares;
 }
 
@@ -859,13 +860,13 @@ static astarte_result_t deserialize_array_binblob(
     uint8_t **array = NULL;
     size_t *array_sizes = NULL;
     // Step 1: allocate enough memory to contain the array from the BSON file
-    array = (uint8_t **) calloc(array_length, sizeof(uint8_t *));
+    array = (uint8_t **) astarte_calloc(array_length, sizeof(uint8_t *));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto failure;
     }
-    array_sizes = calloc(array_length, sizeof(size_t));
+    array_sizes = astarte_calloc(array_length, sizeof(size_t));
     if (!array_sizes) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -880,7 +881,7 @@ static astarte_result_t deserialize_array_binblob(
     }
     uint32_t deser_size = 0;
     const uint8_t *deser = astarte_bson_deserializer_element_to_binary(inner_elem, &deser_size);
-    array[0] = calloc(deser_size, sizeof(uint8_t));
+    array[0] = astarte_calloc(deser_size, sizeof(uint8_t));
     if (!array[0]) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -897,7 +898,7 @@ static astarte_result_t deserialize_array_binblob(
 
         deser_size = 0;
         const uint8_t *deser = astarte_bson_deserializer_element_to_binary(inner_elem, &deser_size);
-        array[i] = calloc(deser_size, sizeof(uint8_t));
+        array[i] = astarte_calloc(deser_size, sizeof(uint8_t));
         if (!array[i]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -918,11 +919,11 @@ static astarte_result_t deserialize_array_binblob(
 failure:
     if (array) {
         for (size_t i = 0; i < array_length; i++) {
-            free(array[i]);
+            astarte_free(array[i]);
         }
     }
-    free((void *) array);
-    free(array_sizes);
+    astarte_free((void *) array);
+    astarte_free(array_sizes);
     return ares;
 }
 

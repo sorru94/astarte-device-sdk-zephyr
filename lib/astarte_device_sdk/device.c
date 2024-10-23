@@ -12,6 +12,7 @@
 #include "device_private.h"
 #include "device_rx.h"
 #include "device_tx.h"
+#include "heap.h"
 #include "pairing_private.h"
 #include "tls_credentials.h"
 
@@ -84,7 +85,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
-    astarte_device_handle_t handle = calloc(1, sizeof(struct astarte_device));
+    astarte_device_handle_t handle = astarte_calloc(1, sizeof(struct astarte_device));
     if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -185,7 +186,7 @@ failure:
     if (handle) {
         introspection_free(handle->introspection);
     }
-    free(handle);
+    astarte_free(handle);
     return ares;
 }
 
@@ -208,7 +209,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
     }
 
     introspection_free(device->introspection);
-    free(device);
+    astarte_free(device);
     return ASTARTE_RESULT_OK;
 }
 

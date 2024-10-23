@@ -15,6 +15,7 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
+#include "getaddrinfo.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL);
@@ -223,7 +224,7 @@ static int create_and_connect_socket(void)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     struct zsock_addrinfo *broker_addrinfo = NULL;
-    int getaddrinfo_rc = zsock_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
+    int getaddrinfo_rc = astarte_getaddrinfo(hostname, port, &hints, &broker_addrinfo);
     if (getaddrinfo_rc != 0) {
         ASTARTE_LOG_ERR("Unable to resolve address (%d) %s", getaddrinfo_rc,
             zsock_gai_strerror(getaddrinfo_rc));
@@ -245,7 +246,7 @@ static int create_and_connect_socket(void)
     int sock = zsock_socket(broker_addrinfo->ai_family, broker_addrinfo->ai_socktype, proto);
     if (sock == -1) {
         ASTARTE_LOG_ERR("Socket creation error: %d", sock);
-        zsock_freeaddrinfo(broker_addrinfo);
+        astarte_freeaddrinfo(broker_addrinfo);
         return -1;
     }
 
@@ -258,7 +259,7 @@ static int create_and_connect_socket(void)
     if (sockopt_rc == -1) {
         ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
         zsock_close(sock);
-        zsock_freeaddrinfo(broker_addrinfo);
+        astarte_freeaddrinfo(broker_addrinfo);
         return -1;
     }
 
@@ -266,7 +267,7 @@ static int create_and_connect_socket(void)
     if (sockopt_rc == -1) {
         ASTARTE_LOG_ERR("Socket options error: %d", sockopt_rc);
         zsock_close(sock);
-        zsock_freeaddrinfo(broker_addrinfo);
+        astarte_freeaddrinfo(broker_addrinfo);
         return -1;
     }
 #endif
@@ -276,11 +277,11 @@ static int create_and_connect_socket(void)
         ASTARTE_LOG_ERR("Connection error: %d", connect_rc);
         ASTARTE_LOG_ERR("Errno: (%d) %s", errno, strerror(errno));
         zsock_close(sock);
-        zsock_freeaddrinfo(broker_addrinfo);
+        astarte_freeaddrinfo(broker_addrinfo);
         return -1;
     }
 
-    zsock_freeaddrinfo(broker_addrinfo);
+    astarte_freeaddrinfo(broker_addrinfo);
 
     return sock;
 }

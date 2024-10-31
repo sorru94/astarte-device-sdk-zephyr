@@ -26,7 +26,11 @@
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
 
+#if !defined(CONFIG_WIFI)
 #include "eth.h"
+#else
+#include "wifi.h"
+#endif
 
 #include "utils.h"
 
@@ -150,12 +154,29 @@ int main(void)
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
 
+#if !defined(CONFIG_WIFI)
     // Initialize Ethernet driver
     LOG_INF("Initializing Ethernet driver."); // NOLINT
     if (eth_connect() != 0) {
         LOG_ERR("Connectivity intialization failed!"); // NOLINT
         return -1;
     }
+#else
+    // Initialize WiFi driver
+    LOG_INF("Initializing WiFi driver."); // NOLINT
+	wifi_init();
+
+	k_sleep(K_SECONDS(5));
+
+	const char *ssid = CONFIG_WIFI_SSID;
+	enum wifi_security_type sec = WIFI_SECURITY_TYPE_PSK;
+	const char *psk = CONFIG_WIFI_PASSWORD;
+    if (wifi_connect(ssid, sec, psk) != 0) {
+        LOG_ERR("Connectivity intialization failed!"); // NOLINT
+        return -1;
+    }
+	k_sleep(K_SECONDS(30));
+#endif
 
     // Add TLS certificate if required
 #if (!defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP)                                  \
@@ -174,8 +195,10 @@ int main(void)
         NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
     while (!atomic_test_bit(&device_thread_flags, THREAD_FLAGS_TX_COMPLETE)) {
+#if !defined(CONFIG_WIFI)
         // Ensure the connectivity is still present
         eth_poll();
+#endif
         k_sleep(K_MSEC(THREAD_SLEEP_MS));
     }
 

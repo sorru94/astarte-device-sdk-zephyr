@@ -36,9 +36,15 @@ astarte_result_t astarte_device_connection_connect(astarte_device_handle_t devic
  * @note It will be possible to re-connect the device after disconnection.
  *
  * @param[in] device Device instance to be disconnected.
+ * @param[in] timeout Timeout for this function when @p force is false.
+ * @param[in] force Force the disconnection. When false this function will be blocking and wait
+ * untill all QoS 1 or larger messages have been successfully transmitted, or a timeout has been
+ * reached. When true this function will not wait for any message to be correctly delivered and
+ * force a device disconnection.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_connection_disconnect(astarte_device_handle_t device);
+astarte_result_t astarte_device_connection_disconnect(
+    astarte_device_handle_t device, k_timeout_t timeout, bool force);
 
 /**
  * @brief Handler for a connection event.

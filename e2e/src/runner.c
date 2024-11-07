@@ -870,7 +870,8 @@ static int cmd_disconnect(const struct shell *sh, size_t argc, char **argv)
         "Failed in waiting for the Astarte thread to terminate.");
 
     LOG_INF("Destroing Astarte device and freeing resources."); // NOLINT
-    astarte_device_destroy(device_handle);
+    CHECK_ASTARTE_OK_HALT(astarte_device_destroy(device_handle, K_SECONDS(10), false),
+        "Astarte device destruction failure.");
 
     wait_for_disconnection();
 

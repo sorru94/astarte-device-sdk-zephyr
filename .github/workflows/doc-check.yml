@@ -1,0 +1,100 @@
+#
+# This file is part of Astarte.
+#
+# Copyright 2024 SECO Mind Srl
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: Documentation checks
+
+on:
+  pull_request:
+    paths:
+    - 'README.md'
+    - 'doc/**'
+    - 'include/**'
+    - '.github/workflows/doc-build.yml'
+    - 'scripts/docs.py'
+    - 'scripts/west-commands.py'
+    - 'scripts/requirements.txt'
+
+env:
+  DOXYGEN_VERSION: 1.12.0
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: check-docs-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        path: astarte-device-sdk-zephyr
+    - name: Install ubuntu packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build graphviz
+    - name: Install doxygen
+      working-directory: astarte-device-sdk-zephyr
+      shell: bash
+      run: |
+        wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+        tar xf doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
+        echo "${PWD}/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+    - name: Install python packages
+      run: |
+        pip install cmake
+        pip install coverxygen
+    - name: Set CI manifest as defaults
+      working-directory: astarte-device-sdk-zephyr
+      run: mv west-ci.yml west.yml
+    - name: Setup Zephyr project
+      uses: zephyrproject-rtos/action-zephyr-setup@v1
+      with:
+        app-path: astarte-device-sdk-zephyr
+        toolchains: x86_64-zephyr-elf
+    - name: Build documentation
+      working-directory: astarte-device-sdk-zephyr
+      shell: bash
+      run: |
+        if [[ "$GITHUB_REF" =~ "refs/tags/v" ]]; then
+          DOC_TAG="release"
+        else
+          DOC_TAG="development"
+        fi
+        DOC_TAG=${DOC_TAG} ASTARTE_DEVICE_SDK_BASE="$PWD" make -C doc doxygen
+    - name: Upload HTML documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: docs_html
+        path: astarte-device-sdk-zephyr/doc/_build/doxygen/html
+    - name: Build extended documentation
+      working-directory: astarte-device-sdk-zephyr
+      shell: bash
+      run: |
+        if [[ "$GITHUB_REF" =~ "refs/tags/v" ]]; then
+          DOC_TAG="release"
+        else
+          DOC_TAG="development"
+        fi
+        DOC_TAG=${DOC_TAG} ASTARTE_DEVICE_SDK_BASE="$PWD" ASTARTE_DEVICE_SDK_EXTENDED_DOCS="yes" make -C doc doxygen

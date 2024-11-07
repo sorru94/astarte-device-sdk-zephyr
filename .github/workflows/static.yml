@@ -79,18 +79,11 @@ jobs:
         working-directory: astarte-device-sdk-zephyr
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check if generated interfaces are up to date
-        run: west generate-interfaces -c ./astarte-device-sdk-zephyr/samples/common/interfaces
+        run: west generate-interfaces -c ./astarte-device-sdk-zephyr/samples/astarte_app/interfaces
   code-checker:
-    strategy:
-      matrix:
-        sample:
-        - "datastreams"
-        - "register"
-        - "aggregates"
-        - "properties"
     runs-on: ubuntu-latest
     concurrency:
-      group: code-checker-${{ matrix.sample }}-${{ github.ref }}
+      group: code-checker-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
@@ -114,4 +107,4 @@ jobs:
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Run clang-tidy
         working-directory: astarte-device-sdk-zephyr
-        run: west static --sample ${{ matrix.sample }}
+        run: west static --sample astarte_app

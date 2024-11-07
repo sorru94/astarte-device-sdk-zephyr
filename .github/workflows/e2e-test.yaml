@@ -45,10 +45,11 @@ jobs:
         with:
           path: astarte-device-sdk-zephyr
 
-      - name: Install interfaces
+      - name: Install interface
+        working-directory: astarte-device-sdk-zephyr/
+        timeout-minutes: 3
         run: |
-          astartectl realm-management interfaces sync astarte-device-sdk-zephyr/e2e/interfaces/*.json --non-interactive
-          astartectl realm-management interfaces ls
+          ./install_interfaces.sh ./e2e/interfaces
 
       # setup zephyr application
       - name: Set up Python

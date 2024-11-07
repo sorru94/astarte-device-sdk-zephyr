@@ -29,6 +29,8 @@ ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CAC
 #define NVS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(NVS_PARTITION)
 #define NVS_PARTITION_SIZE FIXED_PARTITION_SIZE(NVS_PARTITION)
 
+#define SYNCHRONIZATION_NAMESPACE "synchronization_namespace"
+#define SYNCHRONIZATION_KEY "synchronization_status"
 #define INTROSPECTION_NAMESPACE "introspection_namespace"
 #define INTROSPECTION_KEY "introspection_string"
 #define PROPERTIES_NAMESPACE "properties_namespace"
@@ -44,7 +46,7 @@ ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CAC
  * @param[out] kv_storage Uninitialized key-value storage handle.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage);
+static astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage);
 /**
  * @brief Parse BSON file used to store a property
  *
@@ -78,6 +80,65 @@ static astarte_result_t append_property_to_string(introspection_t *introspection
  *         Global functions definitions         *
  ***********************************************/
 
+astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
+
+    ASTARTE_LOG_DBG("Getting stored synchronization");
+
+    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Init error for synchronization cache: %s.", astarte_result_to_name(ares));
+        goto exit;
+    }
+
+    bool read_sync = false;
+    size_t read_sync_size = sizeof(read_sync);
+
+    ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, &read_sync, &read_sync_size);
+    if (ares == ASTARTE_RESULT_NOT_FOUND) {
+        ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
+        goto exit;
+    }
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
+        goto exit;
+    }
+
+    if (!read_sync) {
+        ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
+    }
+    *sync = read_sync;
+
+exit:
+    astarte_kv_storage_destroy(kv_storage);
+
+    return ares;
+}
+
+astarte_result_t astarte_device_caching_synchronization_set(bool sync)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
+
+    ASTARTE_LOG_DBG("Storing synchronization: %s", (sync) ? "synchronized" : "not synchronized");
+
+    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Init error for synchronization cache: %s.", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY, &sync, sizeof(sync));
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error caching synchronization: %s.", astarte_result_to_name(ares));
+    }
+
+    astarte_kv_storage_destroy(kv_storage);
+    return ares;
+}
+
 astarte_result_t astarte_device_caching_introspection_store(const char *intr, size_t intr_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -96,15 +157,16 @@ astarte_result_t astarte_device_caching_introspection_store(const char *intr, si
         ASTARTE_LOG_ERR("Error caching introspection: %s.", astarte_result_to_name(ares));
     }
 
+    astarte_kv_storage_destroy(kv_storage);
     return ares;
 }
 
 astarte_result_t astarte_device_caching_introspection_check(const char *intr, size_t intr_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
     char *read_intr = NULL;
     size_t read_intr_size = 0;
-    astarte_kv_storage_t kv_storage = { 0 };
 
     ASTARTE_LOG_DBG("Checking stored introspection against new one: '%s' (%d).", intr, intr_size);
 
@@ -149,6 +211,7 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
     }
 
 exit:
+    astarte_kv_storage_destroy(kv_storage);
     free(read_intr);
 
     return ares;
@@ -158,10 +221,9 @@ astarte_result_t astarte_device_caching_property_store(
     const char *interface_name, const char *path, uint32_t major, astarte_individual_t individual)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
     astarte_bson_serializer_t bson = { 0 };
-
-    astarte_kv_storage_t kv_storage = { 0 };
 
     ASTARTE_LOG_DBG("Caching property ('%s' - '%s').", interface_name, path);
 
@@ -219,6 +281,7 @@ astarte_result_t astarte_device_caching_property_store(
     }
 
 exit:
+    astarte_kv_storage_destroy(kv_storage);
     free(key);
     astarte_bson_serializer_destroy(&bson);
     return ares;
@@ -228,12 +291,12 @@ astarte_result_t astarte_device_caching_property_load(const char *interface_name
     uint32_t *out_major, astarte_individual_t *individual)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
     char *value = NULL;
 
     ASTARTE_LOG_DBG("Loading cached property ('%s' - '%s').", interface_name, path);
 
-    astarte_kv_storage_t kv_storage = { 0 };
     ares = open_kv_storage(PROPERTIES_NAMESPACE, &kv_storage);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
@@ -282,6 +345,7 @@ astarte_result_t astarte_device_caching_property_load(const char *interface_name
     }
 
 exit:
+    astarte_kv_storage_destroy(kv_storage);
     free(key);
     free(value);
     return ares;
@@ -296,11 +360,11 @@ astarte_result_t astarte_device_caching_property_delete(
     const char *interface_name, const char *path)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
 
     ASTARTE_LOG_DBG("Deleting cached property ('%s' - '%s').", interface_name, path);
 
-    astarte_kv_storage_t kv_storage = { 0 };
     ares = open_kv_storage(PROPERTIES_NAMESPACE, &kv_storage);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
@@ -328,11 +392,12 @@ astarte_result_t astarte_device_caching_property_delete(
     }
 
 exit:
+    astarte_kv_storage_destroy(kv_storage);
     free(key);
     return ares;
 }
 
-astarte_result_t astarte_device_caching_property_iterator_init(
+astarte_result_t astarte_device_caching_property_iterator_new(
     astarte_device_caching_property_iter_t *iter)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -349,6 +414,11 @@ astarte_result_t astarte_device_caching_property_iterator_init(
     }
 
     return ares;
+}
+
+void astarte_device_caching_property_iterator_destroy(astarte_device_caching_property_iter_t iter)
+{
+    astarte_kv_storage_destroy(iter.kv_storage);
 }
 
 astarte_result_t astarte_device_caching_property_iterator_next(
@@ -448,19 +518,19 @@ astarte_result_t astarte_device_caching_property_get_device_string(
     introspection_t *introspection, char *output, size_t *output_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_device_caching_property_iter_t iter = { 0 };
     size_t string_size = 0U;
     char *interface_name = NULL;
     char *path = NULL;
 
-    if (output) {
-        *output = '\0';
-    }
-
-    astarte_device_caching_property_iter_t iter = { 0 };
-    ares = astarte_device_caching_property_iterator_init(&iter);
+    ares = astarte_device_caching_property_iterator_new(&iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
         goto error;
+    }
+
+    if (output) {
+        *output = '\0';
     }
 
     while (ares != ASTARTE_RESULT_NOT_FOUND) {
@@ -508,9 +578,12 @@ astarte_result_t astarte_device_caching_property_get_device_string(
     }
 
     *output_size = string_size;
+
+    astarte_device_caching_property_iterator_destroy(iter);
     return ASTARTE_RESULT_OK;
 
 error:
+    astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
     return ares;
@@ -520,7 +593,7 @@ error:
  *         Static functions definitions         *
  ***********************************************/
 
-astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage)
+static astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage)
 {
     int flash_rc = 0;
     struct flash_pages_info fp_info = { 0 };
@@ -543,7 +616,7 @@ astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv
         .flash_sector_count = NVS_PARTITION_SIZE / fp_info.size,
         .flash_sector_size = fp_info.size,
     };
-    astarte_result_t ares = astarte_kv_storage_init(kv_storage_cfg, namespace, kv_storage);
+    astarte_result_t ares = astarte_kv_storage_new(kv_storage_cfg, namespace, kv_storage);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error initialize introspection cache: %s.", astarte_result_to_name(ares));
         return ares;

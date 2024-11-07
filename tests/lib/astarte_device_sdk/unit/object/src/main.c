@@ -75,7 +75,6 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
     const astarte_mapping_t mappings[3]
         = { {
                 .endpoint = "/%{sensor_id}/double_endpoint",
-                .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/double_endpoint",
                 .type = ASTARTE_MAPPING_TYPE_DOUBLE,
                 .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                 .explicit_timestamp = false,
@@ -83,7 +82,6 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
             },
               {
                   .endpoint = "/%{sensor_id}/integer_endpoint",
-                  .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/integer_endpoint",
                   .type = ASTARTE_MAPPING_TYPE_INTEGER,
                   .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                   .explicit_timestamp = false,
@@ -91,7 +89,6 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
               },
               {
                   .endpoint = "/%{sensor_id}/stringarray_endpoint",
-                  .regex_endpoint = "/[a-zA-Z_]+[a-zA-Z0-9_]*/stringarray_endpoint",
                   .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
                   .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
                   .explicit_timestamp = false,
@@ -117,7 +114,7 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
     astarte_object_entry_t *entries = NULL;
     size_t entries_length = 0;
     astarte_result_t res = astarte_object_entries_deserialize(
-        v_elem, &interface, "/sensor33/stringarray_endpoint", &entries, &entries_length);
+        v_elem, &interface, "/sensor33", &entries, &entries_length);
     zassert_equal(res, ASTARTE_RESULT_OK, "%s", astarte_result_to_name(res));
     zassert_equal(entries_length, 3); // The bson contains two pairs
 

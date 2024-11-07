@@ -113,6 +113,8 @@ struct astarte_device
     void *cbk_user_data;
     /** @brief Connection state of the Astarte device. */
     enum connection_states connection_state;
+    /** @brief Set if, since instance creation, a sync with Astarte has ever been performed. */
+    bool synchronization_completed;
     /** @brief Flag signaling a subscription request has failed. */
     bool subscription_failure;
     /** @brief Backoff context to be used in case of an handshake error with Astarte. */

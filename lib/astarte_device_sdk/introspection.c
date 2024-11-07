@@ -84,7 +84,7 @@ astarte_result_t introspection_init(introspection_t *introspection)
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    *introspection = (introspection_t){
+    *introspection = (introspection_t) {
         .list = calloc(1, sizeof(sys_dlist_t)),
     };
 
@@ -237,14 +237,14 @@ introspection_node_t *introspection_iter_next(
 
 void introspection_free(introspection_t introspection)
 {
-    introspection_node_t *alloc_node = NULL;
-    introspection_node_t *next = NULL;
-
-    SYS_DLIST_FOR_EACH_CONTAINER_SAFE(introspection.list, alloc_node, next, node)
-    {
-        node_free(alloc_node);
+    if (introspection.list) {
+        introspection_node_t *alloc_node = NULL;
+        introspection_node_t *next = NULL;
+        SYS_DLIST_FOR_EACH_CONTAINER_SAFE(introspection.list, alloc_node, next, node)
+        {
+            node_free(alloc_node);
+        }
     }
-
     free(introspection.list);
 }
 
@@ -338,7 +338,7 @@ static astarte_result_t append_introspection_node(
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
-    *alloc_node = (introspection_node_t){
+    *alloc_node = (introspection_node_t) {
         .interface = interface,
         .node = {},
     };

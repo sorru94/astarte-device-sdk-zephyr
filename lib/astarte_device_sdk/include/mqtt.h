@@ -247,6 +247,13 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt);
  */
 bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt);
 
+/**
+ * @brief Clear all MQTT messages that are waiting to be acknoledged.
+ *
+ * @param[in] astarte_mqtt Handle to the Astarte MQTT client instance.
+ */
+void astarte_mqtt_clear_all_pending(astarte_mqtt_t *astarte_mqtt);
+
 #ifdef __cplusplus
 }
 #endif

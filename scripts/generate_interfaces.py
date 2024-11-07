@@ -175,7 +175,6 @@ mapping_definition_template = Template(
     r"""
     {
         .endpoint = "${endpoint}",
-        .regex_endpoint = "^${regex_endpoint}$$",
         .type = ${type},
         .reliability = ${reliability},
         .explicit_timestamp = ${explicit_timestamp},
@@ -215,11 +214,6 @@ def generate_interfaces(interfaces_dir: Path, output_dir: Path, output_fn: str, 
                 # Fill in the mapping information in the template
                 mapping_struct = mapping_definition_template.substitute(
                     endpoint=mapping.endpoint,
-                    regex_endpoint=re.sub(
-                        r"%{([a-zA-Z_][a-zA-Z0-9_]*)}",
-                        r"[^/#+]+",
-                        mapping.endpoint,
-                    ),
                     type="ASTARTE_MAPPING_TYPE_" + mapping.type.upper(),
                     reliability="ASTARTE_MAPPING_RELIABILITY_"
                     + reliability_lookup[mapping.reliability],

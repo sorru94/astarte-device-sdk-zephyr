@@ -23,7 +23,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_object, CONFIG_ASTARTE_DEVICE_SDK_OBJECT_LOG
 
 astarte_object_entry_t astarte_object_entry_new(const char *path, astarte_individual_t individual)
 {
-    return (astarte_object_entry_t){
+    return (astarte_object_entry_t) {
         .path = path,
         .individual = individual,
     };

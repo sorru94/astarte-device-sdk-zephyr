@@ -135,7 +135,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_store_and_find) // NOLINT
         .flash_sector_size = fixture->flash_sector_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_init(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -245,6 +245,8 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_store_and_find) // NOLINT
     value_size = 0;
     ret = astarte_kv_storage_find(&kv_storage, key4, NULL, &value_size);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
+
+    astarte_kv_storage_destroy(kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
@@ -262,7 +264,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
         .flash_sector_size = fixture->flash_sector_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_init(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -311,6 +313,8 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
     zassert_equal(value_size, ARRAY_SIZE(value4), "Incorrect value size:%s", value_size);
     zassert_mem_equal(res_value4, value4, ARRAY_SIZE(value4), "Mismatched values.");
+
+    astarte_kv_storage_destroy(kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
@@ -328,7 +332,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
         .flash_sector_size = fixture->flash_sector_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_init(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -388,6 +392,8 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
     zassert_equal(value_size, ARRAY_SIZE(value4), "Incorrect value size:%s", value_size);
     zassert_mem_equal(res_value4, value4, ARRAY_SIZE(value4), "Mismatched values.");
+
+    astarte_kv_storage_destroy(kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
@@ -405,7 +411,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
         .flash_sector_size = fixture->flash_sector_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_init(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -479,6 +485,8 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
 
     ret = astarte_kv_storage_iterator_next(&iter);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
+
+    astarte_kv_storage_destroy(kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration_empty_storage) // NOLINT
@@ -494,13 +502,15 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration_empty_storage) 
         .flash_sector_size = fixture->flash_sector_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_init(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Iterate over storage
     astarte_kv_storage_iter_t iter = { 0 };
     ret = astarte_kv_storage_iterator_init(&kv_storage, &iter);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
+
+    astarte_kv_storage_destroy(kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // NOLINT
@@ -517,7 +527,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // N
         .flash_sector_count = fixture->flash_sector_count,
         .flash_sector_size = fixture->flash_sector_size,
     };
-    ret = astarte_kv_storage_init(storage_1_cfg, namespace_1, &kv_storage_1);
+    ret = astarte_kv_storage_new(storage_1_cfg, namespace_1, &kv_storage_1);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Initialize second storage driver
@@ -529,7 +539,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // N
         .flash_sector_count = fixture->flash_sector_count,
         .flash_sector_size = fixture->flash_sector_size,
     };
-    ret = astarte_kv_storage_init(storage_2_cfg, namespace_2, &kv_storage_2);
+    ret = astarte_kv_storage_new(storage_2_cfg, namespace_2, &kv_storage_2);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs with multiple namespaces
@@ -598,4 +608,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // N
 
     ret = astarte_kv_storage_iterator_next(&iter_2);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
+
+    astarte_kv_storage_destroy(kv_storage_1);
+    astarte_kv_storage_destroy(kv_storage_2);
 }

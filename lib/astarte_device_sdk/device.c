@@ -103,6 +103,15 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->cbk_user_data = cfg->cbk_user_data;
 
     // Initializing the connection hashmap and status flags
+    handle->synchronization_completed = false;
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_synchronization_get(&handle->synchronization_completed);
+    if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+        ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));
+        goto failure;
+    }
+    ASTARTE_LOG_DBG("Device synchronization completed '%d'", handle->synchronization_completed);
+#endif
     handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");
@@ -116,7 +125,6 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
             ares = introspection_add(&handle->introspection, cfg->interfaces[i]);
             if (ares != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(ares));
-                introspection_free(handle->introspection);
                 goto failure;
             }
         }
@@ -174,16 +182,24 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     return ares;
 
 failure:
+    if (handle) {
+        introspection_free(handle->introspection);
+    }
     free(handle);
     return ares;
 }
 
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
-    astarte_result_t ares = astarte_device_disconnect(device);
-    if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    if (device->connection_state != DEVICE_DISCONNECTED) {
+        ares = astarte_device_disconnect(device);
+        if (ares != ASTARTE_RESULT_OK) {
+            return ares;
+        }
     }
+
+    astarte_mqtt_clear_all_pending(&device->astarte_mqtt);
 
     ares = astarte_tls_credential_delete();
     if (ares != ASTARTE_RESULT_OK) {
@@ -191,6 +207,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         return ares;
     }
 
+    introspection_free(device->introspection);
     free(device);
     return ASTARTE_RESULT_OK;
 }

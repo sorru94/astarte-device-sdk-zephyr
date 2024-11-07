@@ -10,6 +10,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2024-10-23
+### Changed
+- All the library samples have been merged into a single sample called `astarte_app`.
+
+### Removed
+- Dependency to `CONFIG_SYS_HASH_FUNC32` which is not required.
+
+### Fixed
+- Memory leaks in kv_storage driver and device creation process.
+- Destroy function properly frees all cached MQTT messages.
+
 ## [0.7.1] - 2024-09-11
 ### Fixed
 - Connection callback is correctly called also when session present is true.

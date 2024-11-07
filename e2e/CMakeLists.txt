@@ -11,34 +11,22 @@ if(NOT BOARD STREQUAL REQUIRED_BOARD)
   message(FATAL_ERROR "End to end tests cannot run on any other board besides ${REQUIRED_BOARD}.")
 endif()
 
-set(COMMON_DIR ../samples/common)
+# add some custom functions from the sample directory
+set(SAMPLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../samples/astarte_app")
+include(${SAMPLE_DIR}/Utils.cmake)
 
-include(${COMMON_DIR}/Utils.cmake)
-
-# the order of this operations reflect their priority
-# properties added later have higher priority
-list(APPEND EXTRA_CONF_FILE ${COMMON_DIR}/prj.conf)
-# add private conf file
-concat_if_exists(private.conf EXTRA_CONF_FILE)
-# add native_sim board overlay from the sample directory
-concat_if_exists(${COMMON_DIR}/boards/${REQUIRED_BOARD}.conf EXTRA_CONF_FILE)
-concat_if_exists(${COMMON_DIR}/boards/${REQUIRED_BOARD}.overlay EXTRA_DTC_OVERLAY_FILE)
+# add the sample specific private configuration
+concat_if_exists(${CMAKE_SOURCE_DIR}/private.conf EXTRA_CONF_FILE)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(e2e_test)
 
+# add sources and includes from the sample dir
+target_sources(app PRIVATE ${SAMPLE_DIR}/src/eth.c ${SAMPLE_DIR}/src/utils.c)
+target_include_directories(app PRIVATE ${SAMPLE_DIR}/include)
+
 # handle generating certificate inc file
 include(certificate.cmake)
-
-# add common source files
-set(app_common_sources ${COMMON_DIR}/src/utils.c ${COMMON_DIR}/src/eth.c)
-target_sources(app PRIVATE ${app_common_sources})
-target_include_directories(app PRIVATE ${COMMON_DIR}/include)
-
-# add generated interfaces file
-FILE(GLOB app_interfaces_sources interfaces/*.c)
-target_sources(app PRIVATE ${app_interfaces_sources})
-target_include_directories(app PRIVATE interfaces)
 
 # add astarte private headers
 target_include_directories(app PRIVATE ${CMAKE_SOURCE_DIR}/../lib/astarte_device_sdk/include)

@@ -100,7 +100,7 @@ jobs:
         git config --local user.email "astarte-machine-sdk@ispirata.com"
         git config --local user.name "Astarte Bot"
         git add .
-        git diff-index --quiet HEAD || git commit -m "Update Zephyer SDK documentation"
+        git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK documentation"
     - name: Push changes
       working-directory: ./docs
       run: |
@@ -158,7 +158,7 @@ jobs:
           git config --local user.email "astarte-machine@ispirata.com"
           git config --local user.name "Astarte Bot"
           git add .
-          git diff-index --quiet HEAD || git commit -m "Update Python SDK get started"
+          git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK get started"
       - name: Push changes
         if: steps.commit-changes.conclusion == 'success'
         working-directory: ./sdk-doc

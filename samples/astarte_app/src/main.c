@@ -282,7 +282,7 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT
 
-    res = astarte_device_disconnect(device, K_SECONDS(10), false);
+    res = astarte_device_disconnect(device, K_SECONDS(10));
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device disconnection failure %s.", astarte_result_to_name(res)); // NOLINT
         return;
@@ -294,7 +294,7 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     }
 
     LOG_INF("Astarte device will now be destroyed."); // NOLINT
-    res = astarte_device_destroy(device, K_NO_WAIT, false);
+    res = astarte_device_destroy(device);
     if (res != ASTARTE_RESULT_OK) {
         LOG_ERR("Astarte device destroy failure."); // NOLINT
         return;

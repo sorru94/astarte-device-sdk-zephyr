@@ -512,7 +512,7 @@ void main(void) {
 
     // ... generate device ID, register, instantiate and connect the device ...
 
-    res = astarte_device_disconnect(device, K_SECONDS(10), false);
+    res = astarte_device_disconnect(device, K_SECONDS(10));
     if (res != ASTARTE_RESULT_OK) {
 		LOG_INF("Err: '%s'.", astarte_result_to_name(res));
         return;

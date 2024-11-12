@@ -182,18 +182,12 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
  * @brief Destroy the Astarte device instance.
  *
  * @note The device handle will become invalid after this operation.
- * @note If the device is connected when calling this function it will be disconnected.
+ * @note If the device is connected when calling this function it will be forcefully disconnected.
  *
  * @param[in] device Device instance to be destroyed.
- * @param[in] timeout Timeout for this function when @p force is false.
- * @param[in] force Force an eventual disconnection. When false this function will be blocking and
- * wait untill all QoS 1 or larger messages have been successfully transmitted, or a timeout has
- * been reached. When true this function will not wait for any message to be correctly delivered
- * and force a device disconnection.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_destroy(
-    astarte_device_handle_t device, k_timeout_t timeout, bool force);
+astarte_result_t astarte_device_destroy(astarte_device_handle_t device);
 
 /**
  * @brief add an interface to the device.
@@ -222,18 +216,29 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device);
 /**
  * @brief Disconnect the Astarte device instance.
  *
+ * @details This function will block until all QoS 1/2 pending messages have been successfully
+ * transmitted for a @p timeout hass been reached.
  * @note It will be possible to re-connect the device after disconnection.
  *
  * @param[in] device Device instance to be disconnected.
- * @param[in] timeout Timeout for this function when @p force is false.
- * @param[in] force Force the disconnection. When false this function will be blocking and wait
- * untill all QoS 1 or larger messages have been successfully transmitted, or a timeout has been
- * reached. When true this function will not wait for any message to be correctly delivered and
- * force a device disconnection.
+ * @param[in] timeout Timeout for the disconnection.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_disconnect(
-    astarte_device_handle_t device, k_timeout_t timeout, bool force);
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_timeout_t timeout);
+
+/**
+ * @brief Force a disconnection for the Astarte device instance.
+ *
+ * @details This function will disconnect the device from the Astarte device, ignoring any
+ * pending messages if present. The function will be non blocking and the disconnection
+ * immediate.
+ *
+ * @note It will be possible to re-connect the device after disconnection.
+ *
+ * @param[in] device Device instance to be disconnected.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device);
 
 /**
  * @brief Poll data from Astarte.

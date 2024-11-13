@@ -870,7 +870,8 @@ static int cmd_disconnect(const struct shell *sh, size_t argc, char **argv)
         "Failed in waiting for the Astarte thread to terminate.");
 
     LOG_INF("Destroing Astarte device and freeing resources."); // NOLINT
-    astarte_device_destroy(device_handle);
+    CHECK_ASTARTE_OK_HALT(
+        astarte_device_destroy(device_handle), "Astarte device destruction failure.");
 
     wait_for_disconnection();
 
@@ -900,6 +901,9 @@ static void device_thread_entry_point(void *device_handle, void *unused1, void *
 
         k_sleep(sys_timepoint_timeout(timepoint));
     }
+
+    CHECK_ASTARTE_OK_HALT(
+        astarte_device_disconnect(device, K_SECONDS(10)), "Astarte device disconnection failure.");
 
     LOG_INF("Exiting from the polling thread."); // NOLINT
 }

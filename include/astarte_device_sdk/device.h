@@ -19,6 +19,8 @@
  * @{
  */
 
+#include <zephyr/kernel.h>
+
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/device_id.h"
 #include "astarte_device_sdk/individual.h"
@@ -180,6 +182,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
  * @brief Destroy the Astarte device instance.
  *
  * @note The device handle will become invalid after this operation.
+ * @note If the device is connected when calling this function it will be forcefully disconnected.
  *
  * @param[in] device Device instance to be destroyed.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
@@ -213,12 +216,29 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device);
 /**
  * @brief Disconnect the Astarte device instance.
  *
+ * @details This function will block until all QoS 1/2 pending messages have been successfully
+ * transmitted for a @p timeout hass been reached.
+ * @note It will be possible to re-connect the device after disconnection.
+ *
+ * @param[in] device Device instance to be disconnected.
+ * @param[in] timeout Timeout for the disconnection.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_timeout_t timeout);
+
+/**
+ * @brief Force a disconnection for the Astarte device instance.
+ *
+ * @details This function will disconnect the device from the Astarte device, ignoring any
+ * pending messages if present. The function will be non blocking and the disconnection
+ * immediate.
+ *
  * @note It will be possible to re-connect the device after disconnection.
  *
  * @param[in] device Device instance to be disconnected.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_disconnect(astarte_device_handle_t device);
+astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device);
 
 /**
  * @brief Poll data from Astarte.

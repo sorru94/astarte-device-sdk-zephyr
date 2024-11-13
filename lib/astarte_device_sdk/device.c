@@ -193,7 +193,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     if (device->connection_state != DEVICE_DISCONNECTED) {
-        ares = astarte_device_disconnect(device);
+        ares = astarte_device_connection_disconnect(device, K_NO_WAIT, true);
         if (ares != ASTARTE_RESULT_OK) {
             return ares;
         }
@@ -223,9 +223,14 @@ astarte_result_t astarte_device_connect(astarte_device_handle_t device)
     return astarte_device_connection_connect(device);
 }
 
-astarte_result_t astarte_device_disconnect(astarte_device_handle_t device)
+astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_timeout_t timeout)
 {
-    return astarte_device_connection_disconnect(device);
+    return astarte_device_connection_disconnect(device, timeout, false);
+}
+
+astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device)
+{
+    return astarte_device_connection_disconnect(device, K_NO_WAIT, true);
 }
 
 astarte_result_t astarte_device_poll(astarte_device_handle_t device)

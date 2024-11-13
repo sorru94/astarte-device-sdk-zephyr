@@ -121,11 +121,27 @@ astarte_result_t astarte_device_connection_connect(astarte_device_handle_t devic
     return ares;
 }
 
-astarte_result_t astarte_device_connection_disconnect(astarte_device_handle_t device)
+astarte_result_t astarte_device_connection_disconnect(
+    astarte_device_handle_t device, k_timeout_t timeout, bool force)
 {
     if (device->connection_state == DEVICE_DISCONNECTED) {
         ASTARTE_LOG_ERR("Disconnection request for a disconnected client will be ignored.");
         return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
+    if (!force) {
+        k_timepoint_t timepoint = sys_timepoint_calc(timeout);
+        while (astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
+            if (sys_timepoint_expired(timepoint)) {
+                return ASTARTE_RESULT_TIMEOUT;
+            }
+            astarte_result_t ares = astarte_device_poll(device);
+            if (ares != ASTARTE_RESULT_OK) {
+                LOG_ERR("Poll failure during disconnection."); // NOLINT
+                return ares;
+            }
+            k_sleep(K_MSEC(100));
+        }
     }
 
     return astarte_mqtt_disconnect(&device->astarte_mqtt);

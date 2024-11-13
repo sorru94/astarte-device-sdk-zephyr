@@ -17,14 +17,14 @@ should have added a set of TLS certificates appropriate to reach the Astarte ser
 To add this module as a dependency to an application the application's manifest file should be
 modified in the following way.
 First, a new remote should be added:
-```yml
+```yaml
   remotes:
     # ... other remotes ...
     - name: astarte-platform
       url-base: https://github.com/astarte-platform
 ```
 Second, a new entry should be added to the projects list:
-```yml
+```yaml
   projects:
     # ... other projects ...
     - name: astarte-device-sdk-zephyr
@@ -55,7 +55,7 @@ pip install -r ./astarte-device-sdk-zephyr/scripts/requirements.txt
 A minimal set of Zephyr functionalities should be enabled for the Astarte device to work.
 Modules such as MbedTLS, base64, and MQTT provide the necessary functionality.
 
-```conf
+```kconfig
 # ... Hardware dependent networking configuration ...
 
 # Astarte device SDK

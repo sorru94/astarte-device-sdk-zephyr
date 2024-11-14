@@ -94,13 +94,20 @@ jobs:
         rm -rf docs/$DOCS_DIRNAME
         mkdir -p docs/$DOCS_DIRNAME/api
         cp -r astarte-device-sdk-zephyr/doc/_build/doxygen/html/* docs/$DOCS_DIRNAME/api
+    - name: Update symlink
+      working-directory: ./docs/device-sdks/zephyr
+      run: |
+        rm -f "latest"
+        latest_version=$(ls -d * | grep -v snapshot | sort -V | tail -n 1)
+        if [ -z $latest_version ]; then latest_version="snapshot"; fi
+        ln -sf "$latest_version" latest
     - name: Commit files
       working-directory: ./docs
       run: |
         git config --local user.email "astarte-machine-sdk@ispirata.com"
         git config --local user.name "Astarte Bot"
         git add .
-        git diff-index --quiet HEAD || git commit -m "Update Zephyer SDK documentation"
+        git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK documentation"
     - name: Push changes
       working-directory: ./docs
       run: |
@@ -118,10 +125,6 @@ jobs:
           repository: astarte-platform/sdk-doc
           ssh-key: ${{ secrets.SDK_DOC_DEPLOY_KEY }}
           path: sdk-doc
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.12
       - name: Check release branch
         id: check-release-branch
         working-directory: ./astarte-device-sdk-zephyr
@@ -158,7 +161,7 @@ jobs:
           git config --local user.email "astarte-machine@ispirata.com"
           git config --local user.name "Astarte Bot"
           git add .
-          git diff-index --quiet HEAD || git commit -m "Update Python SDK get started"
+          git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK get started"
       - name: Push changes
         if: steps.commit-changes.conclusion == 'success'
         working-directory: ./sdk-doc

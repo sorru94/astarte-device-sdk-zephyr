@@ -108,3 +108,26 @@ jobs:
       - name: Run clang-tidy
         working-directory: astarte-device-sdk-zephyr
         run: west static --sample astarte_app
+  python-checks:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: python-checks-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: astarte-device-sdk-zephyr
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install Python dependencies
+        working-directory: astarte-device-sdk-zephyr
+        run: pip install black
+      - name: Check format for the west extension scripts
+        working-directory: astarte-device-sdk-zephyr
+        run: python -m black --line-length 100 --diff --check ./scripts/*.py
+      - name: Check format for the end to end scripts
+        working-directory: astarte-device-sdk-zephyr
+        run: python -m black --line-length 100 --diff --check ./e2e/pytest/*.py

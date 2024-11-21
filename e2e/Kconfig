@@ -18,7 +18,9 @@ menu "E2E test"
 config TLS_CERTIFICATE_PATH
 	string "Path of the tls certificate"
 	help
-	  Path to a certificate, the file byte's will be included in the binary and used for https and mqtts connection
+	  Path to a certificate in PEM format. it will be included in the binary and used for TLS
+	  authentication.
+	  This path should be relative to the end to end project folder.
 
 config DEVICE_ID
 	string "Astarte device ID"

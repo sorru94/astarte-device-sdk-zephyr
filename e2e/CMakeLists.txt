@@ -4,12 +4,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-set(REQUIRED_BOARD "native_sim")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-if(NOT BOARD STREQUAL REQUIRED_BOARD)
-  message(FATAL_ERROR "End to end tests cannot run on any other board besides ${REQUIRED_BOARD}.")
-endif()
 
 # add some custom functions from the sample directory
 set(SAMPLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../samples/astarte_app")

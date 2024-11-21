@@ -327,11 +327,6 @@ int eth_connect(void)
         return -1;
     }
 
-    LOG_INF("Waiting for Ethernet interface to be operational."); // NOLINT
-    while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
-        k_sleep(K_MSEC(200));
-    }
-
     const struct device *dev = net_if_get_device(iface);
     LOG_INF("Default network interface device name: %s.", dev->name); // NOLINT
     struct ethernet_context *eth_ctx = net_if_l2_data(iface);
@@ -339,6 +334,11 @@ int eth_connect(void)
     LOG_INF("Ethernet context is initialized: %s.", eth_ctx->is_init ? "YES" : "NO"); // NOLINT
     enum net_if_oper_state iface_oper_state = net_if_oper_state(iface);
     LOG_INF("Default network interface operational state: %d.", iface_oper_state); // NOLINT
+
+    LOG_INF("Waiting for Ethernet interface to be operational."); // NOLINT
+    while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
+        k_sleep(K_MSEC(200));
+    }
 
 #ifdef CONFIG_NET_DHCPV4
     net_dhcpv4_start(iface);

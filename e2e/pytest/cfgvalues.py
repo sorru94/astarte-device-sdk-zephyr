@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Optional
+import os
+from pathlib import Path
 
 from dotenv import dotenv_values
 
@@ -26,8 +28,8 @@ class CfgValues:
         self.device_id: str = self._get_config_value(prj_config, "CONFIG_DEVICE_ID")
         self.appengine_url: str = self._get_config_value(prj_config, "CONFIG_E2E_APPENGINE_URL")
         self.appengine_token: str = self._get_config_value(prj_config, "CONFIG_E2E_APPENGINE_TOKEN")
-        self.appengine_cert: bool | str = self._get_config_value(
-            prj_config, "CONFIG_TLS_CERTIFICATE_PATH"
+        self.appengine_cert: Path = Path(os.path.abspath(__file__)).parent.parent.joinpath(
+            self._get_config_value(prj_config, "CONFIG_TLS_CERTIFICATE_PATH")
         )
 
     @staticmethod

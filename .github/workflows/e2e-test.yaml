@@ -74,13 +74,14 @@ jobs:
       - name: Setup e2e application configuration values
         working-directory: astarte-device-sdk-zephyr/e2e/
         run: |
+          # Register a device
           # TODO some devices should also get registered inside the e2e test using the provided api
           DEVICE_ID=$(astartectl utils device-id generate-random)
           CREDENTIAL_SECRET=$(astartectl pairing agent register --compact-output -- "$DEVICE_ID")
           PAIRING_TOKEN=$(astartectl utils gen-jwt pairing)
           TOKEN=$(astartectl utils gen-jwt appengine)
           tee -a private.conf << END
-          # Values added by the github action
+          # Store Astarte configuration and device credentials
           CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME="$ASTARTE_API_BASE"
           CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="test"
           CONFIG_DEVICE_ID="$DEVICE_ID"
@@ -88,12 +89,12 @@ jobs:
           CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="$PAIRING_TOKEN"
           CONFIG_E2E_APPENGINE_TOKEN="$TOKEN"
           CONFIG_E2E_APPENGINE_URL="https://$ASTARTE_API_BASE/appengine"
-          # The dns used must be the one of the zeth interface 
+          # Configuration for the DNS (must be the one of the zeth interface)
           # Since we are injecting there the correct domain name resolutions
           CONFIG_DNS_SERVER1="192.0.2.2:53"
-          # Write the certificate path so that cmake can successfully generate the .inc file
-          CONFIG_TLS_CERTIFICATE_PATH="$ASTARTE_ACTION_CERT"
           END
+          # Write the Astarte certificate
+          cat "$ASTARTE_ACTION_CERT" > ./certificate/api-eu1-astarte-cloud.pem
 
       - name: Start net-setup nat configuration
         working-directory: tools/net-tools
@@ -110,9 +111,7 @@ jobs:
           sudo ./net-setup.sh start --config nat.conf
 
       - name: Build and run e2e test zephyr application
-        # We have to launch the command in the e2e directory the script `e2e/pytest/configuration.py` searches for build artifact in that specific direcotry
-        working-directory: astarte-device-sdk-zephyr/e2e
-        run: west twister --force-color --ninja -vvv --inline-logs -p native_sim -T .
+        run: west twister --force-color --ninja -vvv --inline-logs -p native_sim -T ./astarte-device-sdk-zephyr/e2e/
 
       - name: Stop net-setup nat configuration
         working-directory: tools/net-tools

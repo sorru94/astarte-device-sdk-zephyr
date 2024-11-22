@@ -9,7 +9,7 @@ if(NOT DEFINED ${CERTIFICATE_PATH_VAR})
   return()
 endif()
 
-get_filename_component(certificate_file ${${CERTIFICATE_PATH_VAR}} ABSOLUTE)
+get_filename_component(certificate_file ${CMAKE_SOURCE_DIR}/${${CERTIFICATE_PATH_VAR}} ABSOLUTE)
 
 if(NOT EXISTS ${certificate_file})
   message(ERROR "The file path '${certificate_file}' specified in '${CERTIFICATE_PATH_VAR}' does not exist, provide a valid file or remove the option")

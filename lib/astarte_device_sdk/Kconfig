@@ -186,7 +186,7 @@ config ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION_INTERFACE_DIRECTORY
 	string "Path to the interface json directory"
 	depends on ASTARTE_DEVICE_SDK_ADVANCED_CODE_GENERATION
 	help
-		This must be set to the path of a directory containing valid interface jsons.
+		This must be set to the relative path of a directory containing valid interface jsons.
 		Generated interfaces may then be included by adding `#include "astarte_generated_interfaces.h"`.
 
 endmenu

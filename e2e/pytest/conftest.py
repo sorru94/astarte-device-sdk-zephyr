@@ -35,10 +35,9 @@ class TestcaseHelper:
 
 
 @pytest.fixture(scope="session")
-def astarte_cfg():
+def astarte_cfg(dut: DeviceAdapter):
     # Load kconfig configured settings from the build directory
-    # FIXME this path depends on the testcase name but for now it is good enough
-    CONFIG_FILE = "./twister-out/native_sim/lib.astarte_device_sdk.e2e/zephyr/.config"
+    CONFIG_FILE = dut.device_config.build_dir.joinpath("zephyr", ".config")
 
     return CfgValues(CONFIG_FILE)
 

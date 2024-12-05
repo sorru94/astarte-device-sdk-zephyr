@@ -15,7 +15,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: v3.7.0
+      revision: v3.7.1
       import: true
     - name: zlib-zephyr
       remote: secomind

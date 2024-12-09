@@ -3,11 +3,6 @@ Copyright 2024 SECO Mind Srl
 
 SPDX-License-Identifier: Apache-2.0
 -->
-<!--
-Copyright 2024 SECO Mind Srl
-
-SPDX-License-Identifier: Apache-2.0
--->
 
 ## Samples organization
 
@@ -15,11 +10,8 @@ The sample app in this folder contains code to send all data types supported by 
 The sample folder also contains:
 - Board specific overlays and configurations. Contained in the `astarte_app/boards` folder.
 
-Some configuration and cmake utilites are stored in a shared `common` folder that does not contain
-any valid zephyr application. This folder also contains common Astarte interfaces shared by the
-samples and the tests. These interfaces have been designed to be generic in order for the
-`astarte_app` sample to demonstrate as much functionality as possible.
-The interfaces are defined in JSON files contained in the `astarte_app/interfaces` folder.
+The Astarte interfaces for this sample are defined in JSON files contained in the
+`astarte_app/interfaces` folder.
 In addition to the JSON version of the interfaces, an auto-generated version of the same interfaces
 is contained in the `generated_interfaces` header/source files. Those files have been generated
 running the `west generate-interfaces` command and should not be modified manually.
@@ -38,8 +30,8 @@ timeout to allow reception of test messages.
 After the operational time of the device has concluded, the device will disconnect and the sample
 will terminate.
 
-Take a look a the [Kconfig](astarte_app/Kconfig) file or use menuconfig to test out different transmission
-types and timeouts.
+Take a look a the [Kconfig](astarte_app/Kconfig) file or use menuconfig to test out different
+transmission types and timeouts.
 
 ## Samples configuration
 
@@ -47,7 +39,7 @@ types and timeouts.
 
 This option assumes you are using this example with an Astarte instance similar to the
 one explained in the
-[Astarte in 5 minutes](https://docs.astarte-platform.org/astarte/latest/010-astarte_in_5_minutes.html)
+[Astarte quick instance](https://docs.astarte-platform.org/device-sdks/common/astarte_quick_instance.html)
 tutorial.
 
 The following entries should be modified in the `proj.conf` file.
@@ -91,8 +83,9 @@ array a valid CA certificate in the PEM format.
 ### Configuration of secrets in ignored files
 
 Some of the data configured in the `prj.conf` files could be private.
-Data like wifi passwords or even the astarte credential secret could be configured in a `private.conf` file.
-You can have a `private.conf` file in the [astarte_app](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples/astarte_app).
+Data like wifi passwords or even the astarte credential secret could be configured in a
+`private.conf` file.
+You can have a `private.conf` file in the [astarte_app](https://github.com/astarte-platform/astarte-device-sdk-zephyr/tree/master/samples/astarte_app) folder.
 This file is specified in the `.gitignore` and won't be committed.
 
 To configure your secrets you can add the following to `samples/astarte_app/private.conf`
@@ -106,7 +99,8 @@ CONFIG_CREDENTIAL_SECRET="..."
 
 ### Use native_sim with net-tools
 
-The net-setup.sh script can setup an ethernet interface to the host. This net-setup.sh script will need to be run as a root user.
+The net-setup.sh script can setup an ethernet interface to the host. This net-setup.sh script will
+need to be run as a root user.
 
 ```
 ./net-setup.sh --config nat.conf

@@ -62,6 +62,12 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
     "Missing credential secret in datastreams example");
 #endif
 
+
+#if defined(CONFIG_WIFI)
+BUILD_ASSERT(sizeof(CONFIG_WIFI_SSID) > 1, "Missing WiFi SSID");
+BUILD_ASSERT(sizeof(CONFIG_WIFI_PASSWORD) > 1, "Missing WiFi password");
+#endif
+
 /************************************************
  * Constants, static variables and defines
  ***********************************************/

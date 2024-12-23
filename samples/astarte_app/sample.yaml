@@ -15,4 +15,5 @@ tests:
       - mimxrt1060_evkb
       - mimxrt1064_evk
       - stm32h573i_dk
+      - nrf7002dk/nrf5340/cpuapp
       - native_sim

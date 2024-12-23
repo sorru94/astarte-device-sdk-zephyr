@@ -108,8 +108,17 @@ CONFIG_CREDENTIAL_SECRET="..."
 
 The net-setup.sh script can setup an ethernet interface to the host. This net-setup.sh script will need to be run as a root user.
 
-```
+```sh
 ./net-setup.sh --config nat.conf
+```
+
+### Binary blobs for Nordic
+
+If you would like to build and run the sample on Nordic boards you should fetch the binary blobs
+for the Nordic hardware abstraction layer.
+```sh
+west update
+west blobs fetch hal_nordic
 ```
 
 ## Astarte app sample overview

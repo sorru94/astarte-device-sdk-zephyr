@@ -4,7 +4,7 @@ Copyright 2024 SECO Mind Srl
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Astarte IoT devices using Zephyr RTOS
+# Clea Astarte IoT devices using Zephyr RTOS
 
 [![License badge](https://img.shields.io/badge/License-Apache%202.0-red)](https://www.apache.org/licenses/LICENSE-2.0.txt)
 ![Language badge](https://img.shields.io/badge/Language-C-yellow)
@@ -13,8 +13,8 @@ SPDX-License-Identifier: Apache-2.0
 [![Category badge](https://img.shields.io/badge/Category-CLOUD%20CONNECTED%20DEVICES-yellowgreen)](https://mcuxpresso.nxp.com/appcodehub?search=cloud%20connected%20devices)
 [![Toolchain badge](https://img.shields.io/badge/Toolchain-VS%20CODE-orange)](https://github.com/nxp-mcuxpresso/vscode-for-mcux/wiki)
 
-Astarte is an open source IoT platform focused on data management. It takes care of everything from
-collecting data from devices to delivering data to end-user applications.
+Clea Astarte is an open source IoT platform focused on data management. It takes care of everything
+from collecting data from devices to delivering data to end-user applications.
 This demo application shows how to create an Astarte device using the Zephyr RTOS framework on
 the i.MX RT1064 evaluation kit.
 

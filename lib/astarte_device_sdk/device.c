@@ -23,10 +23,20 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
  ***********************************************/
 
 /**
+ * @brief Initialize the device introspection.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interfaces A list of pointers to interfaces.
+ * @param[in] interfaces_size Number of interfaces in the list.
+ * @return ASTARTE_RESULT_OK on success, an error code otherwise.
+ */
+static astarte_result_t initialize_introspection(
+    astarte_device_handle_t device, const astarte_interface_t **interfaces, size_t interfaces_size);
+/**
  * @brief Initialize MQTT topics.
  *
  * @param[in] device Handle to the device instance.
- * @return ASTARTE_RESULT_OK if publish has been successful, an error code otherwise.
+ * @return ASTARTE_RESULT_OK on success, an error code otherwise.
  */
 static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device);
 
@@ -83,8 +93,15 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
 astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_device_handle_t handle = NULL;
 
-    astarte_device_handle_t handle = calloc(1, sizeof(struct astarte_device));
+    if (!cfg || !device) {
+        ASTARTE_LOG_ERR("Received NULL reference for configuration or device handle");
+        ares = ASTARTE_RESULT_INVALID_PARAM;
+        goto failure;
+    }
+
+    handle = calloc(1, sizeof(struct astarte_device));
     if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -115,19 +132,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");
-    ares = introspection_init(&handle->introspection);
+    ares = initialize_introspection(handle, cfg->interfaces, cfg->interfaces_size);
     if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(ares));
         goto failure;
-    }
-    if (cfg->interfaces) {
-        for (size_t i = 0; i < cfg->interfaces_size; i++) {
-            ares = introspection_add(&handle->introspection, cfg->interfaces[i]);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(ares));
-                goto failure;
-            }
-        }
     }
 
     ares = initialize_mqtt_topics(handle);
@@ -192,6 +199,11 @@ failure:
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    if (!device) {
+        return ASTARTE_RESULT_OK;
+    }
+
     if (device->connection_state != DEVICE_DISCONNECTED) {
         ares = astarte_device_connection_disconnect(device, K_NO_WAIT, true);
         if (ares != ASTARTE_RESULT_OK) {
@@ -215,26 +227,46 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 astarte_result_t astarte_device_add_interface(
     astarte_device_handle_t device, const astarte_interface_t *interface)
 {
+    if (!device || !interface) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle or interface");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     return introspection_update(&device->introspection, interface);
 }
 
 astarte_result_t astarte_device_connect(astarte_device_handle_t device)
 {
+    if (!device) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     return astarte_device_connection_connect(device);
 }
 
 astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_timeout_t timeout)
 {
+    if (!device) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     return astarte_device_connection_disconnect(device, timeout, false);
 }
 
 astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device)
 {
+    if (!device) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     return astarte_device_connection_disconnect(device, K_NO_WAIT, true);
 }
 
 astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 {
+    if (!device) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     return astarte_device_connection_poll(device);
 }
 
@@ -242,6 +274,10 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_individual_t individual,
     const int64_t *timestamp)
 {
+    if (!device || !interface_name || !path) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called stream individual function when the device is not connected.");
         return ASTARTE_RESULT_DEVICE_NOT_READY;
@@ -254,6 +290,10 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp)
 {
+    if (!device || !interface_name || !path || !entries) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
         return ASTARTE_RESULT_DEVICE_NOT_READY;
@@ -266,6 +306,10 @@ astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_individual_t individual)
 {
+    if (!device || !interface_name || !path) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called set property function when the device is not connected.");
         return ASTARTE_RESULT_DEVICE_NOT_READY;
@@ -277,6 +321,10 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
+    if (!device || !interface_name || !path) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     if (device->connection_state != DEVICE_CONNECTED) {
         ASTARTE_LOG_ERR("Called unset property function when the device is not connected.");
         return ASTARTE_RESULT_DEVICE_NOT_READY;
@@ -290,6 +338,10 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
     void *user_data)
 {
+    if (!device || !interface_name || !path || !loader_cbk) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_individual_t individual = { 0 };
     uint32_t out_major = 0U;
@@ -316,6 +368,26 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
+
+static astarte_result_t initialize_introspection(
+    astarte_device_handle_t device, const astarte_interface_t **interfaces, size_t interfaces_size)
+{
+    astarte_result_t ares = introspection_init(&device->introspection);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Introspection initialization failure %s.", astarte_result_to_name(ares));
+        return ares;
+    }
+    if (interfaces) {
+        for (size_t i = 0; i < interfaces_size; i++) {
+            ares = introspection_add(&device->introspection, interfaces[i]);
+            if (ares != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Introspection add failure %s.", astarte_result_to_name(ares));
+                return ares;
+            }
+        }
+    }
+    return ASTARTE_RESULT_OK;
+}
 
 static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device)
 {

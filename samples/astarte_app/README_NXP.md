@@ -39,7 +39,8 @@ installed, this can be done through the
 
 The application demonstrates the use of the
 [Astarte device SDK for Zephyr](https://github.com/astarte-platform/astarte-device-sdk-zephyr) at
-version **0.7.2**.
+version **0.7.2** in conjunction with [Zephyr RTOS](https://github.com/zephyrproject-rtos/zephyr) at
+version **4.1.0**.
 
 This application heavily relies on the
 [Astarte quick instance](https://docs.astarte-platform.org/device-sdks/common/astarte_quick_instance.html)

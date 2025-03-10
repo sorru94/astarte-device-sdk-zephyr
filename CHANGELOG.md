@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.8.0] - Unreleased
 ### Added
-- Support for Zephyr 4.0.0.
+- Support for Zephyr 4.1.0.
 - Function `astarte_device_force_disconnect` forces the device disconnection from an Astarte
   instance discarding any pending QoS 1/2 messages.
 

@@ -531,8 +531,15 @@ astarte_result_t astarte_kv_storage_iterator_get(
 
     uint16_t key_id = 1 + (iter->current_pair * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_KEY;
 
-    ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, key, *key_size);
-    nvs_rc = nvs_read(&nvs_fs, key_id, key, *key_size);
+    if (!key && (*key_size == 0)) {
+        uint8_t foo = 0;
+        ASTARTE_LOG_DBG(
+            "NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, (void *) &foo, sizeof(foo));
+        nvs_rc = nvs_read(&nvs_fs, key_id, &foo, sizeof(foo));
+    } else {
+        ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, key, *key_size);
+        nvs_rc = nvs_read(&nvs_fs, key_id, key, *key_size);
+    }
     if (nvs_rc < 0) {
         ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
@@ -741,8 +748,16 @@ error:
 static astarte_result_t get_nvs_entry(
     struct nvs_fs *nvs_fs, uint16_t entry_id, void *data, size_t *data_size)
 {
-    ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", entry_id, data, *data_size);
-    int nvs_rc = nvs_read(nvs_fs, entry_id, data, *data_size);
+    int nvs_rc = 0;
+    if (!data && (*data_size == 0)) {
+        uint8_t foo = 0;
+        ASTARTE_LOG_DBG(
+            "NVS read. Id: '%u', data: '%p', len: '%zu'", entry_id, (void *) &foo, sizeof(foo));
+        nvs_rc = nvs_read(nvs_fs, entry_id, &foo, sizeof(foo));
+    } else {
+        ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", entry_id, data, *data_size);
+        nvs_rc = nvs_read(nvs_fs, entry_id, data, *data_size);
+    }
     if (nvs_rc < 0) {
         ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
@@ -758,8 +773,8 @@ static astarte_result_t get_nvs_entry(
 static astarte_result_t get_stored_pairs(struct nvs_fs *nvs_fs, uint16_t *stored_pairs)
 {
     uint16_t data = 0;
-    ASTARTE_LOG_DBG(
-        "NVS read. Id: '%u', data: '%p', len: '%zu'", STORED_PAIRS_NVS_ID, &data, sizeof(data));
+    ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", STORED_PAIRS_NVS_ID,
+        (void *) &data, sizeof(data));
     int nvs_rc = nvs_read(nvs_fs, STORED_PAIRS_NVS_ID, &data, sizeof(data));
     if ((nvs_rc < 0) && (nvs_rc != -ENOENT)) {
         ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);

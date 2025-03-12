@@ -14,6 +14,7 @@ python -m black --line-length 100 ./scripts/*.py
 
 import subprocess
 from pathlib import Path
+from colored import stylize, fg
 
 from west.commands import WestCommand  # your extension must subclass this
 
@@ -73,27 +74,21 @@ class WestCommandFormat(WestCommand):
             Extra unknown arguments.
         """
         module_path = Path(self.topdir).joinpath("astarte-device-sdk-zephyr")
-        library_headers = [str(f) for f in Path(module_path).glob("include/astarte_device_sdk/*.h")]
-        library_private_headers = [
-            str(f) for f in Path(module_path).glob("lib/astarte_device_sdk/include/*.h")
+        headers_and_sources = [
+            str(Path(module_path).joinpath(s))
+            for s in (
+                "include/astarte_device_sdk/*.h",
+                "lib/astarte_device_sdk/include/*.h",
+                "lib/astarte_device_sdk/*.c",
+                "samples/**/include/*.h",
+                "samples/**/src/*.c",
+                "tests/lib/astarte_device_sdk/**/include/*.h",
+                "tests/lib/astarte_device_sdk/**/**/src/*.c",
+                "e2e/include/*.h",
+                "e2e/src/*.c",
+            )
         ]
-        library_sources = [str(f) for f in Path(module_path).glob("lib/astarte_device_sdk/*.c")]
-        samples_headers = [str(f) for f in Path(module_path).glob("samples/**/include/*.h")]
-        samples_sources = [str(f) for f in Path(module_path).glob("samples/**/src/*.c")]
-        unittest_headers = [str(f) for f in Path(module_path).glob("tests/**/include/*.h")]
-        unittest_sources = [str(f) for f in Path(module_path).glob("tests/**/src/*.c")]
-        e2etest_headers = [str(f) for f in Path(module_path).glob("e2e/include/*.h")]
-        e2etest_sources = [str(f) for f in Path(module_path).glob("e2e/src/*.c")]
-        cmd = (
-            ["clang-format", "--style=file", "--dry-run -Werror" if args.dry_run else "-i"]
-            + library_headers
-            + library_private_headers
-            + library_sources
-            + samples_headers
-            + samples_sources
-            + unittest_headers
-            + unittest_sources
-            + e2etest_headers
-            + e2etest_sources
-        )
-        subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=60, check=True)
+        for header_or_source in headers_and_sources:
+            cmd = ["clang-format", "--dry-run -Werror" if args.dry_run else "-i", header_or_source]
+            print(stylize(" ".join(cmd), fg("cyan")))
+            subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=60, check=True)

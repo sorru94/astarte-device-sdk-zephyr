@@ -46,6 +46,11 @@
 #include "register.h"
 #endif
 
+#include <zephyr/drivers/flash.h>
+#include <zephyr/storage/flash_map.h>
+
+#include <zephyr/fs/nvs.h>
+
 /************************************************
  *       Checks over configuration values       *
  ***********************************************/
@@ -145,10 +150,61 @@ static void unset_property_callback(astarte_device_data_event_t event);
  * Global functions definition
  ***********************************************/
 
+#define NVS_PARTITION storage_partition
+#define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)
+#define NVS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(NVS_PARTITION)
+#define NVS_PARTITION_SIZE FIXED_PARTITION_SIZE(NVS_PARTITION)
+
 int main(void)
 {
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
+
+    {
+        int flash_rc = flash_erase(NVS_PARTITION_DEVICE, NVS_PARTITION_OFFSET, NVS_PARTITION_SIZE);
+        if (flash_rc) {
+            LOG_ERR("Flash erase failure: %s (%d).", strerror(-flash_rc), flash_rc);
+            return -1;
+        }
+
+        const struct device *flash_device = NVS_PARTITION_DEVICE;
+        if (!device_is_ready(flash_device)) {
+            LOG_ERR("Flash device %s not ready.", flash_device->name);
+            return -1;
+        }
+
+        struct flash_pages_info fp_info = { 0 };
+        off_t flash_offset = NVS_PARTITION_OFFSET;
+        flash_rc = flash_get_page_info_by_offs(flash_device, flash_offset, &fp_info);
+        if (flash_rc) {
+            LOG_ERR("Unable to get page info: %d.", flash_rc);
+            return -1;
+        }
+
+        struct nvs_fs nvs_fs = { 0 };
+        nvs_fs.flash_device = flash_device;
+        nvs_fs.offset = flash_offset;
+        nvs_fs.sector_size = fp_info.size;
+        nvs_fs.sector_count = NVS_PARTITION_SIZE / fp_info.size;
+        ssize_t nvs_rc = nvs_mount(&nvs_fs);
+        if (nvs_rc) {
+            LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+            return -1;
+        }
+
+        const char data[] = "some data";
+        nvs_rc = nvs_write(&nvs_fs, 0U, data, sizeof(data));
+        if (nvs_rc < 0) {
+            LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+            return -1;
+        }
+
+        nvs_rc = nvs_read(&nvs_fs, 0U, NULL, 0);
+        if ((nvs_rc < 0) && (nvs_rc != -ENOENT)) {
+            LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+            return -1;
+        }
+    }
 
     // Initialize Ethernet driver
     LOG_INF("Initializing Ethernet driver."); // NOLINT

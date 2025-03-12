@@ -85,8 +85,6 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_kv_storage_t kv_storage = { 0 };
 
-    ASTARTE_LOG_DBG("Getting stored synchronization");
-
     ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Init error for synchronization cache: %s.", astarte_result_to_name(ares));
@@ -96,6 +94,7 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
     bool read_sync = false;
     size_t read_sync_size = sizeof(read_sync);
 
+    ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", SYNCHRONIZATION_KEY);
     ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, &read_sync, &read_sync_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
@@ -112,6 +111,7 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
     *sync = read_sync;
 
 exit:
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
 
     return ares;
@@ -130,11 +130,13 @@ astarte_result_t astarte_device_caching_synchronization_set(bool sync)
         return ares;
     }
 
+    ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", SYNCHRONIZATION_KEY);
     ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY, &sync, sizeof(sync));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching synchronization: %s.", astarte_result_to_name(ares));
     }
 
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     return ares;
 }
@@ -152,11 +154,13 @@ astarte_result_t astarte_device_caching_introspection_store(const char *intr, si
         return ares;
     }
 
+    ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", INTROSPECTION_KEY);
     ares = astarte_kv_storage_insert(&kv_storage, INTROSPECTION_KEY, intr, intr_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching introspection: %s.", astarte_result_to_name(ares));
     }
 
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     return ares;
 }
@@ -176,6 +180,7 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
     ares = astarte_kv_storage_find(&kv_storage, INTROSPECTION_KEY, NULL, &read_intr_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ares = ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
@@ -198,6 +203,7 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
     ares = astarte_kv_storage_find(&kv_storage, INTROSPECTION_KEY, read_intr, &read_intr_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
@@ -211,6 +217,7 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
     }
 
 exit:
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     free(read_intr);
 
@@ -275,12 +282,14 @@ astarte_result_t astarte_device_caching_property_store(
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", key);
     ares = astarte_kv_storage_insert(&kv_storage, key, data, data_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching property: %s.", astarte_result_to_name(ares));
     }
 
 exit:
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     free(key);
     astarte_bson_serializer_destroy(&bson);
@@ -318,6 +327,7 @@ astarte_result_t astarte_device_caching_property_load(const char *interface_name
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     size_t value_len = 0;
     ares = astarte_kv_storage_find(&kv_storage, key, NULL, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
@@ -333,6 +343,7 @@ astarte_result_t astarte_device_caching_property_load(const char *interface_name
     }
 
     // Get the data from NVS
+    ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     ares = astarte_kv_storage_find(&kv_storage, key, value, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not get property from storage: %s.", astarte_result_to_name(ares));
@@ -345,6 +356,7 @@ astarte_result_t astarte_device_caching_property_load(const char *interface_name
     }
 
 exit:
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     free(key);
     free(value);
@@ -386,12 +398,14 @@ astarte_result_t astarte_device_caching_property_delete(
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Deleting pair from storage. Key: %s", key);
     ares = astarte_kv_storage_delete(&kv_storage, key);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Error deleting cached property: %s.", astarte_result_to_name(ares));
     }
 
 exit:
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(kv_storage);
     free(key);
     return ares;
@@ -408,6 +422,7 @@ astarte_result_t astarte_device_caching_property_iterator_new(
         return ares;
     }
 
+    ASTARTE_LOG_DBG("Initializing iterator for key value storage.");
     ares = astarte_kv_storage_iterator_init(&iter->kv_storage, &iter->kv_iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Key-value storage iterator init error: %s.", astarte_result_to_name(ares));
@@ -418,6 +433,7 @@ astarte_result_t astarte_device_caching_property_iterator_new(
 
 void astarte_device_caching_property_iterator_destroy(astarte_device_caching_property_iter_t iter)
 {
+    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
     astarte_kv_storage_destroy(iter.kv_storage);
 }
 
@@ -426,6 +442,7 @@ astarte_result_t astarte_device_caching_property_iterator_next(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
+    ASTARTE_LOG_DBG("Advancing iterator for key value storage.");
     ares = astarte_kv_storage_iterator_next(&iter->kv_iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
@@ -455,6 +472,7 @@ astarte_result_t astarte_device_caching_property_iterator_get(
 
     // Get size of item key
     size_t key_size = 0U;
+    ASTARTE_LOG_DBG("Getting the key size for the pair pointer by the storage iterator.");
     ares = astarte_kv_storage_iterator_get(&iter->kv_iter, NULL, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
@@ -468,6 +486,7 @@ astarte_result_t astarte_device_caching_property_iterator_get(
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Getting the key data for the pair pointer by the storage iterator.");
     ares = astarte_kv_storage_iterator_get(&iter->kv_iter, key, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
@@ -610,6 +629,7 @@ static astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storag
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
+    ASTARTE_LOG_DBG("Initializing new storage instance for namespace: '%s'", namespace);
     astarte_kv_storage_cfg_t kv_storage_cfg = {
         .flash_device = flash_device,
         .flash_offset = flash_offset,

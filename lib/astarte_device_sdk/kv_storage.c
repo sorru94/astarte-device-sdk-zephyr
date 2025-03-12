@@ -136,9 +136,6 @@ astarte_result_t astarte_kv_storage_new(
     kv_storage->flash_sector_count = config.flash_sector_count;
     kv_storage->namespace = namespace_cpy;
 
-    ASTARTE_LOG_DBG("Opened key pair storage.");
-    ASTARTE_LOG_DBG("    Namespace: %s", namespace);
-
     return ASTARTE_RESULT_OK;
 
 error:
@@ -150,7 +147,6 @@ error:
 void astarte_kv_storage_destroy(astarte_kv_storage_t kv_storage)
 {
     free(kv_storage.namespace);
-    ASTARTE_LOG_DBG("Closed key pair storage.");
 }
 
 astarte_result_t astarte_kv_storage_insert(
@@ -172,25 +168,32 @@ astarte_result_t astarte_kv_storage_insert(
     nvs_fs.sector_size = kv_storage->flash_sector_size;
     nvs_fs.sector_count = kv_storage->flash_sector_count;
 
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
-    // Get number of stored key-value pairs
+    ASTARTE_LOG_DBG("Fetching the number of stored pairs.");
     ares = get_stored_pairs(&nvs_fs, &stored_pairs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Get total stored pairs failed %s.", astarte_result_to_name(ares));
         goto exit;
     }
+    ASTARTE_LOG_DBG("Storage contains %d pairs.", stored_pairs);
 
     // Search if key is already present in storage
+    ASTARTE_LOG_DBG(
+        "Fetching base ID for pair with key '%s' in namespace '%s'.", key, kv_storage->namespace);
     ares = find_pair_base_id(&nvs_fs, kv_storage->namespace, stored_pairs, key, &base_id);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
+        ASTARTE_LOG_DBG("No pair with key: '%s' found", key);
         append_at_end = true;
-    } else if (ares != ASTARTE_RESULT_OK) {
+    } else if (ares == ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_DBG("Found pair with key: '%s' at base ID: '%d'", key, base_id);
+    } else {
         ASTARTE_LOG_ERR("Check for old values failed %s.", astarte_result_to_name(ares));
         goto exit;
     }
@@ -203,9 +206,12 @@ astarte_result_t astarte_kv_storage_insert(
             goto exit;
         }
         base_id = (uint16_t) unbound_base_id;
+        ASTARTE_LOG_DBG(
+            "Pair with key '%s' will be appended at the end, at base id: '%d'", key, base_id);
     }
 
-    ASTARTE_LOG_DBG("Inserting key-value pair with key: '%s' at base id: %d", key, base_id);
+    ASTARTE_LOG_DBG("Inserting pair with key: '%s' at base id: '%d' in namespace '%s'", key,
+        base_id, kv_storage->namespace);
     ares = insert_pair_at(&nvs_fs, base_id, kv_storage->namespace, key, value, value_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Insert failed %s.", astarte_result_to_name(ares));
@@ -215,6 +221,7 @@ astarte_result_t astarte_kv_storage_insert(
     // If the key is not present, add it to at the end of NVS
     if (append_at_end) {
         stored_pairs++;
+        ASTARTE_LOG_DBG("Updating total number of stored pairs to: %d", stored_pairs);
         ares = update_stored_pairs(&nvs_fs, stored_pairs);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Update total stored pairs failed %s.", astarte_result_to_name(ares));
@@ -250,27 +257,33 @@ astarte_result_t astarte_kv_storage_find(
     nvs_fs.sector_size = kv_storage->flash_sector_size;
     nvs_fs.sector_count = kv_storage->flash_sector_count;
 
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Fetching the number of stored pairs.");
     ares = get_stored_pairs(&nvs_fs, &stored_pairs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Get total stored pairs failed %s.", astarte_result_to_name(ares));
         goto exit;
     }
+    ASTARTE_LOG_DBG("Storage contains %d pairs.", stored_pairs);
 
+    ASTARTE_LOG_DBG(
+        "Fetching base ID for pair with key '%s' in namespace '%s'.", key, kv_storage->namespace);
     ares = find_pair_base_id(&nvs_fs, kv_storage->namespace, stored_pairs, key, &base_id);
     if (ares != ASTARTE_RESULT_OK) {
         // Do not print errors as it could be a not found result
         goto exit;
     }
+    ASTARTE_LOG_DBG("Found pair with key: '%s' at base ID: '%d'", key, base_id);
 
-    ASTARTE_LOG_DBG("Found key-value pair with key: '%s' at base id: %d", key, base_id);
-
+    ASTARTE_LOG_DBG("Fetching value for the key '%s' (base ID: '%d', value ID: '%d').", key,
+        base_id, base_id + NVS_ID_OFFSET_VALUE);
     ares = get_nvs_entry(&nvs_fs, base_id + NVS_ID_OFFSET_VALUE, value, value_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Get value of key-value storage failed %s.", astarte_result_to_name(ares));
@@ -303,33 +316,38 @@ astarte_result_t astarte_kv_storage_delete(astarte_kv_storage_t *kv_storage, con
     nvs_fs.sector_size = kv_storage->flash_sector_size;
     nvs_fs.sector_count = kv_storage->flash_sector_count;
 
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Fetching the number of stored pairs.");
     ares = get_stored_pairs(&nvs_fs, &stored_pairs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Get total stored pairs failed %s.", astarte_result_to_name(ares));
         goto exit;
     }
+    ASTARTE_LOG_DBG("Storage contains %d pairs.", stored_pairs);
 
+    ASTARTE_LOG_DBG("Fetching the base ID of pair with key '%s' in namespace '%s'.", key,
+        kv_storage->namespace);
     ares = find_pair_base_id(&nvs_fs, kv_storage->namespace, stored_pairs, key, &base_id);
     if (ares != ASTARTE_RESULT_OK) {
         // Do not print errors as it could be a not found result
         goto exit;
     }
-
-    ASTARTE_LOG_DBG("Found key-valye pair for removal with key: '%s' at base id: %d", key, base_id);
+    ASTARTE_LOG_DBG("Found pair with key: '%s' at base ID: '%d'", key, base_id);
 
     // The initial +1 accounts for the first entry used to store the number of stored entries.
     uint16_t last_base_id = 1 + ((stored_pairs - 1) * NVS_ENTRIES_FOR_PAIR);
     for (uint16_t i = base_id; i < last_base_id; i += NVS_ENTRIES_FOR_PAIR) {
         uint16_t relocation_src = i + NVS_ENTRIES_FOR_PAIR;
         uint16_t relocation_dst = i;
-        ASTARTE_LOG_DBG("Relocating from %d to %d", relocation_src, relocation_dst);
+        ASTARTE_LOG_DBG(
+            "Relocating pair with base id '%d' from %d to %d", i, relocation_src, relocation_dst);
         ares = relocate_pair(&nvs_fs, relocation_dst, relocation_src);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Relocation failed %s.", astarte_result_to_name(ares));
@@ -338,6 +356,7 @@ astarte_result_t astarte_kv_storage_delete(astarte_kv_storage_t *kv_storage, con
     }
 
     stored_pairs--;
+    ASTARTE_LOG_DBG("Updating number of stored pairs to: %d", stored_pairs);
     ares = update_stored_pairs(&nvs_fs, stored_pairs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Update total stored pairs failed %s.", astarte_result_to_name(ares));
@@ -371,34 +390,41 @@ astarte_result_t astarte_kv_storage_iterator_init(
     nvs_fs.offset = kv_storage->flash_offset;
     nvs_fs.sector_size = kv_storage->flash_sector_size;
     nvs_fs.sector_count = kv_storage->flash_sector_count;
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Fetching the number of stored pairs.");
     ares = get_stored_pairs(&nvs_fs, &stored_pairs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Get total stored pairs failed %s.", astarte_result_to_name(ares));
         goto exit;
     }
+    ASTARTE_LOG_DBG("Storage contains %d pairs.", stored_pairs);
 
-    for (int32_t pair_base_id = stored_pairs - 1; pair_base_id >= 0; pair_base_id--) {
+    ASTARTE_LOG_DBG("Searching for the first pair in namespace: '%s'.", kv_storage->namespace);
+    for (int32_t pair_number = stored_pairs - 1; pair_number >= 0; pair_number--) {
 
-        uint16_t namespace_id = 1 + (pair_base_id * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
-
+        uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
         size_t namespace_size = 0U;
+        ASTARTE_LOG_DBG(
+            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
         ares = get_nvs_entry_with_alloc(&nvs_fs, namespace_id, &namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed fetching pair namespace %s.", astarte_result_to_name(ares));
             goto exit;
         }
+        ASTARTE_LOG_DBG("Found namespace '%s'.", (char *) namespace);
 
         if (strcmp(kv_storage->namespace, namespace) == 0) {
             iter->kv_storage = kv_storage;
-            iter->current_pair = pair_base_id;
-            ASTARTE_LOG_DBG("Initialized iterator. Curent pair: %d", iter->current_pair);
+            iter->current_pair = pair_number;
+            ASTARTE_LOG_DBG("Namespace match, first pair in namespace has base id: '%d'",
+                iter->current_pair * NVS_ENTRIES_FOR_PAIR);
             goto exit;
         }
 
@@ -434,25 +460,32 @@ astarte_result_t astarte_kv_storage_iterator_next(astarte_kv_storage_iter_t *ite
     nvs_fs.offset = iter->kv_storage->flash_offset;
     nvs_fs.sector_size = iter->kv_storage->flash_sector_size;
     nvs_fs.sector_count = iter->kv_storage->flash_sector_count;
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
-    for (int32_t pair_base_id = iter->current_pair - 1; pair_base_id >= 0; pair_base_id--) {
+    ASTARTE_LOG_DBG("Searching for the next pair in namespace: '%s'.", iter->kv_storage->namespace);
+    for (int32_t pair_number = iter->current_pair - 1; pair_number >= 0; pair_number--) {
 
-        uint16_t namespace_id = 1 + (pair_base_id * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
+        uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
         size_t namespace_size = 0U;
+        ASTARTE_LOG_DBG(
+            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
         ares = get_nvs_entry_with_alloc(&nvs_fs, namespace_id, &namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed fetching pair namespace %s.", astarte_result_to_name(ares));
             goto exit;
         }
+        ASTARTE_LOG_DBG("Found namespace '%s'.", (char *) namespace);
 
         if (strcmp(iter->kv_storage->namespace, namespace) == 0) {
-            iter->current_pair = pair_base_id;
+            iter->current_pair = pair_number;
+            ASTARTE_LOG_DBG(
+                "Namespace match, advancing iterator to base id: '%d'", iter->current_pair);
             ASTARTE_LOG_DBG("Advanced iterator. Curent pair: %d", iter->current_pair);
             goto exit;
         }
@@ -488,18 +521,20 @@ astarte_result_t astarte_kv_storage_iterator_get(
     nvs_fs.offset = iter->kv_storage->flash_offset;
     nvs_fs.sector_size = iter->kv_storage->flash_sector_size;
     nvs_fs.sector_count = iter->kv_storage->flash_sector_count;
+    ASTARTE_LOG_DBG("Mounting NVS.");
     int nvs_rc = nvs_mount(&nvs_fs);
     if (nvs_rc) {
-        ASTARTE_LOG_ERR("Mounting NVS failed: %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
 
     uint16_t key_id = 1 + (iter->current_pair * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_KEY;
 
+    ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, key, *key_size);
     nvs_rc = nvs_read(&nvs_fs, key_id, key, *key_size);
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_read error %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto exit;
     }
@@ -531,21 +566,26 @@ static astarte_result_t insert_pair_at(struct nvs_fs *nvs_fs, uint16_t base_id,
     uint16_t id_key = base_id + NVS_ID_OFFSET_KEY;
     uint16_t id_value = base_id + NVS_ID_OFFSET_VALUE;
 
+    ASTARTE_LOG_DBG("NVS write. Id: '%u', data: '%p', len: '%zu'", id_namespace, (void *) namespace,
+        strlen(namespace) + 1);
     ssize_t nvs_rc = nvs_write(nvs_fs, id_namespace, namespace, strlen(namespace) + 1);
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_write namespace error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
 
+    ASTARTE_LOG_DBG(
+        "NVS write. Id: '%u', data: '%p', len: '%zu'", id_key, (void *) key, strlen(key) + 1);
     nvs_rc = nvs_write(nvs_fs, id_key, key, strlen(key) + 1);
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_write key error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
 
+    ASTARTE_LOG_DBG("NVS write. Id: '%u', data: '%p', len: '%zu'", id_value, value, value_size);
     nvs_rc = nvs_write(nvs_fs, id_value, value, value_size);
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_write value error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
 
@@ -561,26 +601,34 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
     bool found = false;
 
     // Start from 1 as the first NVS slot is used by the number of elements
+    ASTARTE_LOG_DBG("Iterating over all stored pairs");
     uint16_t pair_number = 0U;
     for (; pair_number < stored_pairs; pair_number++) {
 
         size_t namespace_size = 0;
         uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
+        ASTARTE_LOG_DBG(
+            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
         ares = get_nvs_entry_with_alloc(nvs_fs, namespace_id, &tmp_namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
             goto exit;
         }
+        ASTARTE_LOG_DBG("Namespace is '%s'", (char *) tmp_namespace);
 
         if (strcmp((char *) tmp_namespace, namespace) == 0) {
 
             size_t key_size = 0;
             uint16_t key_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_KEY;
+            ASTARTE_LOG_DBG(
+                "Fetching key of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
             ares = get_nvs_entry_with_alloc(nvs_fs, key_id, &tmp_key, &key_size);
             if (ares != ASTARTE_RESULT_OK) {
                 goto exit;
             }
+            ASTARTE_LOG_DBG("Key is '%s'", (char *) tmp_key);
 
             if (strcmp((char *) tmp_key, key) == 0) {
+                ASTARTE_LOG_DBG("Found matching key.");
                 found = true;
                 break;
             }
@@ -614,6 +662,7 @@ static astarte_result_t relocate_pair(
 
     size_t namespace_id = src_base_id + NVS_ID_OFFSET_NAMESPACE;
     size_t namespace_size = 0U;
+    ASTARTE_LOG_DBG("Fetching the namespace of pair with base id: '%d'.", src_base_id);
     ares = get_nvs_entry_with_alloc(nvs_fs, namespace_id, &namespace, &namespace_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry namespace %s.", astarte_result_to_name(ares));
@@ -622,6 +671,7 @@ static astarte_result_t relocate_pair(
 
     size_t key_id = src_base_id + NVS_ID_OFFSET_KEY;
     size_t key_size = 0U;
+    ASTARTE_LOG_DBG("Fetching the key of pair with base id: '%d'.", src_base_id);
     ares = get_nvs_entry_with_alloc(nvs_fs, key_id, &key, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry key %s.", astarte_result_to_name(ares));
@@ -630,12 +680,14 @@ static astarte_result_t relocate_pair(
 
     size_t value_id = src_base_id + NVS_ID_OFFSET_VALUE;
     size_t value_size = 0U;
+    ASTARTE_LOG_DBG("Fetching the value of pair with base id: '%d'.", src_base_id);
     ares = get_nvs_entry_with_alloc(nvs_fs, value_id, &value, &value_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry value %s.", astarte_result_to_name(ares));
         goto exit;
     }
 
+    ASTARTE_LOG_DBG("Inserting pair at base id: '%d'.", dst_base_id);
     ares = insert_pair_at(nvs_fs, dst_base_id, (char *) namespace, (char *) key, value, value_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed relocating entry %s.", astarte_result_to_name(ares));
@@ -656,6 +708,7 @@ static astarte_result_t get_nvs_entry_with_alloc(
     void *buff = NULL;
     size_t buff_size = 0U;
 
+    ASTARTE_LOG_DBG("Fetching the size of the NVS entry with ID: '%d'.", entry_id);
     ares = get_nvs_entry(nvs_fs, entry_id, NULL, &buff_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry value size %s.", astarte_result_to_name(ares));
@@ -669,6 +722,7 @@ static astarte_result_t get_nvs_entry_with_alloc(
         goto error;
     }
 
+    ASTARTE_LOG_DBG("Fetching the value of the NVS entry with ID: '%d'.", entry_id);
     ares = get_nvs_entry(nvs_fs, entry_id, buff, &buff_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry value %s.", astarte_result_to_name(ares));
@@ -687,9 +741,10 @@ error:
 static astarte_result_t get_nvs_entry(
     struct nvs_fs *nvs_fs, uint16_t entry_id, void *data, size_t *data_size)
 {
+    ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", entry_id, data, *data_size);
     int nvs_rc = nvs_read(nvs_fs, entry_id, data, *data_size);
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_read error %d.", nvs_rc);
+        ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
     if (data && (nvs_rc > *data_size)) {
@@ -703,9 +758,11 @@ static astarte_result_t get_nvs_entry(
 static astarte_result_t get_stored_pairs(struct nvs_fs *nvs_fs, uint16_t *stored_pairs)
 {
     uint16_t data = 0;
+    ASTARTE_LOG_DBG(
+        "NVS read. Id: '%u', data: '%p', len: '%zu'", STORED_PAIRS_NVS_ID, &data, sizeof(data));
     int nvs_rc = nvs_read(nvs_fs, STORED_PAIRS_NVS_ID, &data, sizeof(data));
     if ((nvs_rc < 0) && (nvs_rc != -ENOENT)) {
-        ASTARTE_LOG_ERR("nvs_read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
     *stored_pairs = data;
@@ -714,10 +771,11 @@ static astarte_result_t get_stored_pairs(struct nvs_fs *nvs_fs, uint16_t *stored
 
 static astarte_result_t update_stored_pairs(struct nvs_fs *nvs_fs, uint16_t stored_pairs)
 {
-    ASTARTE_LOG_DBG("Updating stored pairs number to: %d", stored_pairs);
+    ASTARTE_LOG_DBG("NVS write. Id: '%u', data: '%p', len: '%zu'", STORED_PAIRS_NVS_ID,
+        &stored_pairs, sizeof(stored_pairs));
     int nvs_rc = nvs_write(nvs_fs, STORED_PAIRS_NVS_ID, &stored_pairs, sizeof(stored_pairs));
     if (nvs_rc < 0) {
-        ASTARTE_LOG_ERR("nvs_write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
     return ASTARTE_RESULT_OK;

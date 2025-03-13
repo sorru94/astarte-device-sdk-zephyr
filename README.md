@@ -53,31 +53,24 @@ own workspace.
 This will make it possible to build and execute the module samples without having to set up an
 extra application.
 
-#### Creating a new workspace, venv and cloning the example
+#### Creating a new workspace, venv and install west
 
 Start by creating a new workspace folder and a venv where `west` will reside.
-Then clone this library inside the newly created workspace.
 
 ```shell
-# Create a venv and install the west tool
-mkdir ~/zephyrproject
-python3 -m venv ~/zephyrproject/.venv
-source ~/zephyrproject/.venv/bin/activate
+mkdir ~/zephyrproject && cd ~/zephyrproject
+python3 -m venv .venv
+source .venv/bin/activate
 pip install west
-# Clone the example application repo
-git clone https://github.com/astarte-platform/astarte-device-sdk-zephyr.git ~/zephyrproject/astarte-device-sdk-zephyr
 ```
 
 #### Initializing the workspace
 
-The west workspace should be then intialized, using the example repository as the manifest
+The west workspace should be then intialized, using the Astarte libary repository as the manifest
 repository.
 
 ```shell
-# initialize my-workspace for the example-application (main branch)
-cd ~/zephyrproject
-west init -l astarte-device-sdk-zephyr
-# update Zephyr modules
+west init -m git@github.com:astarte-platform/astarte-device-sdk-zephyr --mr master
 west update
 ```
 
@@ -87,8 +80,8 @@ Lastly some dependencies will need to be installed for all west extensions to wo
 
 ```shell
 west zephyr-export
-pip install -r ~/zephyrproject/zephyr/scripts/requirements.txt
-pip install -r ~/zephyrproject/astarte-device-sdk-zephyr/scripts/requirements.txt
+west packages pip --install
+west packages pip --install -- -r ./astarte-device-sdk-zephyr/scripts/requirements.txt
 ```
 #### Fetching binary blobs for ESP32
 

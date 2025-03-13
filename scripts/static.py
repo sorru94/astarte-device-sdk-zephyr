@@ -18,6 +18,7 @@ import subprocess
 import sys
 from linecache import getline
 from pathlib import Path
+from colored import stylize, fg
 
 from colored import fore, stylize
 from west import log  # use this for user output
@@ -113,6 +114,7 @@ class WestCommandStatic(WestCommand):
             f'-DCODECHECKER_EXPORT={",".join(codechecker_exports)}',
             f'-DCODECHECKER_ANALYZE_OPTS="{";".join(codechecker_analyze_opts)}"',
         ]
+        print(stylize(" ".join(cmd), fg("cyan")))
         subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=180, check=True)
 
         has_reports = False

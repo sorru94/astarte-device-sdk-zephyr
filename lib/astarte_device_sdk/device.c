@@ -122,6 +122,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     // Initializing the connection hashmap and status flags
     handle->synchronization_completed = false;
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ASTARTE_LOG_DBG("Getting stored synchronization");
     ares = astarte_device_caching_synchronization_get(&handle->synchronization_completed);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));

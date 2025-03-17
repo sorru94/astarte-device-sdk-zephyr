@@ -81,7 +81,7 @@ astarte_result_t astarte_interface_get_qos(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     if (!qos) {
-        ASTARTE_LOG_ERR("Missing QoS parameter in introspection_get_qos.");
+        ASTARTE_LOG_ERR("Missing QoS parameter.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 

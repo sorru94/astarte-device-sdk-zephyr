@@ -61,7 +61,7 @@ void sample_object_transmission(astarte_device_handle_t device)
                 (const char **) utils_string_array_data, ARRAY_SIZE(utils_string_array_data))),
     };
 
-    astarte_result_t res = astarte_device_stream_aggregated(
+    astarte_result_t res = astarte_device_send_object(
         device, interface_name, "/sensor24", entries, ARRAY_SIZE(entries), NULL);
     if (res != ASTARTE_RESULT_OK) {
         LOG_INF("Astarte device transmission failure."); // NOLINT

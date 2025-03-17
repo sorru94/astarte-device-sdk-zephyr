@@ -711,10 +711,10 @@ static int cmd_send_individual_handler(const struct shell *sh, size_t argc, char
 
     astarte_result_t res = { 0 };
     if (timestamp.present) {
-        res = astarte_device_stream_individual(
+        res = astarte_device_send_individual(
             device_handle, interface->name, path, individual, &timestamp.value);
     } else {
-        res = astarte_device_stream_individual(
+        res = astarte_device_send_individual(
             device_handle, interface->name, path, individual, NULL);
     }
     CHECK_ASTARTE_OK_GOTO(res, cleanup, "Failed to send individual to astarte");
@@ -763,10 +763,10 @@ static int cmd_send_object_handler(const struct shell *sh, size_t argc, char **a
 
     astarte_result_t res = { 0 };
     if (timestamp.present) {
-        res = astarte_device_stream_aggregated(
+        res = astarte_device_send_object(
             device_handle, interface->name, path, entries, entries_length, &timestamp.value);
     } else {
-        res = astarte_device_stream_aggregated(
+        res = astarte_device_send_object(
             device_handle, interface->name, path, entries, entries_length, NULL);
     }
     CHECK_ASTARTE_OK_GOTO(res, cleanup, "Failed to send object to astarte");

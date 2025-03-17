@@ -495,7 +495,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
     const char double_path[] = "/double_endpoint";
     astarte_individual_t double_individual = astarte_individual_from_double(24.56);
 
-    res = astarte_device_stream_individual(
+    res = astarte_device_send_individual(
         device, interface_name, double_path, double_individual, NULL);
     if (res != ASTARTE_RESULT_OK) {
         printk("Err: '%s'.\n", astarte_result_to_name(res));
@@ -535,7 +535,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
             "string_endpoint", astarte_individual_from_string(string_data)),
     };
 
-    res = astarte_device_stream_aggregated(device,
+    res = astarte_device_send_object(device,
         org_astarte_platform_zephyr_get_started_Aggregated.name, "/group_data", entries,
         ARRAY_SIZE(entries), NULL);
     if (res != ASTARTE_RESULT_OK) {

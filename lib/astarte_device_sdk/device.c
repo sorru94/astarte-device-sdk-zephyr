@@ -271,7 +271,7 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
     return astarte_device_connection_poll(device);
 }
 
-astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device,
+astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_individual_t individual,
     const int64_t *timestamp)
 {
@@ -287,7 +287,7 @@ astarte_result_t astarte_device_stream_individual(astarte_device_handle_t device
     return astarte_device_tx_stream_individual(device, interface_name, path, individual, timestamp);
 }
 
-astarte_result_t astarte_device_stream_aggregated(astarte_device_handle_t device,
+astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp)
 {

@@ -70,7 +70,7 @@ void sample_individual_transmission(astarte_device_handle_t device)
     for (size_t i = 0; i < ARRAY_SIZE(individuals); i++) {
         LOG_INF("Stream on %s:", paths[i]); // NOLINT
         utils_log_astarte_individual(individuals[i]);
-        astarte_result_t res = astarte_device_stream_individual(
+        astarte_result_t res = astarte_device_send_individual(
             device, interface_name, paths[i], individuals[i], &tms);
         if (res != ASTARTE_RESULT_OK) {
             LOG_INF("Astarte device transmission failure."); // NOLINT

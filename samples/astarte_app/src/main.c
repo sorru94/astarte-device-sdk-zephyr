@@ -20,8 +20,8 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/device.h>
-#include <astarte_device_sdk/individual.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/pairing.h>
@@ -386,19 +386,19 @@ static void disconnection_callback(astarte_device_disconnection_event_t event)
 
 static void datastream_individual_callback(astarte_device_datastream_individual_event_t event)
 {
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
-    astarte_individual_t individual = event.individual;
+    const char *interface_name = event.base_event.interface_name;
+    const char *path = event.base_event.path;
+    astarte_data_t individual = event.data;
 
     LOG_INF("Datastream individual event, interface: %s, path: %s", interface_name, path); // NOLINT
 
-    utils_log_astarte_individual(individual);
+    utils_log_astarte_data(individual);
 }
 
 static void datastream_object_callback(astarte_device_datastream_object_event_t event)
 {
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
+    const char *interface_name = event.base_event.interface_name;
+    const char *path = event.base_event.path;
     astarte_object_entry_t *entries = event.entries;
     size_t entries_length = event.entries_len;
 
@@ -409,13 +409,13 @@ static void datastream_object_callback(astarte_device_datastream_object_event_t 
 
 static void set_property_callback(astarte_device_property_set_event_t event)
 {
-    const char *interface_name = event.data_event.interface_name;
-    const char *path = event.data_event.path;
-    astarte_individual_t individual = event.individual;
+    const char *interface_name = event.base_event.interface_name;
+    const char *path = event.base_event.path;
+    astarte_data_t individual = event.data;
 
     LOG_INF("Property set event, interface: %s, path: %s", interface_name, path); // NOLINT
 
-    utils_log_astarte_individual(individual);
+    utils_log_astarte_data(individual);
 }
 
 static void unset_property_callback(astarte_device_data_event_t event)

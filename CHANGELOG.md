@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - The `astarte_device_disconnect` function waits for all pending QoS 1/2 messages to be correctly
   processed with a configurable a timeout.
+- For coherence with other SDKs renamed the object `astarte_individual_t` to `astarte_data_t`.
+- For coherence with other SDKs renamed the functions `astarte_device_stream_individual` and
+  `astarte_device_stream_aggregated` to `astarte_device_send_individual` and
+  `astarte_device_send_object`.
 
 ## [0.7.2] - 2024-10-23
 ### Changed

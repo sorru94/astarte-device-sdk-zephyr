@@ -10,7 +10,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/ztest.h>
 
-#include "astarte_device_sdk/individual.h"
+#include "astarte_device_sdk/data.h"
 #include "astarte_device_sdk/result.h"
 
 #include "device_caching.h"
@@ -94,7 +94,7 @@ static void device_caching_test_teardown(void *f)
     free(fixture);
 }
 
-static bool astarte_individual_is_equal(astarte_individual_t first, astarte_individual_t second)
+static bool astarte_data_is_equal(astarte_data_t first, astarte_data_t second)
 {
     if (first.tag != second.tag) {
         return false;
@@ -221,86 +221,86 @@ struct property
     const char *interface_name;
     const char *path;
     uint32_t major;
-    astarte_individual_t individual;
+    astarte_data_t data;
 };
 
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_store_load_property) // NOLINT
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     int32_t read_major = 0;
-    astarte_individual_t read_individual = { 0 };
+    astarte_data_t read_data = { 0 };
 
     struct property property_1 = {
         .interface_name = "first.interface",
         .path = "/first/path/to/property",
         .major = 13,
-        .individual = astarte_individual_from_integer(11),
+        .data = astarte_data_from_integer(11),
     };
     struct property property_2 = {
         .interface_name = "second.interface",
         .path = "/third/path/to/property",
         .major = 45,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
     struct property property_3 = {
         .interface_name = "first.interface",
         .path = "/second/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_double(23.4),
+        .data = astarte_data_from_double(23.4),
     };
     struct property property_4 = {
         .interface_name = "first.interface",
         .path = "/first/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_longinteger(55),
+        .data = astarte_data_from_longinteger(55),
     };
 
     ares = astarte_device_caching_property_store(
-        property_1.interface_name, property_1.path, property_1.major, property_1.individual);
+        property_1.interface_name, property_1.path, property_1.major, property_1.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     ares = astarte_device_caching_property_store(
-        property_2.interface_name, property_2.path, property_2.major, property_2.individual);
+        property_2.interface_name, property_2.path, property_2.major, property_2.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     ares = astarte_device_caching_property_store(
-        property_3.interface_name, property_3.path, property_3.major, property_3.individual);
+        property_3.interface_name, property_3.path, property_3.major, property_3.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     ares = astarte_device_caching_property_store(
-        property_4.interface_name, property_4.path, property_4.major, property_4.individual);
+        property_4.interface_name, property_4.path, property_4.major, property_4.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     read_major = 0;
-    read_individual = (astarte_individual_t) { 0 };
+    read_data = (astarte_data_t) { 0 };
     ares = astarte_device_caching_property_load(
-        property_2.interface_name, property_2.path, &read_major, &read_individual);
+        property_2.interface_name, property_2.path, &read_major, &read_data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(read_major, property_2.major, "Read major: %d", read_major);
-    zassert_true(astarte_individual_is_equal(property_2.individual, read_individual));
+    zassert_true(astarte_data_is_equal(property_2.data, read_data));
 
-    astarte_device_caching_property_destroy_loaded(read_individual);
+    astarte_device_caching_property_destroy_loaded(read_data);
 
     read_major = 0;
-    read_individual = (astarte_individual_t) { 0 };
+    read_data = (astarte_data_t) { 0 };
     ares = astarte_device_caching_property_load(
-        property_3.interface_name, property_3.path, &read_major, &read_individual);
+        property_3.interface_name, property_3.path, &read_major, &read_data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(read_major, property_3.major, "Read major: %d", read_major);
-    zassert_true(astarte_individual_is_equal(property_3.individual, read_individual));
+    zassert_true(astarte_data_is_equal(property_3.data, read_data));
 
-    astarte_device_caching_property_destroy_loaded(read_individual);
+    astarte_device_caching_property_destroy_loaded(read_data);
 
     // The first property has been overwritten by the last one
     read_major = 0;
-    read_individual = (astarte_individual_t) { 0 };
+    read_data = (astarte_data_t) { 0 };
     ares = astarte_device_caching_property_load(
-        property_4.interface_name, property_4.path, &read_major, &read_individual);
+        property_4.interface_name, property_4.path, &read_major, &read_data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(read_major, property_4.major, "Read major: %d", read_major);
-    zassert_true(astarte_individual_is_equal(property_4.individual, read_individual));
+    zassert_true(astarte_data_is_equal(property_4.data, read_data));
 
-    astarte_device_caching_property_destroy_loaded(read_individual);
+    astarte_device_caching_property_destroy_loaded(read_data);
 }
 
 ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate) // NOLINT
@@ -315,31 +315,31 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_iterate) // NOLIN
         .interface_name = "first.interface",
         .path = "/first/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_integer(11),
+        .data = astarte_data_from_integer(11),
     };
     struct property property_2 = {
         .interface_name = "second.interface",
         .path = "/third/path/to/property",
         .major = 45,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
     struct property property_3 = {
         .interface_name = "first.interface",
         .path = "/second/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_double(23.4),
+        .data = astarte_data_from_double(23.4),
     };
 
     ares = astarte_device_caching_property_store(
-        property_1.interface_name, property_1.path, property_1.major, property_1.individual);
+        property_1.interface_name, property_1.path, property_1.major, property_1.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     ares = astarte_device_caching_property_store(
-        property_2.interface_name, property_2.path, property_2.major, property_2.individual);
+        property_2.interface_name, property_2.path, property_2.major, property_2.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     ares = astarte_device_caching_property_store(
-        property_3.interface_name, property_3.path, property_3.major, property_3.individual);
+        property_3.interface_name, property_3.path, property_3.major, property_3.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     astarte_device_caching_property_iter_t iter = { 0 };
@@ -438,57 +438,57 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_delete) // NOLINT
         .interface_name = "first.interface",
         .path = "/first/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_integer(11),
+        .data = astarte_data_from_integer(11),
     };
     struct property property_2 = {
         .interface_name = "second.interface",
         .path = "/third/path/to/property",
         .major = 45,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
     struct property property_3 = {
         .interface_name = "first.interface",
         .path = "/second/path/to/property",
         .major = 12,
-        .individual = astarte_individual_from_double(23.4),
+        .data = astarte_data_from_double(23.4),
     };
     struct property property_4 = {
         .interface_name = "third.interface",
         .path = "/fourth/path/to/property",
         .major = 33,
-        .individual = astarte_individual_from_double(11.5),
+        .data = astarte_data_from_double(11.5),
     };
     struct property property_5 = {
         .interface_name = "fourth.interface",
         .path = "/fifth/path/to/property",
         .major = 33,
-        .individual = astarte_individual_from_boolean(true),
+        .data = astarte_data_from_boolean(true),
     };
     struct property property_6 = {
         .interface_name = "fourth.interface",
         .path = "/sixth/path/to/property",
         .major = 33,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
 
     // Store a bunch of properties
     ares = astarte_device_caching_property_store(
-        property_1.interface_name, property_1.path, property_1.major, property_1.individual);
+        property_1.interface_name, property_1.path, property_1.major, property_1.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_2.interface_name, property_2.path, property_2.major, property_2.individual);
+        property_2.interface_name, property_2.path, property_2.major, property_2.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_3.interface_name, property_3.path, property_3.major, property_3.individual);
+        property_3.interface_name, property_3.path, property_3.major, property_3.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_4.interface_name, property_4.path, property_4.major, property_4.individual);
+        property_4.interface_name, property_4.path, property_4.major, property_4.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_5.interface_name, property_5.path, property_5.major, property_5.individual);
+        property_5.interface_name, property_5.path, property_5.major, property_5.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_6.interface_name, property_6.path, property_6.major, property_6.individual);
+        property_6.interface_name, property_6.path, property_6.major, property_6.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     // Delete a stored property
@@ -629,37 +629,37 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_get_properties_st
         .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
         .path = "/12/integer_endpoint",
         .major = 12,
-        .individual = astarte_individual_from_integer(11),
+        .data = astarte_data_from_integer(11),
     };
     struct property property_2 = {
         .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
         .path = "/24/boolean_endpoint",
         .major = 45,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
     struct property property_3 = {
         .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
         .path = "/45/double_endpoint",
         .major = 12,
-        .individual = astarte_individual_from_double(23.4),
+        .data = astarte_data_from_double(23.4),
     };
     struct property property_4 = {
         .interface_name = org_astarteplatform_zephyr_examples_DeviceProperty.name,
         .path = "/11/double_endpoint",
         .major = 33,
-        .individual = astarte_individual_from_double(11.5),
+        .data = astarte_data_from_double(11.5),
     };
     struct property property_5 = {
         .interface_name = org_astarteplatform_zephyr_examples_ServerProperty.name,
         .path = "/11/boolean_endpoint",
         .major = 33,
-        .individual = astarte_individual_from_boolean(true),
+        .data = astarte_data_from_boolean(true),
     };
     struct property property_6 = {
         .interface_name = org_astarteplatform_zephyr_examples_ServerProperty.name,
         .path = "/10/boolean_endpoint",
         .major = 33,
-        .individual = astarte_individual_from_boolean(false),
+        .data = astarte_data_from_boolean(false),
     };
 
     const char properties_string[]
@@ -671,22 +671,22 @@ ZTEST_F(astarte_device_sdk_device_caching, test_device_caching_get_properties_st
 
     // Store a bunch of properties
     ares = astarte_device_caching_property_store(
-        property_1.interface_name, property_1.path, property_1.major, property_1.individual);
+        property_1.interface_name, property_1.path, property_1.major, property_1.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_2.interface_name, property_2.path, property_2.major, property_2.individual);
+        property_2.interface_name, property_2.path, property_2.major, property_2.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_3.interface_name, property_3.path, property_3.major, property_3.individual);
+        property_3.interface_name, property_3.path, property_3.major, property_3.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_4.interface_name, property_4.path, property_4.major, property_4.individual);
+        property_4.interface_name, property_4.path, property_4.major, property_4.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_5.interface_name, property_5.path, property_5.major, property_5.individual);
+        property_5.interface_name, property_5.path, property_5.major, property_5.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     ares = astarte_device_caching_property_store(
-        property_6.interface_name, property_6.path, property_6.major, property_6.individual);
+        property_6.interface_name, property_6.path, property_6.major, property_6.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
     size_t output_size = 0U;

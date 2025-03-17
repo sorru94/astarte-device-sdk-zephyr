@@ -3,6 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
-  lib.astarte_device_sdk.unit.individual:
+  lib.astarte_device_sdk.unit.data:
     tags: astarte_device_sdk
     type: unit

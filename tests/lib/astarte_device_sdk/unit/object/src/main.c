@@ -32,26 +32,6 @@ ZTEST_SUITE(astarte_device_sdk_object, NULL, NULL, NULL, NULL, NULL);
 // because the log environment is missing in the unit_testing platform.
 void z_log_minimal_printk(const char *fmt, ...) {}
 
-// This function allocates dynamically the memory required to store the string.
-// Since we are in a test environment we do not deallocate such memory.
-static char *hex_to_str(const uint8_t *input, size_t input_len)
-{
-    char *dyn_buf = calloc((input_len * 6) + 1, sizeof(char));
-    if (!dyn_buf) {
-        return "Allocation error";
-    }
-    char *cursor = dyn_buf + sprintf(dyn_buf, "{");
-    for (int i = 0; i < input_len; i++) {
-        uint8_t *byte = input + i;
-        cursor = cursor + sprintf(cursor, "0x%02x", *byte);
-        if (i < input_len - 1) {
-            cursor = cursor + sprintf(cursor, ", ");
-        }
-    }
-    sprintf(cursor, "}");
-    return dyn_buf;
-}
-
 const char test_data_double_path[] = "double_endpoint";
 const double test_data_double = 32.1;
 const char test_data_integer_path[] = "integer_endpoint";
@@ -120,24 +100,23 @@ ZTEST(astarte_device_sdk_object, test_deserialize_astarte_object_from_aggregate)
 
     astarte_object_entry_t entry_double = entries[0];
     zassert_equal(strcmp(entry_double.path, test_data_double_path), 0);
-    astarte_individual_t individual_double = entry_double.individual;
-    zassert_equal(individual_double.tag, ASTARTE_MAPPING_TYPE_DOUBLE);
-    zassert_equal(individual_double.data.dbl, test_data_double);
+    astarte_data_t data_double = entry_double.data;
+    zassert_equal(data_double.tag, ASTARTE_MAPPING_TYPE_DOUBLE);
+    zassert_equal(data_double.data.dbl, test_data_double);
 
     astarte_object_entry_t entry_integer = entries[1];
     zassert_equal(strcmp(entry_integer.path, test_data_integer_path), 0);
-    astarte_individual_t individual_integer = entry_integer.individual;
-    zassert_equal(individual_integer.tag, ASTARTE_MAPPING_TYPE_INTEGER);
-    zassert_equal(individual_integer.data.integer, test_data_integer);
+    astarte_data_t data_integer = entry_integer.data;
+    zassert_equal(data_integer.tag, ASTARTE_MAPPING_TYPE_INTEGER);
+    zassert_equal(data_integer.data.integer, test_data_integer);
 
     astarte_object_entry_t object_string = entries[2];
     zassert_equal(strcmp(object_string.path, test_data_stringarray_path), 0);
-    astarte_individual_t individual_string = object_string.individual;
-    zassert_equal(individual_string.tag, ASTARTE_MAPPING_TYPE_STRINGARRAY);
-    zassert_equal(individual_string.data.string_array.len, ARRAY_SIZE(test_data_stringarray));
+    astarte_data_t data_string = object_string.data;
+    zassert_equal(data_string.tag, ASTARTE_MAPPING_TYPE_STRINGARRAY);
+    zassert_equal(data_string.data.string_array.len, ARRAY_SIZE(test_data_stringarray));
     for (size_t i = 0; i < ARRAY_SIZE(test_data_stringarray); i++) {
-        zassert_equal(
-            strcmp(individual_string.data.string_array.buf[i], test_data_stringarray[i]), 0);
+        zassert_equal(strcmp(data_string.data.string_array.buf[i], test_data_stringarray[i]), 0);
     }
 
     astarte_object_entries_destroy_deserialized(entries, entries_length);

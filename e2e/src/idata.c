@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include <astarte_device_sdk/interface.h>
-#include <individual_private.h>
+#include <data_private.h>
 #include <log.h>
 #include <object_private.h>
 
@@ -50,12 +50,12 @@ void idata_unit_log(e2e_idata_unit_t *idata_unit)
             ASTARTE_LOG_DBG("Unset on %s", property_data->path);
         } else {
             ASTARTE_LOG_DBG("Property on %s", property_data->path);
-            utils_log_astarte_individual(property_data->individual);
+            utils_log_astarte_data(property_data->data);
         }
     } else if (idata_unit->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_INDIVIDUAL) {
         e2e_individual_data_t *individual_data = &idata_unit->values.individual;
         ASTARTE_LOG_DBG("Individual on %s", individual_data->path);
-        utils_log_astarte_individual(individual_data->individual);
+        utils_log_astarte_data(individual_data->data);
     } else if (idata_unit->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_OBJECT) {
         e2e_object_data_t *object_data = &idata_unit->values.object;
         ASTARTE_LOG_DBG("Object on %s", object_data->path);
@@ -272,7 +272,7 @@ int idata_remove(e2e_idata_unit_t *idata_unit)
 
         // unsets do not store an individual value
         if (!property_data->unset) {
-            astarte_individual_destroy_deserialized(property_data->individual);
+            astarte_data_destroy_deserialized(property_data->data);
         }
 
         free((char *) property_data->path);
@@ -280,7 +280,7 @@ int idata_remove(e2e_idata_unit_t *idata_unit)
         e2e_individual_data_t *individual_data = &idata_unit->values.individual;
 
         free((char *) individual_data->path);
-        astarte_individual_destroy_deserialized(individual_data->individual);
+        astarte_data_destroy_deserialized(individual_data->data);
     } else if (idata_unit->interface->aggregation == ASTARTE_INTERFACE_AGGREGATION_OBJECT) {
         e2e_object_data_t *object_data = &idata_unit->values.object;
 

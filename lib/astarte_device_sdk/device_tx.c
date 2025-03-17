@@ -10,7 +10,7 @@
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 #include "device_caching.h"
 #endif
-#include "individual_private.h"
+#include "data_private.h"
 #include "object_private.h"
 
 #include "log.h"
@@ -43,8 +43,7 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
  ***********************************************/
 
 astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_individual_t individual,
-    const int64_t *timestamp)
+    const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
 {
     astarte_bson_serializer_t bson = { 0 };
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -57,7 +56,7 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
         goto exit;
     }
 
-    ares = data_validation_individual_datastream(interface, path, individual, timestamp);
+    ares = data_validation_individual_datastream(interface, path, data, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device individual data validation failed.");
         goto exit;
@@ -75,7 +74,7 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    ares = astarte_individual_serialize(&bson, "v", individual);
+    ares = astarte_data_serialize(&bson, "v", data);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -85,21 +84,21 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
     }
     astarte_bson_serializer_append_end_of_document(&bson);
 
-    int len = 0;
-    void *data = (void *) astarte_bson_serializer_get_serialized(bson, &len);
-    if (!data) {
+    int data_ser_len = 0;
+    void *data_ser = (void *) astarte_bson_serializer_get_serialized(bson, &data_ser_len);
+    if (!data_ser) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
-    if (len < 0) {
+    if (data_ser_len < 0) {
         ASTARTE_LOG_ERR("BSON document is too long for MQTT publish.");
         ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
         goto exit;
     }
 
-    ares = publish_data(device, interface_name, path, data, len, qos);
+    ares = publish_data(device, interface_name, path, data_ser, data_ser_len, qos);
 
 exit:
     astarte_bson_serializer_destroy(&bson);
@@ -205,7 +204,7 @@ exit:
 }
 
 astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_individual_t individual)
+    const char *interface_name, const char *path, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
@@ -214,7 +213,7 @@ astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
-    astarte_result_t ares = data_validation_set_property(interface, path, individual);
+    astarte_result_t ares = data_validation_set_property(interface, path, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Property data validation failed.");
         return ares;
@@ -222,13 +221,13 @@ astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
     ares = astarte_device_caching_property_store(
-        interface_name, path, interface->major_version, individual);
+        interface_name, path, interface->major_version, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed storing the property.");
     }
 #endif
 
-    return astarte_device_tx_stream_individual(device, interface_name, path, individual, NULL);
+    return astarte_device_tx_stream_individual(device, interface_name, path, data, NULL);
 }
 
 astarte_result_t astarte_device_tx_unset_property(

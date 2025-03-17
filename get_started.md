@@ -493,7 +493,7 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
     printk("Streaming individual data.\n");
     const char *interface_name = org_astarte_platform_zephyr_get_started_Individual.name;
     const char double_path[] = "/double_endpoint";
-    astarte_individual_t double_individual = astarte_individual_from_double(24.56);
+    astarte_data_t double_individual = astarte_data_from_double(24.56);
 
     res = astarte_device_send_individual(
         device, interface_name, double_path, double_individual, NULL);
@@ -530,9 +530,9 @@ static void device_tx_thread_entry_point(void *device_handle, void *unused1, voi
     const char string_data[] = "Hello world!";
     astarte_object_entry_t entries[] = {
         astarte_object_entry_new(
-            "double_endpoint", astarte_individual_from_double(double_data)),
+            "double_endpoint", astarte_data_from_double(double_data)),
         astarte_object_entry_new(
-            "string_endpoint", astarte_individual_from_string(string_data)),
+            "string_endpoint", astarte_data_from_string(string_data)),
     };
 
     res = astarte_device_send_object(device,

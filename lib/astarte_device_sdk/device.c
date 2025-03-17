@@ -272,8 +272,7 @@ astarte_result_t astarte_device_poll(astarte_device_handle_t device)
 }
 
 astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_individual_t individual,
-    const int64_t *timestamp)
+    const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
 {
     if (!device || !interface_name || !path) {
         ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
@@ -284,7 +283,7 @@ astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_stream_individual(device, interface_name, path, individual, timestamp);
+    return astarte_device_tx_stream_individual(device, interface_name, path, data, timestamp);
 }
 
 astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
@@ -305,7 +304,7 @@ astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
 }
 
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_individual_t individual)
+    const char *interface_name, const char *path, astarte_data_t data)
 {
     if (!device || !interface_name || !path) {
         ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter.");
@@ -316,7 +315,7 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_set_property(device, interface_name, path, individual);
+    return astarte_device_tx_set_property(device, interface_name, path, data);
 }
 
 astarte_result_t astarte_device_unset_property(
@@ -344,9 +343,9 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_INVALID_PARAM;
     }
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
     uint32_t out_major = 0U;
-    ares = astarte_device_caching_property_load(interface_name, path, &out_major, &individual);
+    ares = astarte_device_caching_property_load(interface_name, path, &out_major, &data);
     if (ares != ASTARTE_RESULT_OK) {
         if (ares != ASTARTE_RESULT_NOT_FOUND) {
             ASTARTE_LOG_ERR("Failed getting property: %s.", astarte_result_to_name(ares));
@@ -357,11 +356,11 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     astarte_device_property_loader_event_t event = { .device = device,
         .interface_name = interface_name,
         .path = path,
-        .individual = individual,
+        .data = data,
         .user_data = user_data };
     loader_cbk(event);
 
-    astarte_device_caching_property_destroy_loaded(individual);
+    astarte_device_caching_property_destroy_loaded(data);
     return ares;
 }
 #endif

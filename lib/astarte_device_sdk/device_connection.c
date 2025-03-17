@@ -81,10 +81,10 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
  * @param[in] interface_name Name of the interface for the property as retreived from cache.
  * @param[in] path Path for the property as retreived from cache.
  * @param[in] major Major version for the interface of the property as retreived from cache.
- * @param[in] individual Data for the property as retreived from cache.
+ * @param[in] data Data for the property as retreived from cache.
  */
 static void send_device_owned_property(astarte_device_handle_t device, const char *interface_name,
-    const char *path, uint32_t major, astarte_individual_t individual);
+    const char *path, uint32_t major, astarte_data_t data);
 /**
  * @brief Send the device owned properties to Astarte.
  *
@@ -493,7 +493,7 @@ exit:
 }
 
 static void send_device_owned_property(astarte_device_handle_t device, const char *interface_name,
-    const char *path, uint32_t major, astarte_individual_t individual)
+    const char *path, uint32_t major, astarte_data_t data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     const astarte_interface_t *interface = introspection_get(
@@ -509,7 +509,7 @@ static void send_device_owned_property(astarte_device_handle_t device, const cha
     }
 
     if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_DEVICE) {
-        ares = astarte_device_tx_stream_individual(device, interface_name, path, individual, NULL);
+        ares = astarte_device_tx_stream_individual(device, interface_name, path, data, NULL);
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed sending cached property: %s",
             astarte_result_to_name(ares));
     }
@@ -521,7 +521,7 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
     astarte_device_caching_property_iter_t iter = { 0 };
     char *interface_name = NULL;
     char *path = NULL;
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
 
     ares = astarte_device_caching_property_iterator_new(&iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
@@ -556,20 +556,20 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
         }
 
         uint32_t major = 0U;
-        ares = astarte_device_caching_property_load(interface_name, path, &major, &individual);
+        ares = astarte_device_caching_property_load(interface_name, path, &major, &data);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties load property error: %s", astarte_result_to_name(ares));
             goto end;
         }
 
-        send_device_owned_property(device, interface_name, path, major, individual);
+        send_device_owned_property(device, interface_name, path, major, data);
 
         free(interface_name);
         interface_name = NULL;
         free(path);
         path = NULL;
-        astarte_device_caching_property_destroy_loaded(individual);
-        individual = (astarte_individual_t) { 0 };
+        astarte_device_caching_property_destroy_loaded(data);
+        data = (astarte_data_t) { 0 };
 
         ares = astarte_device_caching_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
@@ -583,7 +583,7 @@ end:
     astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
-    astarte_device_caching_property_destroy_loaded(individual);
+    astarte_device_caching_property_destroy_loaded(data);
     return (ares == ASTARTE_RESULT_NOT_FOUND) ? ASTARTE_RESULT_OK : ares;
 }
 #endif

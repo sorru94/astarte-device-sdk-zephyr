@@ -13,7 +13,7 @@
  */
 
 #include "astarte_device_sdk/astarte.h"
-#include "astarte_device_sdk/individual.h"
+#include "astarte_device_sdk/data.h"
 #include "astarte_device_sdk/result.h"
 
 #include "introspection.h"
@@ -74,37 +74,37 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
  * @param[in] interface_name Interface name
  * @param[in] path Property path
  * @param[in] major Major version name
- * @param[in] individual Astarte individual value to store
+ * @param[in] data Astarte data value to store
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_caching_property_store(
-    const char *interface_name, const char *path, uint32_t major, astarte_individual_t individual);
+    const char *interface_name, const char *path, uint32_t major, astarte_data_t data);
 
 /**
  * @brief Loads a stored property
  *
- * @warning The @p individual parameter should be destroyed using
+ * @warning The @p data parameter should be destroyed using
  * #astarte_device_caching_property_destroy_loaded after its usage has ended.
  *
  * @param[in] interface_name Interface name
  * @param[in] path Property path
  * @param[out] out_major Pointer to output major version. Might be NULL, in this case the parameter
  * is ignored.
- * @param[out] individual Pointer to output Astarte individual. May be NULL, in this case
- * the parameter is ignored.
+ * @param[out] data Pointer to output Astarte data. May be NULL, in this case the parameter is
+ * ignored.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_caching_property_load(const char *interface_name, const char *path,
-    uint32_t *out_major, astarte_individual_t *individual);
+astarte_result_t astarte_device_caching_property_load(
+    const char *interface_name, const char *path, uint32_t *out_major, astarte_data_t *data);
 
 /**
- * @brief Destroy individual data for a previously loaded property.
+ * @brief Destroy data for a previously loaded property.
  *
  * @details Use this function to free the memory allocated by #astarte_device_caching_property_load.
  *
- * @param[out] individual Astarte individual loaded by #astarte_device_caching_property_load.
+ * @param[out] data Astarte data loaded by #astarte_device_caching_property_load.
  */
-void astarte_device_caching_property_destroy_loaded(astarte_individual_t individual);
+void astarte_device_caching_property_destroy_loaded(astarte_data_t data);
 
 /**
  * @brief Delete a cached property.

@@ -102,7 +102,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_multiple_segme
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 
     const char shorter_path[] = "/first_segment/second_sgment/third_segment";
-    res = astarte_mapping_check_path(mapping, mispelled_path);
+    res = astarte_mapping_check_path(mapping, shorter_path);
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 
     const char missing_first_forwardslash_path[] = "first_segment/second_segment/third_segment";
@@ -234,7 +234,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_multiple_segme
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 
     const char empty_third_param_path[] = "/sensor_42/first_segment/sens.or_11/second_segment/";
-    res = astarte_mapping_check_path(mapping, missing_third_param_path);
+    res = astarte_mapping_check_path(mapping, empty_third_param_path);
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 
     const char non_allowed_char_first_param_path[] = "/+s42/first_segment/s11/second_segment/s54";
@@ -250,7 +250,7 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_path_multiple_segme
     zassert_equal(res, ASTARTE_RESULT_MAPPING_PATH_MISMATCH, "Res:%s", astarte_result_to_name(res));
 }
 
-ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_individual_double)
+ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_data_double)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
     astarte_mapping_t mapping = {
@@ -261,27 +261,27 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_individual_double)
         .allow_unset = true,
     };
 
-    astarte_individual_t double_individual_ok = astarte_individual_from_double(42.3);
-    res = astarte_mapping_check_individual(&mapping, double_individual_ok);
+    astarte_data_t double_data_ok = astarte_data_from_double(42.3);
+    res = astarte_mapping_check_data(&mapping, double_data_ok);
     zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
 
-    astarte_individual_t double_individual_nan = astarte_individual_from_double(NAN);
-    res = astarte_mapping_check_individual(&mapping, double_individual_nan);
+    astarte_data_t double_data_nan = astarte_data_from_double(NAN);
+    res = astarte_mapping_check_data(&mapping, double_data_nan);
     zassert_equal(
-        res, ASTARTE_RESULT_MAPPING_INDIVIDUAL_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+        res, ASTARTE_RESULT_MAPPING_DATA_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 
-    astarte_individual_t double_individual_inf = astarte_individual_from_double(INFINITY);
-    res = astarte_mapping_check_individual(&mapping, double_individual_inf);
+    astarte_data_t double_data_inf = astarte_data_from_double(INFINITY);
+    res = astarte_mapping_check_data(&mapping, double_data_inf);
     zassert_equal(
-        res, ASTARTE_RESULT_MAPPING_INDIVIDUAL_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+        res, ASTARTE_RESULT_MAPPING_DATA_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 
-    astarte_individual_t integer_individual = astarte_individual_from_integer(42);
-    res = astarte_mapping_check_individual(&mapping, integer_individual);
+    astarte_data_t integer_data = astarte_data_from_integer(42);
+    res = astarte_mapping_check_data(&mapping, integer_data);
     zassert_equal(
-        res, ASTARTE_RESULT_MAPPING_INDIVIDUAL_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+        res, ASTARTE_RESULT_MAPPING_DATA_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 }
 
-ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_individual_doublearray)
+ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_data_doublearray)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
     astarte_mapping_t mapping = {
@@ -293,22 +293,22 @@ ZTEST(astarte_device_sdk_mapping, test_astarte_mapping_check_individual_doublear
     };
 
     double doublearray_ok[] = { 12.4, 23.4 };
-    astarte_individual_t doublearray_individual_ok
-        = astarte_individual_from_double_array(doublearray_ok, ARRAY_SIZE(doublearray_ok));
-    res = astarte_mapping_check_individual(&mapping, doublearray_individual_ok);
+    astarte_data_t doublearray_data_ok
+        = astarte_data_from_double_array(doublearray_ok, ARRAY_SIZE(doublearray_ok));
+    res = astarte_mapping_check_data(&mapping, doublearray_data_ok);
     zassert_equal(res, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(res));
 
     double doublearray_nan[] = { 12.4, NAN, 23.4 };
-    astarte_individual_t doublearray_individual_nan
-        = astarte_individual_from_double_array(doublearray_nan, ARRAY_SIZE(doublearray_nan));
-    res = astarte_mapping_check_individual(&mapping, doublearray_individual_nan);
+    astarte_data_t doublearray_data_nan
+        = astarte_data_from_double_array(doublearray_nan, ARRAY_SIZE(doublearray_nan));
+    res = astarte_mapping_check_data(&mapping, doublearray_data_nan);
     zassert_equal(
-        res, ASTARTE_RESULT_MAPPING_INDIVIDUAL_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+        res, ASTARTE_RESULT_MAPPING_DATA_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 
     double doublearray_inf[] = { 12.4, INFINITY, 23.4 };
-    astarte_individual_t doublearray_individual_inf
-        = astarte_individual_from_double_array(doublearray_inf, ARRAY_SIZE(doublearray_inf));
-    res = astarte_mapping_check_individual(&mapping, doublearray_individual_inf);
+    astarte_data_t doublearray_data_inf
+        = astarte_data_from_double_array(doublearray_inf, ARRAY_SIZE(doublearray_inf));
+    res = astarte_mapping_check_data(&mapping, doublearray_data_inf);
     zassert_equal(
-        res, ASTARTE_RESULT_MAPPING_INDIVIDUAL_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
+        res, ASTARTE_RESULT_MAPPING_DATA_INCOMPATIBLE, "Res:%s", astarte_result_to_name(res));
 }

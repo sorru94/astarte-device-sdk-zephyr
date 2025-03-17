@@ -32,7 +32,7 @@ void z_log_minimal_printk(const char *fmt, ...) {}
 ZTEST(astarte_device_sdk_interface, test_astarte_interface_get_mapping)
 {
     astarte_result_t res = ASTARTE_RESULT_OK;
-    astarte_mapping_t *mapping = NULL;
+    const astarte_mapping_t *mapping = NULL;
 
     const astarte_mapping_t mappings[3]
         = { {

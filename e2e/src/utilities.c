@@ -16,7 +16,7 @@
 #include <zephyr/sys/bitarray.h>
 #include <zephyr/sys/util.h>
 
-#include <astarte_device_sdk/individual.h>
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/object.h>
@@ -47,11 +47,10 @@ LOG_MODULE_REGISTER(utilities, CONFIG_UTILITIES_LOG_LEVEL); // NOLINT
  *         Static functions declaration         *
  ***********************************************/
 
-static bool cmp_string_array(
-    astarte_individual_stringarray_t *left, astarte_individual_stringarray_t *right);
+static bool cmp_string_array(astarte_data_stringarray_t *left, astarte_data_stringarray_t *right);
 static bool cmp_binaryblob_array(
-    astarte_individual_binaryblobarray_t *left, astarte_individual_binaryblobarray_t *right);
-static astarte_individual_t *get_individual(e2e_object_entry_array_t *entries, const char *key);
+    astarte_data_binaryblobarray_t *left, astarte_data_binaryblobarray_t *right);
+static astarte_data_t *get_object_entry_data(e2e_object_entry_array_t *entries, const char *key);
 
 /************************************************
  * Global functions definition
@@ -97,9 +96,9 @@ bool astarte_object_equal(e2e_object_entry_array_t *left, e2e_object_entry_array
 
     for (size_t i = 0; i < left->len; ++i) {
         const char *left_key = left->buf[i].path;
-        astarte_individual_t *left_value = &left->buf[i].individual;
+        astarte_data_t *left_value = &left->buf[i].data;
 
-        astarte_individual_t *right_value = get_individual(right, left_key);
+        astarte_data_t *right_value = get_object_entry_data(right, left_key);
         // check that the value exist in the right object
         if (!right_value) {
             result = false;
@@ -107,7 +106,7 @@ bool astarte_object_equal(e2e_object_entry_array_t *left, e2e_object_entry_array
         }
 
         astarte_object_entry_t *right_value_entry
-            = CONTAINER_OF(right_value, astarte_object_entry_t, individual);
+            = CONTAINER_OF(right_value, astarte_object_entry_t, data);
         // assert that the right entry hasn't already been checked (no duplicate in left)
         size_t offset = right_value_entry - right->buf;
         int previous_value = { 0 };
@@ -118,7 +117,7 @@ bool astarte_object_equal(e2e_object_entry_array_t *left, e2e_object_entry_array
         }
 
         // check that the value is equal in the right object
-        if (!astarte_individual_equal(left_value, right_value)) {
+        if (!astarte_data_equal(left_value, right_value)) {
             result = false;
             goto exit;
         }
@@ -129,7 +128,7 @@ exit:
     return result;
 }
 
-bool astarte_individual_equal(astarte_individual_t *left, astarte_individual_t *right)
+bool astarte_data_equal(astarte_data_t *left, astarte_data_t *right)
 {
     if (left->tag != right->tag) {
         return false;
@@ -177,7 +176,7 @@ void astarte_object_print(e2e_object_entry_array_t *obj)
 {
     for (size_t i = 0; i < obj->len; ++i) {
         ASTARTE_LOG_INF("Path: %s", obj->buf[i].path);
-        utils_log_astarte_individual(obj->buf[i].individual);
+        utils_log_astarte_data(obj->buf[i].data);
     }
 }
 
@@ -304,8 +303,7 @@ e2e_timestamp_option_t next_timestamp_parameter(char ***args, size_t *argc)
  *         Static functions definitions         *
  ***********************************************/
 
-static bool cmp_string_array(
-    astarte_individual_stringarray_t *left, astarte_individual_stringarray_t *right)
+static bool cmp_string_array(astarte_data_stringarray_t *left, astarte_data_stringarray_t *right)
 {
     if (left->len != right->len) {
         return false;
@@ -321,7 +319,7 @@ static bool cmp_string_array(
 }
 
 static bool cmp_binaryblob_array(
-    astarte_individual_binaryblobarray_t *left, astarte_individual_binaryblobarray_t *right)
+    astarte_data_binaryblobarray_t *left, astarte_data_binaryblobarray_t *right)
 {
     if (left->count != right->count) {
         return false;
@@ -339,11 +337,11 @@ static bool cmp_binaryblob_array(
     return true;
 }
 
-static astarte_individual_t *get_individual(e2e_object_entry_array_t *entries, const char *key)
+static astarte_data_t *get_object_entry_data(e2e_object_entry_array_t *entries, const char *key)
 {
     for (size_t i = 0; i < entries->len; ++i) {
         if (strcmp(key, entries->buf[i].path) == 0) {
-            return &entries->buf[i].individual;
+            return &entries->buf[i].data;
         }
     }
 

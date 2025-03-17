@@ -92,18 +92,6 @@ const astarte_interface_t *introspection_get(
     introspection_t *introspection, const char *interface_name);
 
 /**
- * @brief Retrieves the QoS for an interface's mapping from the introspection list.
- *
- * @param[in] introspection Introspection struct initialized using #introspection_init.
- * @param[in] interface_name The name of one of the interfaces contained in the introspection list.
- * @param[in] path For the mapping for which the QoS will need to be extracted.
- * @param[out] qos The extracted QoS.
- * @return ASTARTE_RESULT_OK on success, otherwise an error code.
- */
-astarte_result_t introspection_get_qos(
-    introspection_t *introspection, const char *interface_name, const char *path, int *qos);
-
-/**
  * @brief Removes an interface from the introspection list
  *
  * @param[in,out] introspection a pointer to an introspection struct initialized using

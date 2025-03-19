@@ -58,7 +58,7 @@ extra application.
 Start by creating a new workspace folder and a venv where `west` will reside.
 
 ```shell
-mkdir ~/zephyrproject && cd ~/zephyrproject
+mkdir ~/astarte-zephyrproject && cd ~/astarte-zephyrproject
 python3 -m venv .venv
 source .venv/bin/activate
 pip install west

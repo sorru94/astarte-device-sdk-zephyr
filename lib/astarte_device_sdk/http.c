@@ -228,7 +228,7 @@ static int create_and_connect_socket(void)
         ASTARTE_LOG_ERR("Unable to resolve address (%d) %s", getaddrinfo_rc,
             zsock_gai_strerror(getaddrinfo_rc));
         if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
-            ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
+            ASTARTE_LOG_ERR("Errno: (%d) %s", errno, strerror(errno));
         }
         return -1;
     }

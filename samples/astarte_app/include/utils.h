@@ -19,7 +19,7 @@
  * be used in the samples.
  */
 
-#include <astarte_device_sdk/individual.h>
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/object.h>
 
 #define UTILS_DATA_ELEMENTS 14
@@ -41,11 +41,11 @@ extern const char utils_string_data[];
 extern const char *const utils_string_array_data[2];
 
 /**
- * @brief Pretty print to the log output an Astarte individual.
+ * @brief Pretty print to the log output an Astarte data.
  *
- * @param[in] individual The individual to log
+ * @param[in] data The data to log
  */
-void utils_log_astarte_individual(astarte_individual_t individual);
+void utils_log_astarte_data(astarte_data_t data);
 
 void utils_log_astarte_object(astarte_object_entry_t *entries, size_t entries_len);
 

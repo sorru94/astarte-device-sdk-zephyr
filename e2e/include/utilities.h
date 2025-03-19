@@ -11,7 +11,7 @@
 
 #include <zephyr/fatal.h>
 
-#include <astarte_device_sdk/individual.h>
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/object.h>
 #include <astarte_device_sdk/util.h>
@@ -62,7 +62,7 @@ ASTARTE_UTIL_DEFINE_ARRAY(e2e_object_entry_array_t, astarte_object_entry_t);
 void astarte_object_print(e2e_object_entry_array_t *obj);
 
 bool astarte_object_equal(e2e_object_entry_array_t *left, e2e_object_entry_array_t *right);
-bool astarte_individual_equal(astarte_individual_t *left, astarte_individual_t *right);
+bool astarte_data_equal(astarte_data_t *left, astarte_data_t *right);
 
 void skip_parameter(char ***args, size_t *argc);
 const astarte_interface_t *next_interface_parameter(

@@ -121,7 +121,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_serializer_complete_document)
     const uint8_t bin_2[] = { 0x61 };
     const uint8_t bin_3[] = { 0x63, 0x64 };
     const uint8_t *arr_bin[] = { bin_1, bin_2, bin_3 };
-    const int arr_sizes[] = { 1, 1, 2 };
+    const size_t arr_sizes[] = { 1, 1, 2 };
     astarte_bson_serializer_append_binary_array(
         &bson, "element binary array", (const void *const *) arr_bin, arr_sizes, 3);
     const bool arr_bool[] = { false, true };

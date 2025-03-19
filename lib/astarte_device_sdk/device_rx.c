@@ -14,7 +14,7 @@
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 #include "device_caching.h"
 #endif
-#include "individual_private.h"
+#include "data_private.h"
 #include "interface_private.h"
 #include "object_private.h"
 
@@ -102,30 +102,30 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
  * @brief Handles an incoming set property message.
  *
  * @param[in] device Handle to the device instance.
- * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] individual Astarte individual value received.
+ * @param[in] base_event Data event containing information regarding the received event.
+ * @param[in] data Astarte value received.
  */
-static void on_set_property(astarte_device_handle_t device, astarte_device_data_event_t data_event,
-    astarte_individual_t individual);
+static void on_set_property(
+    astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data);
 /**
  * @brief Handles an incoming datastream individual message.
  *
  * @param[in] device Handle to the device instance.
- * @param[in] data_event Data event containing information regarding the received event.
- * @param[in] individual Astarte individual value received.
+ * @param[in] base_event Data event containing information regarding the received event.
+ * @param[in] data Astarte value received.
  */
-static void on_datastream_individual(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_individual_t individual);
+static void on_datastream_individual(
+    astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data);
 /**
  * @brief Handles an incoming datastream aggregated message.
  *
  * @param[in] device Handle to the device instance.
- * @param[in] data_event Data event containing information regarding the received event.
+ * @param[in] base_event Data event containing information regarding the received event.
  * @param[in] entries The object entries received, organized as an array.
  * @param[in] entries_len The number of element in the @p entries array.
  */
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_object_entry_t *entries, size_t entries_len);
+    astarte_device_data_event_t base_event, astarte_object_entry_t *entries, size_t entries_len);
 
 /************************************************
  *         Global functions definitions         *
@@ -379,7 +379,7 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
         return;
     }
 
-    astarte_device_data_event_t data_event = {
+    astarte_device_data_event_t base_event = {
         .device = device,
         .interface_name = interface_name,
         .path = path,
@@ -387,7 +387,7 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
     };
 
     if ((interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) && (data_len == 0)) {
-        on_unset_property(device, data_event);
+        on_unset_property(device, base_event);
         return;
     }
 
@@ -411,8 +411,8 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
             ASTARTE_LOG_ERR("Could not find received mapping in interface %s.", interface_name);
             return;
         }
-        astarte_individual_t individual = { 0 };
-        ares = astarte_individual_deserialize(v_elem, mapping->type, &individual);
+        astarte_data_t data_deserialized = { 0 };
+        ares = astarte_data_deserialize(v_elem, mapping->type, &data_deserialized);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface_name, path);
@@ -420,11 +420,11 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
         }
 
         if (interface->type == ASTARTE_INTERFACE_TYPE_PROPERTIES) {
-            on_set_property(device, data_event, individual);
+            on_set_property(device, base_event, data_deserialized);
         } else {
-            on_datastream_individual(device, data_event, individual);
+            on_datastream_individual(device, base_event, data_deserialized);
         }
-        astarte_individual_destroy_deserialized(individual);
+        astarte_data_destroy_deserialized(data_deserialized);
     } else {
         astarte_object_entry_t *entries = NULL;
         size_t entries_length = 0;
@@ -435,7 +435,7 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
                 interface_name, path);
             return;
         }
-        on_datastream_aggregated(device, data_event, entries, entries_length);
+        on_datastream_aggregated(device, base_event, entries, entries_length);
         astarte_object_entries_destroy_deserialized(entries, entries_length);
     }
 }
@@ -470,18 +470,18 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
     }
 }
 
-static void on_set_property(astarte_device_handle_t device, astarte_device_data_event_t data_event,
-    astarte_individual_t individual)
+static void on_set_property(
+    astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
-        &device->introspection, data_event.interface_name);
+        &device->introspection, base_event.interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR(
-            "Could not find interface in device introspection (%s).", data_event.interface_name);
+            "Could not find interface in device introspection (%s).", base_event.interface_name);
         return;
     }
 
-    astarte_result_t ares = data_validation_set_property(interface, data_event.path, individual);
+    astarte_result_t ares = data_validation_set_property(interface, base_event.path, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property data validation failed.");
         return;
@@ -489,7 +489,7 @@ static void on_set_property(astarte_device_handle_t device, astarte_device_data_
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
     ares = astarte_device_caching_property_store(
-        data_event.interface_name, data_event.path, interface->major_version, individual);
+        base_event.interface_name, base_event.path, interface->major_version, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed storing the server property.");
     }
@@ -497,8 +497,8 @@ static void on_set_property(astarte_device_handle_t device, astarte_device_data_
 
     if (device->property_set_cbk) {
         astarte_device_property_set_event_t set_event = {
-            .data_event = data_event,
-            .individual = individual,
+            .base_event = base_event,
+            .data = data,
         };
         device->property_set_cbk(set_event);
     } else {
@@ -506,32 +506,32 @@ static void on_set_property(astarte_device_handle_t device, astarte_device_data_
     }
 }
 
-static void on_datastream_individual(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_individual_t individual)
+static void on_datastream_individual(
+    astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
-        &device->introspection, data_event.interface_name);
+        &device->introspection, base_event.interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR(
-            "Couldn't find interface in device introspection (%s).", data_event.interface_name);
+            "Couldn't find interface in device introspection (%s).", base_event.interface_name);
         return;
     }
 
     astarte_result_t ares
-        = data_validation_individual_datastream(interface, data_event.path, individual, NULL);
+        = data_validation_individual_datastream(interface, base_event.path, data, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
     if (ares == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
         ASTARTE_LOG_WRN("Received an individual datastream with missing explicit timestamp.");
     } else if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Server individual data validation failed.");
+        ASTARTE_LOG_ERR("Server individual datastream data validation failed.");
         return;
     }
 
     if (device->datastream_individual_cbk) {
         astarte_device_datastream_individual_event_t event = {
-            .data_event = data_event,
-            .individual = individual,
+            .base_event = base_event,
+            .data = data,
         };
         device->datastream_individual_cbk(event);
     } else {
@@ -540,18 +540,18 @@ static void on_datastream_individual(astarte_device_handle_t device,
 }
 
 static void on_datastream_aggregated(astarte_device_handle_t device,
-    astarte_device_data_event_t data_event, astarte_object_entry_t *entries, size_t entries_len)
+    astarte_device_data_event_t base_event, astarte_object_entry_t *entries, size_t entries_len)
 {
     const astarte_interface_t *interface = introspection_get(
-        &device->introspection, data_event.interface_name);
+        &device->introspection, base_event.interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR(
-            "Couldn't find interface in device introspection (%s).", data_event.interface_name);
+            "Couldn't find interface in device introspection (%s).", base_event.interface_name);
         return;
     }
 
     astarte_result_t ares = data_validation_aggregated_datastream(
-        interface, data_event.path, entries, entries_len, NULL);
+        interface, base_event.path, entries, entries_len, NULL);
     // TODO: remove this exception when the following issue is resolved:
     // https://github.com/astarte-platform/astarte/issues/938
     if (ares == ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_REQUIRED) {
@@ -563,7 +563,7 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
 
     if (device->datastream_object_cbk) {
         astarte_device_datastream_object_event_t event = {
-            .data_event = data_event,
+            .base_event = base_event,
             .entries = entries,
             .entries_len = entries_len,
         };

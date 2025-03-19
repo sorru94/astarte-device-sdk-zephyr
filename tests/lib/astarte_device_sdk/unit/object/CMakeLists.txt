@@ -14,7 +14,7 @@ target_include_directories(testbinary PRIVATE
 
 target_sources(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/interface.c
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/individual.c
+    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/data.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/mapping.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/bson_deserializer.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/bson_serializer.c

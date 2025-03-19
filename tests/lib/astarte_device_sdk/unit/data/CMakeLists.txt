@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr COMPONENTS unittest REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(astarte_device_sdk_unit_individual)
+project(astarte_device_sdk_unit_data)
 
 target_include_directories(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/include

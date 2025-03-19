@@ -18,15 +18,15 @@
 #include <zephyr/sys/bitarray.h>
 #include <zephyr/sys/util.h>
 
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/device.h>
-#include <astarte_device_sdk/individual.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/mapping.h>
 #include <astarte_device_sdk/object.h>
 #include <astarte_device_sdk/pairing.h>
 #include <astarte_device_sdk/result.h>
 #include <astarte_device_sdk/util.h>
-#include <individual_private.h>
+#include <data_private.h>
 #include <interface_private.h>
 #include <object_private.h>
 
@@ -166,7 +166,7 @@ static void wait_for_disconnection();
 // --
 static void device_setup();
 static int parse_alloc_astarte_invividual(const astarte_interface_t *interface, char *path,
-    e2e_byte_array *buf, astarte_individual_t *out_individual);
+    e2e_byte_array *buf, astarte_data_t *out_individual);
 static int parse_alloc_astarte_object(const astarte_interface_t *interface, char *path,
     e2e_byte_array *buf, astarte_object_entry_t **entries, size_t *entries_length);
 // device data callbacks
@@ -254,30 +254,30 @@ static void device_individual_callback(astarte_device_datastream_individual_even
 
     e2e_individual_data_t *individual = { 0 };
     // inizialization
-    idata_get_individual(&expected_data, event.data_event.interface_name, &individual);
+    idata_get_individual(&expected_data, event.base_event.interface_name, &individual);
 
     for (; individual != NULL;
-        idata_get_individual(&expected_data, event.data_event.interface_name, &individual)) {
-        if (strcmp(individual->path, event.data_event.path) != 0) {
+        idata_get_individual(&expected_data, event.base_event.interface_name, &individual)) {
+        if (strcmp(individual->path, event.base_event.path) != 0) {
             // skip element if on a different path
             continue;
         }
 
         LOG_DBG("Comparing values\nExpected:");
-        utils_log_astarte_individual(individual->individual);
+        utils_log_astarte_data(individual->data);
         LOG_DBG("Received:");
-        utils_log_astarte_individual(event.individual);
+        utils_log_astarte_data(event.data);
 
-        if (!astarte_individual_equal(&individual->individual, &event.individual)) {
+        if (!astarte_data_equal(&individual->data, &event.data)) {
             LOG_ERR("Unexpected element received on path '%s'", individual->path);
             unexpected_data_count += 1;
             goto unlock;
         }
 
-        LOG_INF("Received expected value on '%s' '%s'", event.data_event.interface_name,
+        LOG_INF("Received expected value on '%s' '%s'", event.base_event.interface_name,
             individual->path);
 
-        utils_log_astarte_individual(event.individual);
+        utils_log_astarte_data(event.data);
 
         expected_data_count += 1;
         idata_remove_individual(individual);
@@ -286,7 +286,7 @@ static void device_individual_callback(astarte_device_datastream_individual_even
     }
 
     LOG_ERR("No more expected individual but got data on interface '%s'",
-        event.data_event.interface_name);
+        event.base_event.interface_name);
 
 unlock:
     k_mutex_unlock(&expected_data_mutex);
@@ -310,11 +310,11 @@ static void device_object_callback(astarte_device_datastream_object_event_t even
 
     e2e_object_data_t *object = NULL;
     // inizialization
-    idata_get_object(&expected_data, event.data_event.interface_name, &object);
+    idata_get_object(&expected_data, event.base_event.interface_name, &object);
 
     for (; object != NULL;
-        idata_get_object(&expected_data, event.data_event.interface_name, &object)) {
-        if (strcmp(object->path, event.data_event.path) != 0) {
+        idata_get_object(&expected_data, event.base_event.interface_name, &object)) {
+        if (strcmp(object->path, event.base_event.path) != 0) {
             // skip element if on a different path
             continue;
         }
@@ -326,7 +326,7 @@ static void device_object_callback(astarte_device_datastream_object_event_t even
         }
 
         LOG_INF(
-            "Received expected value on '%s' '%s'", event.data_event.interface_name, object->path);
+            "Received expected value on '%s' '%s'", event.base_event.interface_name, object->path);
 
         expected_data_count += 1;
         idata_remove_object(object);
@@ -334,8 +334,8 @@ static void device_object_callback(astarte_device_datastream_object_event_t even
         goto unlock;
     }
 
-    LOG_ERR("No more expected individual but got data on interface '%s'",
-        event.data_event.interface_name);
+    LOG_ERR(
+        "No more expected objects but got data on interface '%s'", event.base_event.interface_name);
 
 unlock:
     k_mutex_unlock(&expected_data_mutex);
@@ -354,30 +354,30 @@ static void device_property_set_callback(astarte_device_property_set_event_t eve
 
     e2e_property_data_t *property = NULL;
     // inizialization
-    idata_get_property(&expected_data, event.data_event.interface_name, &property);
+    idata_get_property(&expected_data, event.base_event.interface_name, &property);
 
     for (; property != NULL;
-        idata_get_property(&expected_data, event.data_event.interface_name, &property)) {
-        if (strcmp(property->path, event.data_event.path) != 0) {
+        idata_get_property(&expected_data, event.base_event.interface_name, &property)) {
+        if (strcmp(property->path, event.base_event.path) != 0) {
             // skip element if on a different path
             continue;
         }
 
         LOG_DBG("Comparing values\nExpected:");
-        utils_log_astarte_individual(property->individual);
+        utils_log_astarte_data(property->data);
         LOG_DBG("Received:");
-        utils_log_astarte_individual(event.individual);
+        utils_log_astarte_data(event.data);
 
-        if (!astarte_individual_equal(&property->individual, &event.individual)) {
+        if (!astarte_data_equal(&property->data, &event.data)) {
             LOG_ERR("Unexpected element received on path '%s'", property->path);
             unexpected_data_count += 1;
             goto unlock;
         }
 
-        LOG_INF("Received expected value on '%s' '%s'", event.data_event.interface_name,
+        LOG_INF("Received expected value on '%s' '%s'", event.base_event.interface_name,
             property->path);
 
-        utils_log_astarte_individual(event.individual);
+        utils_log_astarte_data(event.data);
 
         expected_data_count += 1;
         idata_remove_property(property);
@@ -385,8 +385,8 @@ static void device_property_set_callback(astarte_device_property_set_event_t eve
         goto unlock;
     }
 
-    LOG_ERR("No more expected individual but got data on interface '%s'",
-        event.data_event.interface_name);
+    LOG_ERR("No more expected properties but got data on interface '%s'",
+        event.base_event.interface_name);
 
 unlock:
     k_mutex_unlock(&expected_data_mutex);
@@ -441,7 +441,7 @@ static int cmd_expect_individual_handler(const struct shell *sh, size_t argc, ch
     // null variables definition
     char *path = { 0 };
     e2e_byte_array individual_value = { 0 };
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
 
     // ignore the first parameter since it's the name of the command itself
     skip_parameter(&argv, &argc);
@@ -456,7 +456,7 @@ static int cmd_expect_individual_handler(const struct shell *sh, size_t argc, ch
     CHECK_GOTO(individual_value.len == 0, cleanup, "Invalid individual parameter passed");
     e2e_timestamp_option_t timestamp = next_timestamp_parameter(&argv, &argc);
 
-    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &individual_value, &individual) != 0,
+    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &individual_value, &data) != 0,
         cleanup, "Could not parse and allocate astarte individual");
 
     CHECK_GOTO(k_mutex_lock(&expected_data_mutex, K_FOREVER) != 0, cleanup,
@@ -465,7 +465,7 @@ static int cmd_expect_individual_handler(const struct shell *sh, size_t argc, ch
     // path and individual will be freed by the idata_unit free function
     CHECK_GOTO(idata_add_individual(&expected_data, interface,
                    (e2e_individual_data_t) {
-                       .individual = individual,
+                       .data = data,
                        .path = path,
                        .timestamp = timestamp,
                    })
@@ -482,7 +482,7 @@ static int cmd_expect_individual_handler(const struct shell *sh, size_t argc, ch
 cleanup:
     free(path);
     free(individual_value.buf);
-    astarte_individual_destroy_deserialized(individual);
+    astarte_data_destroy_deserialized(data);
     return 1;
 }
 
@@ -552,7 +552,7 @@ static int cmd_expect_property_set_handler(const struct shell *sh, size_t argc, 
     // null variables definition
     char *path = { 0 };
     e2e_byte_array property_value = { 0 };
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
 
     // ignore the first parameter since it's the name of the command itself
     skip_parameter(&argv, &argc);
@@ -564,18 +564,18 @@ static int cmd_expect_property_set_handler(const struct shell *sh, size_t argc, 
     // checked
     CHECK_GOTO(!path, cleanup, "Invalid path parameter passed");
     property_value = next_alloc_base64_parameter(&argv, &argc);
-    CHECK_GOTO(property_value.len == 0, cleanup, "Invalid individual parameter passed");
+    CHECK_GOTO(property_value.len == 0, cleanup, "Invalid data parameter passed");
 
-    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &property_value, &individual) != 0,
-        cleanup, "Could not deserialize and allocate astarte individual");
+    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &property_value, &data) != 0,
+        cleanup, "Could not deserialize and allocate astarte data");
 
     CHECK_GOTO(k_mutex_lock(&expected_data_mutex, K_FOREVER) != 0, cleanup,
         "Could not lock expected data mutex");
 
-    // path and individual will be freed by the idata_unit free function
+    // path and data will be freed by the idata_unit free function
     CHECK_GOTO(idata_add_property(&expected_data, interface,
                    (e2e_property_data_t) {
-                       .individual = individual,
+                       .data = data,
                        .path = path,
                    })
             != 0,
@@ -591,7 +591,7 @@ static int cmd_expect_property_set_handler(const struct shell *sh, size_t argc, 
 cleanup:
     free(path);
     free(property_value.buf);
-    astarte_individual_destroy_deserialized(individual);
+    astarte_data_destroy_deserialized(data);
     return 1;
 }
 
@@ -691,7 +691,7 @@ static int cmd_send_individual_handler(const struct shell *sh, size_t argc, char
     // null variables definition
     char *path = { 0 };
     e2e_byte_array individual_value = { 0 };
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
 
     // ignore the first parameter since it's the name of the command itself
     skip_parameter(&argv, &argc);
@@ -706,16 +706,15 @@ static int cmd_send_individual_handler(const struct shell *sh, size_t argc, char
     CHECK_GOTO(individual_value.len == 0, cleanup, "Invalid individual parameter passed");
     e2e_timestamp_option_t timestamp = next_timestamp_parameter(&argv, &argc);
 
-    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &individual_value, &individual) != 0,
+    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &individual_value, &data) != 0,
         cleanup, "Could not parse and allocate astarte individual");
 
     astarte_result_t res = { 0 };
     if (timestamp.present) {
-        res = astarte_device_stream_individual(
-            device_handle, interface->name, path, individual, &timestamp.value);
+        res = astarte_device_send_individual(
+            device_handle, interface->name, path, data, &timestamp.value);
     } else {
-        res = astarte_device_stream_individual(
-            device_handle, interface->name, path, individual, NULL);
+        res = astarte_device_send_individual(device_handle, interface->name, path, data, NULL);
     }
     CHECK_ASTARTE_OK_GOTO(res, cleanup, "Failed to send individual to astarte");
 
@@ -723,7 +722,7 @@ static int cmd_send_individual_handler(const struct shell *sh, size_t argc, char
     return_code = 0;
 
 cleanup:
-    astarte_individual_destroy_deserialized(individual);
+    astarte_data_destroy_deserialized(data);
     free(individual_value.buf);
     free(path);
 
@@ -763,10 +762,10 @@ static int cmd_send_object_handler(const struct shell *sh, size_t argc, char **a
 
     astarte_result_t res = { 0 };
     if (timestamp.present) {
-        res = astarte_device_stream_aggregated(
+        res = astarte_device_send_object(
             device_handle, interface->name, path, entries, entries_length, &timestamp.value);
     } else {
-        res = astarte_device_stream_aggregated(
+        res = astarte_device_send_object(
             device_handle, interface->name, path, entries, entries_length, NULL);
     }
     CHECK_ASTARTE_OK_GOTO(res, cleanup, "Failed to send object to astarte");
@@ -791,7 +790,7 @@ static int cmd_send_property_set_handler(const struct shell *sh, size_t argc, ch
     // null variables definition
     char *path = { 0 };
     e2e_byte_array property_value = { 0 };
-    astarte_individual_t individual = { 0 };
+    astarte_data_t data = { 0 };
 
     LOG_INF("Set property command handler"); // NOLINT
 
@@ -805,20 +804,19 @@ static int cmd_send_property_set_handler(const struct shell *sh, size_t argc, ch
     // checked
     CHECK_GOTO(!path, cleanup, "Invalid path parameter passed");
     property_value = next_alloc_base64_parameter(&argv, &argc);
-    CHECK_GOTO(property_value.len == 0, cleanup, "Invalid individual parameter passed");
+    CHECK_GOTO(property_value.len == 0, cleanup, "Invalid data parameter passed");
 
-    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &property_value, &individual) != 0,
-        cleanup, "Could not parse and allocate individual");
+    CHECK_GOTO(parse_alloc_astarte_invividual(interface, path, &property_value, &data) != 0,
+        cleanup, "Could not parse and allocate data");
 
-    astarte_result_t res
-        = astarte_device_set_property(device_handle, interface->name, path, individual);
+    astarte_result_t res = astarte_device_set_property(device_handle, interface->name, path, data);
     CHECK_ASTARTE_OK_GOTO(res, cleanup, "Failed to send set property to astarte");
 
     shell_print(sh, "Property set");
     return_code = 0;
 
 cleanup:
-    astarte_individual_destroy_deserialized(individual);
+    astarte_data_destroy_deserialized(data);
     free(property_value.buf);
     free(path);
 
@@ -937,8 +935,8 @@ static void wait_for_disconnection()
 }
 
 // this also implicitly checks that the passed path is valid
-static int parse_alloc_astarte_invividual(const astarte_interface_t *interface, char *path,
-    e2e_byte_array *buf, astarte_individual_t *out_individual)
+static int parse_alloc_astarte_invividual(
+    const astarte_interface_t *interface, char *path, e2e_byte_array *buf, astarte_data_t *out_data)
 {
     const astarte_mapping_t *mapping = NULL;
     astarte_result_t res = astarte_interface_get_mapping_from_path(interface, path, &mapping);
@@ -952,7 +950,7 @@ static int parse_alloc_astarte_invividual(const astarte_interface_t *interface, 
     CHECK_ASTARTE_OK_RET_1(astarte_bson_deserializer_element_lookup(full_document, "v", &v_elem),
         "Cannot retrieve BSON value from data");
 
-    CHECK_ASTARTE_OK_RET_1(astarte_individual_deserialize(v_elem, mapping->type, out_individual),
+    CHECK_ASTARTE_OK_RET_1(astarte_data_deserialize(v_elem, mapping->type, out_data),
         "Couldn't deserialize received binary data into object entries");
 
     return 0;

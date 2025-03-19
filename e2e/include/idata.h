@@ -14,7 +14,7 @@
 
 #include <zephyr/sys/dlist.h>
 
-#include <astarte_device_sdk/individual.h>
+#include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/interface.h>
 #include <astarte_device_sdk/object.h>
 
@@ -26,18 +26,18 @@ typedef struct
     // the buffer will be freed by the idata free function
     const char *path;
     // the buffer will be freed by the idata free function
-    astarte_individual_t individual;
+    astarte_data_t data;
     e2e_timestamp_option_t timestamp;
 } e2e_individual_data_t;
 
 // Property data used to store expected values from astarte
-// if unset is true the individual element will contain an invalid value
+// if unset is true the data element will contain an invalid value
 typedef struct
 {
     // the buffer will be freed by the idata free function
     const char *path;
     // the buffer will be freed by the idata free function
-    astarte_individual_t individual;
+    astarte_data_t data;
     bool unset;
 } e2e_property_data_t;
 

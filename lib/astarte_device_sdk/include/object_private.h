@@ -37,11 +37,11 @@ astarte_result_t astarte_object_entries_serialize(
 /**
  * @brief Deserialize a BSON element to an array of #astarte_object_entry_t.
  *
- * @warning This function might perform dynamic allocation, as such any individual deserialized
+ * @warning This function might perform dynamic allocation, as such any object entry deserialized
  * with this function should be destroyed calling #astarte_object_entries_destroy_deserialized.
  *
  * @note The BSON element should respect a predefined structure. It should contain a document
- * with all its element deserializable with #astarte_individual_deserialize.
+ * with all its element deserializable with #astarte_data_deserialize.
  *
  * @param[in] bson_elem The BSON element containing the data to deserialize.
  * @param[in] interface The interface corresponding the the Astarte entries to deserialize.

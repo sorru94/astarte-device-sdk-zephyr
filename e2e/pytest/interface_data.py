@@ -60,7 +60,7 @@ class InterfaceData(ABC):
 
         if self.ownership == Ownership.SERVER:
             helper.exec_commands(self._get_device_shell_commands(EXPECT_BASE_COMMAND))
-            time.sleep(2)
+            time.sleep(1)
             # TODO should also test that the command gets executed and chec the presense of the confirmation string like "Property set"
             self._send_server_data(helper)
             # TODO Could add a command that waits for all message to be sent ?
@@ -70,15 +70,14 @@ class InterfaceData(ABC):
         else:
             send_start = datetime.now(tz=timezone.utc)
             helper.exec_commands(self._get_device_shell_commands(SEND_BASE_COMMAND))
-            time.sleep(2)
 
-            # retry two times
-            for i in range(0, 2):
+            # retry ten times
+            for _ in range(0, 10):
+                time.sleep(1)
+
                 try:
                     self._check_server_received_data(helper, send_start)
                 except (KeyError, ValueError) as e:
-                    log.inf(f"Missing key in server data {e}, retrying...")
-
-                time.sleep(2)
+                    log.inf(f"Missing server data {e}, retrying...")
 
             self._check_server_received_data(helper, send_start)

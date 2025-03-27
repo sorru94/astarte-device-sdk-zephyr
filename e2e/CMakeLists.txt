@@ -17,7 +17,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(e2e_test)
 
 # add sources and includes from the sample dir
-target_sources(app PRIVATE ${SAMPLE_DIR}/src/eth.c ${SAMPLE_DIR}/src/utils.c)
+target_sources(app PRIVATE ${SAMPLE_DIR}/src/eth.c)
 target_include_directories(app PRIVATE ${SAMPLE_DIR}/include)
 
 # handle generating certificate inc file

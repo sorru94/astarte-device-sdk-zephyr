@@ -59,7 +59,9 @@ jobs:
 
       - name: Set up Python dependencies
         working-directory: astarte-device-sdk-zephyr/
-        run: pip install -r ./scripts/requirements.txt
+        run: |
+          pip install -r ./scripts/requirements.txt
+          pip install -r ./e2e/pytest/requirements.txt
 
       - name: Set E2E manifest as defaults
         working-directory: astarte-device-sdk-zephyr
@@ -116,7 +118,7 @@ jobs:
           sudo bash -xuEo pipefail ./net-setup.sh start --config nat.conf
 
       - name: Build and run e2e test zephyr application
-        run: west twister -vv --force-color --integration --inline-logs -T ./astarte-device-sdk-zephyr/e2e
+        run: west twister -v --log-level debug --force-color --integration --inline-logs -T ./astarte-device-sdk-zephyr/e2e
 
       - name: Stop net-setup nat configuration
         working-directory: tools/net-tools

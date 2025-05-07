@@ -21,6 +21,7 @@
 
 #include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/object.h>
+#include <stdint.h>
 
 #define UTILS_DATA_ELEMENTS 14
 

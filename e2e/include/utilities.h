@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <zephyr/fatal.h>
+#include <zephyr/shell/shell.h>
 
 #include <astarte_device_sdk/data.h>
 #include <astarte_device_sdk/interface.h>
@@ -31,7 +32,7 @@
 
 #define CHECK_RET_1(expr, ...)                                                                     \
     if (expr) {                                                                                    \
-        LOG_ERR(__VA_ARGS__); /* NOLINT */                                                         \
+        __VA_OPT__(LOG_ERR(__VA_ARGS__)); /* NOLINT */                                             \
         return 1;                                                                                  \
     }
 
@@ -46,31 +47,33 @@
 #define CHECK_ASTARTE_OK_GOTO(expr, label, ...)                                                    \
     CHECK_GOTO(expr != ASTARTE_RESULT_OK, label, __VA_ARGS__)
 
-// clang-format on
-
 // Timestamp option used to store a valid timestamp value and its presence
 typedef struct
 {
     int64_t value;
     bool present;
-} e2e_timestamp_option_t;
+} idata_timestamp_option_t;
 
-ASTARTE_UTIL_DEFINE_ARRAY(e2e_byte_array, uint8_t);
+ASTARTE_UTIL_DEFINE_ARRAY(idata_byte_array, uint8_t);
 
-ASTARTE_UTIL_DEFINE_ARRAY(e2e_object_entry_array_t, astarte_object_entry_t);
+ASTARTE_UTIL_DEFINE_ARRAY(idata_object_entry_array, astarte_object_entry_t);
 
-void astarte_object_print(e2e_object_entry_array_t *obj);
+void utils_log_timestamp(idata_timestamp_option_t *timestamp);
+void utils_log_object_entry_array(idata_object_entry_array *obj);
+/**
+ * @brief Pretty print to the log output an Astarte data.
+ *
+ * @param[in] data The data to log
+ */
+void utils_log_astarte_data(astarte_data_t data);
 
-bool astarte_object_equal(e2e_object_entry_array_t *left, e2e_object_entry_array_t *right);
+bool astarte_object_equal(idata_object_entry_array *left, idata_object_entry_array *right);
 bool astarte_data_equal(astarte_data_t *left, astarte_data_t *right);
 
-void skip_parameter(char ***args, size_t *argc);
-const astarte_interface_t *next_interface_parameter(
-    char ***args, size_t *argc, const astarte_interface_t **interfaces, size_t interfaces_len);
-e2e_timestamp_option_t next_timestamp_parameter(char ***args, size_t *argc);
-// the return of this function needs to be deallocated
-char *next_alloc_string_parameter(char ***args, size_t *argc);
-// the return of this function needs to be deallocated
-e2e_byte_array next_alloc_base64_parameter(char ***args, size_t *argc);
+// should be called at the start of the application to avoid user input before
+// the shell is actually ready and the device connected
+void block_shell_commands();
+// lifts the block on the shell commands
+void unblock_shell_commands();
 
 #endif /* E2EUTILITIES_H */

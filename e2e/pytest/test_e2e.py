@@ -6,6 +6,7 @@ from west import log
 
 from conftest import TestcaseHelper
 from data import data
+import time
 
 
 def test_device(testcase_helper: TestcaseHelper):
@@ -17,7 +18,5 @@ def test_device(testcase_helper: TestcaseHelper):
     for interface_data in data:
         interface_data.test(testcase_helper)
 
-    lines = testcase_helper.shell.exec_command("disconnect")
-    assert (
-        "Disconnected, closing shell..." in lines
-    ), "no disconnected flag received before the timeout"
+    testcase_helper.shell.exec_command("disconnect")
+    testcase_helper.dut.readlines_until("Disconnected, closing shell$", timeout=5)

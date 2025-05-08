@@ -44,7 +44,7 @@ LOG_MODULE_REGISTER(utilities, CONFIG_UTILITIES_LOG_LEVEL); // NOLINT
 #define MAX_TS_STR_LEN 30
 
 // Maximum size for the datetime string
-#define DATETIME_MAX_BUF_SIZE 26
+#define DATETIME_MAX_BUF_SIZE 30
 
 /************************************************
  *         Static functions declaration         *
@@ -251,7 +251,7 @@ void utils_log_astarte_data(astarte_data_t data)
             }
             break;
         case ASTARTE_MAPPING_TYPE_DATETIME:
-            int64_t datetime = false;
+            int64_t datetime = 0;
             (void) astarte_data_to_datetime(data, &datetime);
             if (utils_datetime_to_string(datetime, tm_str) != 0) {
                 LOG_INF("Astarte datetime: %s", tm_str); // NOLINT

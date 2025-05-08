@@ -38,7 +38,7 @@ const char *const utils_string_array_data[2] = { "Hello ", "world!" };
 // NOLINTEND(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
 
 // Maximum size for the datetime string
-#define DATETIME_MAX_BUF_SIZE 26
+#define DATETIME_MAX_BUF_SIZE 30
 
 static size_t utils_datetime_to_string(
     int64_t datetime, char out_string[const DATETIME_MAX_BUF_SIZE]);
@@ -84,7 +84,7 @@ void utils_log_astarte_data(astarte_data_t data)
             }
             break;
         case ASTARTE_MAPPING_TYPE_DATETIME:
-            int64_t datetime = false;
+            int64_t datetime = 0;
             (void) astarte_data_to_datetime(data, &datetime);
             if (utils_datetime_to_string(datetime, tm_str) != 0) {
                 LOG_INF("Astarte datetime: %s", tm_str); // NOLINT

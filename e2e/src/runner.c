@@ -242,7 +242,7 @@ static void device_object_callback(astarte_device_datastream_object_event_t even
     LOG_INF("Object received matched expected one");
 #else
     LOG_INF("Aggregate data received on %s%s", interface->name, event.base_event.path);
-    utils_log_e2e_object_entry_array(&received);
+    utils_log_object_entry_array(&received);
 #endif
 }
 

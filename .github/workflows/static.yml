@@ -37,7 +37,7 @@ jobs:
           path: astarte-device-sdk-zephyr
       - name: Set CI manifest as defaults
         working-directory: astarte-device-sdk-zephyr
-        run: mv west-ci.yml west.yml
+        run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -65,7 +65,7 @@ jobs:
           path: astarte-device-sdk-zephyr
       - name: Set CI manifest as defaults
         working-directory: astarte-device-sdk-zephyr
-        run: mv west-ci.yml west.yml
+        run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -92,7 +92,7 @@ jobs:
           path: astarte-device-sdk-zephyr
       - name: Set CI manifest as defaults
         working-directory: astarte-device-sdk-zephyr
-        run: mv west-ci.yml west.yml
+        run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

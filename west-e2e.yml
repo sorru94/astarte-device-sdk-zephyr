@@ -9,8 +9,8 @@ manifest:
   remotes:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
-    - name: secomind
-      url-base: https://github.com/secomind
+    - name: sorru94
+      url-base: https://github.com/sorru94
 
   projects:
     - name: zephyr
@@ -24,6 +24,6 @@ manifest:
           - picolibc
           - net-tools
     - name: zlib-zephyr
-      remote: secomind
-      revision: release-v1.3.1
+      remote: sorru94
+      revision: release-v1.3.1-no-crc32
       path: modules/zlib

@@ -8,6 +8,7 @@
 
 #include <zephyr/net/socket.h>
 #include <zephyr/net/tls_credentials.h>
+#include <zephyr/version.h>
 
 #include "log.h"
 
@@ -427,8 +428,12 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
             break;
     }
 
-    // The only case in which a disconnection request is allowed is if the client is connected.
+        // The only case in which a disconnection request is allowed is if the client is connected.
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
+    int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client, NULL);
+#else
     int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client);
+#endif
     if (mqtt_rc < 0) {
         ASTARTE_LOG_ERR("Device disconnection failure %d", mqtt_rc);
         ares = ASTARTE_RESULT_MQTT_ERROR;
@@ -554,7 +559,11 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
     if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
         && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->connection_timepoint), K_NO_WAIT)) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
+        mqtt_disconnect(&astarte_mqtt->client, NULL);
+#else
         mqtt_disconnect(&astarte_mqtt->client);
+#endif
         ASTARTE_LOG_ERR("Connection attempt has timed out!");
         goto exit;
     }

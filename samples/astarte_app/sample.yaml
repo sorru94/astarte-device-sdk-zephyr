@@ -6,13 +6,21 @@
 # so that you can easily test all of them locally or in CI.
 
 sample:
-  description: Registration sample
-  name: datastreams-sample
+  description: Astarte application sample
+  name: astarte-sample
 tests:
-  datastreams.default:
+  astarte.default:
     build_only: true
     integration_platforms:
+      - frdm_rw612
+      - frdm_mcxn947/mcxn947/cpu0
       - mimxrt1060_evk@B/mimxrt1062/qspi
       - mimxrt1064_evk
       - stm32h573i_dk
       - native_sim
+  astarte.lts:
+    build_only: true
+    extra_args: CONF_FILE="zephyr-lts.conf"
+    integration_platforms:
+      - mimxrt1064_evk
+      - stm32h573i_dk

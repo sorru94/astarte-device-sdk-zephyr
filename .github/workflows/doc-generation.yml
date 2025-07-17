@@ -60,14 +60,14 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.11
+        python-version: 3.12
     - name: Install python packages
       run: |
         pip install cmake
         pip install coverxygen
     - name: Set CI manifest as defaults
       working-directory: astarte-device-sdk-zephyr
-      run: mv west-ci.yml west.yml
+      run: mv west-ci-4.2.yml west.yml
     - name: Setup Zephyr project
       uses: zephyrproject-rtos/action-zephyr-setup@v1
       with:

@@ -27,8 +27,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        zephyr:
+          - version: "4.2"
+            testcase: "astarte.default"
+          - version: "lts"
+            testcase: "astarte.lts"
     concurrency:
-      group: build-${{ github.ref }}
+      group: build-${{ matrix.zephyr.version }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout
@@ -38,7 +45,7 @@ jobs:
 
       - name: Set CI manifest as defaults
         working-directory: astarte-device-sdk-zephyr
-        run: mv west-ci.yml west.yml
+        run: mv west-ci-${{ matrix.zephyr.version }}.yml west.yml
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,4 +61,4 @@ jobs:
       - name: Build sample
         working-directory: astarte-device-sdk-zephyr
         run: |
-          west twister -T samples/astarte_app -v --inline-logs --integration
+          west twister -T samples/astarte_app --test ${{ matrix.zephyr.testcase }} -v --inline-logs --integration

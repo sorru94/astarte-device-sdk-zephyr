@@ -15,12 +15,12 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: v4.1.0
+      revision: v4.2.0-rc3
       import:
         # By using name-allowlist we can clone only the modules that are
         # strictly needed by the application.
         name-allowlist:
-          - cmsis
+          - cmsis_6
           - hal_stm32
           - hal_nxp
           - mbedtls

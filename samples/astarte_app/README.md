@@ -35,6 +35,14 @@ transmission types and timeouts.
 
 ## Samples configuration
 
+### Zephyr LTS support
+
+This sample is intended to be built for the latest Zephyr release as such the project configuration
+reflects this. However, we provide a separate configuration if you would like to try the sample
+using the latest LTS version of zephyr.
+To build the sample for the LTS add the `-DCONF_FILE="zephyr-lts.conf"` option when building with
+west.
+
 ### Configuration for demonstration non-TLS capable Astarte
 
 This option assumes you are using this example with an Astarte instance similar to the

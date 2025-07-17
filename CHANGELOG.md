@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] - Unreleased
+## [0.8.0] - 2025-03-19
 ### Added
 - Support for Zephyr 4.1.0.
 - Function `astarte_device_force_disconnect` forces the device disconnection from an Astarte

@@ -1,7 +1,7 @@
 #
 # This file is part of Astarte.
 #
-# Copyright 2024 SECO Mind Srl
+# Copyright 2024-2025 SECO Mind Srl
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ env:
   ASTARTE_ACTION_CERT: /usr/local/share/ca-certificates/astarte-autotest.crt
 jobs:
   e2e-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # setup astarte
       - name: Create Astarte Cluster
@@ -55,11 +55,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: 3.12
 
       - name: Set up Python dependencies
         working-directory: astarte-device-sdk-zephyr/
-        run: pip install -r ./scripts/requirements.txt
+        run: |
+          pip install -r ./scripts/requirements.txt
+          pip install -r ./e2e/pytest/requirements.txt
 
       - name: Set E2E manifest as defaults
         working-directory: astarte-device-sdk-zephyr
@@ -96,6 +98,10 @@ jobs:
           # Write the Astarte certificate
           cat "$ASTARTE_ACTION_CERT" > ./certificate/api-eu1-astarte-cloud.pem
 
+      - name: Install net-setup dependencies
+        run: sudo apt install dnsmasq
+
+      # NOTE this step could silently fail
       - name: Start net-setup nat configuration
         working-directory: tools/net-tools
         run: |
@@ -108,11 +114,13 @@ jobs:
           # add resolution for action astarte dns
           address=/$ASTARTE_API_BASE/$ASTARTE_BROKER_BASE/192.0.2.2
           END
-          sudo ./net-setup.sh start --config nat.conf
+          # Launch net-setup with debugging enabled
+          sudo bash -xuEo pipefail ./net-setup.sh start --config nat.conf
 
       - name: Build and run e2e test zephyr application
-        run: west twister --force-color --ninja -vvv --inline-logs -p native_sim -T ./astarte-device-sdk-zephyr/e2e/
+        run: west twister -v --log-level debug --force-color --integration --inline-logs -T ./astarte-device-sdk-zephyr/e2e
 
       - name: Stop net-setup nat configuration
         working-directory: tools/net-tools
-        run: sudo ./net-setup.sh stop --config nat.conf
+        run: |
+          sudo bash -xuEo pipefail ./net-setup.sh stop --config nat.conf

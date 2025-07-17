@@ -4,12 +4,9 @@
 
 from cfgvalues import CfgValues
 
-from datetime import datetime
 import pytest
 from twister_harness import DeviceAdapter, Shell
 from west import log
-
-from typing import Dict, Optional
 
 
 class TestcaseHelper:
@@ -28,10 +25,6 @@ class TestcaseHelper:
         log.inf(f"Executing command on device shell >>> {command}")
         self.dut.write(f"{command}\n\n".encode())
         self.shell.wait_for_prompt(timeout=timeout)
-
-    def exec_commands(self, commands: list[str], timeout: float | None = None):
-        for com in commands:
-            self.exec_command(com, timeout=timeout)
 
 
 @pytest.fixture(scope="session")

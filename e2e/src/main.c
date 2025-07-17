@@ -78,6 +78,8 @@ static void eth_thread_entry_point(void *unused1, void *unused2, void *unused3);
 
 int main(void)
 {
+    block_shell_commands();
+
     LOG_INF("Astarte device e2e test"); // NOLINT
 
     // Initialize Ethernet driver
@@ -115,6 +117,9 @@ int main(void)
         "Failed while waiting for the eth polling thread to terminate.");
 
     LOG_INF("Returning from the e2e test."); // NOLINT
+
+    // wait to let pytest keep up
+    k_sleep(K_MSEC(10000));
 
     // we know we are running on POSIX because it is checked at build time (view BUILD_ASSERT)
     nsi_exit(0);

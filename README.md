@@ -33,7 +33,7 @@ Second, a new entry should be added to the projects list:
       remote: astarte-platform
       repo-path: astarte-device-sdk-zephyr.git
       path: astarte-device-sdk-zephyr
-      revision: v0.8.0
+      revision: v0.9.0
       west-commands: scripts/west-commands.yml
       import: true
 ```
@@ -70,7 +70,7 @@ The west workspace should be then intialized, using the Astarte libary repositor
 repository.
 
 ```shell
-west init -m git@github.com:astarte-platform/astarte-device-sdk-zephyr --mr v0.8.0
+west init -m git@github.com:astarte-platform/astarte-device-sdk-zephyr --mr v0.9.0
 west update
 ```
 

@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.9.0] - 2025-07-22
 ### Added
 - Support for Zephyr 4.2.0.
+- Support for the
+  [NXP frdm RW612](https://docs.zephyrproject.org/latest/boards/nxp/frdm_rw612/doc/index.html)
+  board in the examples.
 
 ## [0.8.0] - 2025-03-19
 ### Added

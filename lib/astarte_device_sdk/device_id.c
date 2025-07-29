@@ -5,8 +5,6 @@
  */
 #include "astarte_device_sdk/device_id.h"
 
-#include "uuid.h"
-
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(device_id, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID_LOG_LEVEL);
 
@@ -16,9 +14,9 @@ ASTARTE_LOG_MODULE_REGISTER(device_id, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_ID_LOG_L
 
 astarte_result_t astarte_device_id_generate_random(char out[static ASTARTE_DEVICE_ID_LEN + 1])
 {
-    uuid_t uuid;
-    uuid_generate_v4(uuid);
-    return uuid_to_base64url(uuid, out, ASTARTE_DEVICE_ID_LEN + 1);
+    struct uuid uuid;
+    uuid_generate_v4(&uuid);
+    return uuid_to_base64url(&uuid, out);
 }
 
 astarte_result_t astarte_device_id_generate_deterministic(
@@ -26,13 +24,15 @@ astarte_result_t astarte_device_id_generate_deterministic(
     size_t name_size, char out[static ASTARTE_DEVICE_ID_LEN + 1])
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uuid_t uuid = { 0 };
+    struct uuid uuid = { 0 };
+    struct uuid uuid_namespace = { 0 };
+    memcpy(uuid_namespace.val, namespace, ASTARTE_DEVICE_ID_NAMESPACE_SIZE);
 
-    ares = uuid_generate_v5(namespace, name, name_size, uuid);
+    ares = uuid_generate_v5(&uuid_namespace, name, name_size, &uuid);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("UUID V5 generation failed: %s", astarte_result_to_name(ares));
         return ares;
     }
 
-    return uuid_to_base64url(uuid, out, ASTARTE_DEVICE_ID_LEN + 1);
+    return uuid_to_base64url(&uuid, out);
 }

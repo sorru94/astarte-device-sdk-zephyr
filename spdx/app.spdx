@@ -1,0 +1,81 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: app-sources
+DocumentNamespace: http://spdx.org/spdxdocs/zephyr-0550a0ef-99e4-46b1-a101-b093e6a09963/app
+Creator: Tool: Zephyr SPDX builder
+Created: 2025-10-28T10:58:08Z
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-app-sources
+
+##### Package: app-sources
+
+PackageName: app-sources
+SPDXID: SPDXRef-app-sources
+PackageLicenseConcluded: Apache-2.0
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PrimaryPackagePurpose: SOURCE
+PackageDownloadLocation: NOASSERTION
+PackageLicenseInfoFromFiles: Apache-2.0
+FilesAnalyzed: true
+PackageVerificationCode: 1c8c590d9e024d9c45317482296d8604425131f3
+
+FileName: ./interfaces/generated_interfaces.c
+SPDXID: SPDXRef-File-generated-interfaces.c
+FileChecksum: SHA1: cc417f61905cb142784949724e0987102db7ef97
+FileChecksum: SHA256: 0b6cfaa91b3fb0c850f7af8a6b8f89568841d35ec63fcc7e9328996d47b82f30
+LicenseConcluded: NOASSERTION
+LicenseInfoInFile: NONE
+FileCopyrightText: NOASSERTION
+
+FileName: ./src/individual_send.c
+SPDXID: SPDXRef-File-individual-send.c
+FileChecksum: SHA1: 8690dae5482abb762bbc66ff497046e112260f02
+FileChecksum: SHA256: 78b77ad552c93889d69ae6cdfe5ed02c3f5bb5cd58d70ba716a8f8f6f3e56cb7
+LicenseConcluded: Apache-2.0
+LicenseInfoInFile: Apache-2.0
+FileCopyrightText: <text>
+ * (C) Copyright 2024, SECO Mind Srl
+</text>
+
+FileName: ./src/main.c
+SPDXID: SPDXRef-File-main.c
+FileChecksum: SHA1: adf0466c2cac0b85d68060817a09fb1f05adb6d1
+FileChecksum: SHA256: b0d7e31a0baf40578ecaa7113cd287564c886bfd45db01d55076b9fc6f1c50e6
+LicenseConcluded: Apache-2.0
+LicenseInfoInFile: Apache-2.0
+FileCopyrightText: <text>
+ * (C) Copyright 2024, SECO Mind Srl
+</text>
+
+FileName: ./src/object_send.c
+SPDXID: SPDXRef-File-object-send.c
+FileChecksum: SHA1: ae69f846e1b4da149e815e04b673ee9360a52edb
+FileChecksum: SHA256: 0ca3af2ad651a92e3e088ff61c0a3a713f7b547d4f4bfc63a927216b6c7f8a66
+LicenseConcluded: Apache-2.0
+LicenseInfoInFile: Apache-2.0
+FileCopyrightText: <text>
+ * (C) Copyright 2024, SECO Mind Srl
+</text>
+
+FileName: ./src/property_send.c
+SPDXID: SPDXRef-File-property-send.c
+FileChecksum: SHA1: ee486bbc0345a8691411a9d0cd8384db2101ee0b
+FileChecksum: SHA256: 90f327ec6a62cf5ac88b38de50ce82f4816e1255d08a3b2254aa60eba3d6ba5c
+LicenseConcluded: Apache-2.0
+LicenseInfoInFile: Apache-2.0
+FileCopyrightText: <text>
+ * (C) Copyright 2024, SECO Mind Srl
+</text>
+
+FileName: ./src/utils.c
+SPDXID: SPDXRef-File-utils.c
+FileChecksum: SHA1: cc59c32f6cf3d15d747f8b1b6bc0569a25359cee
+FileChecksum: SHA256: 2aa205040f187c9882270b7db359d7960bf46492ca662fca6de95103961edd92
+LicenseConcluded: Apache-2.0
+LicenseInfoInFile: Apache-2.0
+FileCopyrightText: <text>
+ * (C) Copyright 2024, SECO Mind Srl
+</text>
+

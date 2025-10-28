@@ -1,0 +1,49 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: modules-deps
+DocumentNamespace: http://spdx.org/spdxdocs/zephyr-0550a0ef-99e4-46b1-a101-b093e6a09963/modules-deps
+Creator: Tool: Zephyr SPDX builder
+Created: 2025-10-28T10:58:08Z
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-astarte-device-sdk-zephyr-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-zlib-deps
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-mbedtls-deps
+
+##### Package: astarte-device-sdk-zephyr-deps
+
+PackageName: astarte-device-sdk-zephyr-deps
+SPDXID: SPDXRef-astarte-device-sdk-zephyr-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: zlib-deps
+
+PackageName: zlib-deps
+SPDXID: SPDXRef-zlib-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+
+##### Package: mbed-tls
+
+PackageName: mbed_tls
+SPDXID: SPDXRef-mbedtls-deps
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+PackageDownloadLocation: NOASSERTION
+PackageVersion: 3.6.4
+PackageSupplier: Organization: arm
+ExternalRef: SECURITY cpe23Type cpe:2.3:a:arm:mbed_tls:3.6.4:*:*:*:*:*:*:*
+ExternalRef: PACKAGE-MANAGER purl pkg:github/Mbed-TLS/mbedtls@v3.6.4
+FilesAnalyzed: false
+PackageComment: Utility target; no files
+

@@ -5,6 +5,8 @@
  */
 #include "device_rx.h"
 
+#include <stdio.h>
+
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 #include <zlib.h>
 #endif

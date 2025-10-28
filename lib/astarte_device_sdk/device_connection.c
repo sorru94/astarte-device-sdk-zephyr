@@ -5,6 +5,8 @@
  */
 #include "device_connection.h"
 
+#include <stdio.h>
+
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
 #include "astarte_zlib.h"
 #include "device_caching.h"

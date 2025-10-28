@@ -7,6 +7,7 @@
 #include "uuid.h"
 
 #include <ctype.h>
+#include <stdio.h>
 
 #include <zephyr/posix/arpa/inet.h>
 #include <zephyr/random/random.h>

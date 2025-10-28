@@ -7,16 +7,21 @@ manifest:
     west-commands: scripts/private-west-commands.yml
 
   remotes:
-    - name: zephyrproject-rtos
-      url-base: https://github.com/zephyrproject-rtos
+    - name: sorru94
+      url-base: https://github.com/sorru94
     - name: secomind
       url-base: https://github.com/secomind
 
   projects:
     - name: zephyr
-      remote: zephyrproject-rtos
-      revision: v4.2.1
-      import: true
+      remote: sorru94
+      revision: west/spdx/fix-copyright
+      import:
+        name-allowlist:
+          # Enable the following if you wish to build for nxp boards
+          # - cmsis_6
+          # - hal_nxp
+          - mbedtls
     - name: zlib-zephyr
       remote: secomind
       revision: release-v1.3.1

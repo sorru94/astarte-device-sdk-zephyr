@@ -5,6 +5,8 @@
  */
 #include "device_tx.h"
 
+#include <stdio.h>
+
 #include "bson_serializer.h"
 #include "data_validation.h"
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)

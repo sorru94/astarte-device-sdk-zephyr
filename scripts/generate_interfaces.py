@@ -14,7 +14,6 @@ python -m black --line-length 100 ./scripts/*.py
 
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from string import Template

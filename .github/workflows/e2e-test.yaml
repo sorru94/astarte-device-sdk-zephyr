@@ -41,7 +41,7 @@ jobs:
           astarte_version: "1.1.1"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: astarte-device-sdk-zephyr
 

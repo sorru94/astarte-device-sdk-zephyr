@@ -84,7 +84,7 @@ jobs:
         fi
         DOC_TAG=${DOC_TAG} ASTARTE_DEVICE_SDK_BASE="$PWD" make -C doc doxygen
     - name: Upload HTML documentation
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: docs_html
         path: astarte-device-sdk-zephyr/doc/_build/doxygen/html

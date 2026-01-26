@@ -11,6 +11,7 @@ python -m pylint --rcfile=./scripts/.pylintrc ./scripts/*.py
 Formatted using black with the following command (pip install black):
 python -m black --line-length 100 ./scripts/*.py
 """
+
 import shutil
 from pathlib import Path
 

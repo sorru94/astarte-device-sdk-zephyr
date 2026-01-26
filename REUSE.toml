@@ -23,3 +23,9 @@ path = "samples/astarte_app/interfaces/generated_interfaces.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "SECO Mind Srl"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "samples/astarte_app/config_lfs/configuration.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "SECO Mind Srl"
+SPDX-License-Identifier = "CC0-1.0"

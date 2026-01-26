@@ -14,7 +14,6 @@ python -m black --line-length 100 ./scripts/*.py
 
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from string import Template
@@ -104,8 +103,7 @@ reliability_lookup = {
     2: "UNIQUE",
 }
 
-interface_header_template = Template(
-    r"""/**
+interface_header_template = Template(r"""/**
  * @file ${output_filename}.h
  * @brief Contains automatically generated interfaces.
  *
@@ -128,11 +126,9 @@ ${interfaces_declarations}
 // NOLINTEND(readability-identifier-naming)
 
 #endif /* ${output_filename_cap}_H */
-"""
-)
+""")
 
-interface_source_template = Template(
-    r"""/**
+interface_source_template = Template(r"""/**
  * @file ${output_filename}.c
  * @brief Contains automatically generated interfaces.
  *
@@ -146,15 +142,13 @@ interface_source_template = Template(
 ${interfaces_declarations}
 
 // NOLINTEND(readability-identifier-naming)
-"""
-)
+""")
 
 interface_declaration_template = Template(
     r"""extern const astarte_interface_t ${interface_name_sc};"""
 )
 
-interface_definition_template = Template(
-    r"""
+interface_definition_template = Template(r"""
 static const astarte_mapping_t ${interface_name_sc}_mappings[${mappings_number}] = {
 ${mappings}
 };
@@ -168,19 +162,16 @@ const astarte_interface_t ${interface_name_sc} = {
     .aggregation = ${aggregation},
     .mappings = ${interface_name_sc}_mappings,
     .mappings_length = ${mappings_number}U,
-};"""
-)
+};""")
 
-mapping_definition_template = Template(
-    r"""
+mapping_definition_template = Template(r"""
     {
         .endpoint = "${endpoint}",
         .type = ${type},
         .reliability = ${reliability},
         .explicit_timestamp = ${explicit_timestamp},
         .allow_unset = ${allow_unset},
-    },"""
-)
+    },""")
 
 
 # pylint: disable-next=too-many-locals

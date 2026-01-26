@@ -25,6 +25,7 @@ manifest:
           - hal_nxp
           - mbedtls
           - picolibc
+          - littlefs
     - name: zlib-zephyr
       remote: secomind
       revision: release-v1.3.1

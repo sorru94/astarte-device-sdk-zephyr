@@ -15,7 +15,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: v4.2.0
+      revision: v4.2.1
       import:
         # By using name-allowlist we can clone only the modules that are
         # strictly needed by the application.
@@ -25,6 +25,7 @@ manifest:
           - hal_stm32
           - mbedtls
           - picolibc
+          - littlefs
     - name: zlib-zephyr
       remote: secomind
       revision: release-v1.3.1

@@ -39,7 +39,7 @@ jobs:
         working-directory: astarte-device-sdk-zephyr
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: Setup Zephyr project
@@ -67,7 +67,7 @@ jobs:
         working-directory: astarte-device-sdk-zephyr
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: Setup Zephyr project
@@ -94,7 +94,7 @@ jobs:
         working-directory: astarte-device-sdk-zephyr
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: Setup Zephyr project
@@ -119,7 +119,7 @@ jobs:
         with:
           path: astarte-device-sdk-zephyr
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: Install Python dependencies

@@ -160,6 +160,49 @@ Run menuconfig to try out different values.
 
 ## Sample configurable steps
 
+### Configuration from flash
+
+Astarte devices are authenticated to the cloud instance using a credential secret and device ID
+combination. For various reason it might be inconvenient and unsafe to store such information
+within the binary file of your application.
+This sample provides the users with two methods to handle sensitive information:
+1. The user can provide all sensitive data through the kconfig options. Such data will be embedded
+in the final application binary.
+2. The user can embed all sensitive data within a separate partition, which can be flashed
+independently. The sample will then read the sensitive data from the partition and the application
+binary will not contain sensitive or device-specific information. Meaning it will be possible
+to flash the same binary file on multiple separate devices.
+
+The first method is very straight forward and enabled by default. The user should only change
+the `CONFIG_DEVICE_ID` and `CONFIG_CREDENTIAL_SECRET` options in the `prj.conf`.
+
+However, to use the flash partition a couple of extra steps will be required.
+First, install the `littlefs-python` tool.
+```bash
+pip install littlefs-python
+```
+Next, update the json file `config_lfs/configuration.json` with your desired options and
+create the new partition.
+```bash
+littlefs-python create samples/astarte_app/config_lfs/ samples/astarte_app/lfs.bin --block-size 4096 --block-count 6
+```
+Finally, flash the partition on your device using your debugger of choice. The produced `lfs.bin`
+should be flashed at address `0xBE20000`.
+For example using J-Link for the FRDM RW612 bard the following command will do the trick.
+```bash
+JLinkExe -Device RW612 -if SWD -Speed 4000
+connect
+LoadBin samples/astarte_app/lfs.bin 0xBE20000
+reset
+exit
+```
+Now your device has permanently been flashed with the credentials. You can enable the
+`CONFIG_GET_CONFIG_FROM_FLASH` option in the kconfig and flash your application as you would normally
+do. The standard `west flash` command will only flash the application partition and not the
+custom partition used for the credentials.
+
+The WiFi SSID and password can also be flashed on the devie in this manner.
+
 ### Registration
 
 This step can be enabled through the `Registration` menu and shows how to register a new device to

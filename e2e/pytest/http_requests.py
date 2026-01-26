@@ -5,6 +5,7 @@
 """
 Contains useful wrappers for HTTPS requests.
 """
+
 import base64
 import json
 from typing import Any

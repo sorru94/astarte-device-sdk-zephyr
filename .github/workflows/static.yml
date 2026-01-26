@@ -105,6 +105,11 @@ jobs:
       - name: Install Python dependencies
         working-directory: astarte-device-sdk-zephyr
         run: pip install -r $PWD/scripts/requirements.txt
+      - name: Change code checker version
+        working-directory: astarte-device-sdk-zephyr
+        run: |
+          pip uninstall codechecker -y
+          pip install codechecker==6.24.4
       - name: Run clang-tidy
         working-directory: astarte-device-sdk-zephyr
         run: west static --sample astarte_app

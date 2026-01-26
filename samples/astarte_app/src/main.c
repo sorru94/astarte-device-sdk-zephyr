@@ -50,17 +50,7 @@
 #include "register.h"
 #endif
 
-/************************************************
- *       Checks over configuration values       *
- ***********************************************/
-
-BUILD_ASSERT(sizeof(CONFIG_DEVICE_ID) == ASTARTE_DEVICE_ID_LEN + 1,
-    "Missing device ID in datastreams example");
-
-#if !defined(CONFIG_DEVICE_REGISTRATION)
-BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
-    "Missing credential secret in datastreams example");
-#endif
+#include "sample_config.h"
 
 /************************************************
  * Constants, static variables and defines
@@ -95,11 +85,15 @@ static struct k_thread device_tx_thread_data;
 /**
  * @brief Entry point for the Astarte device reception thread.
  *
- * @param arg1 Unused argument.
- * @param arg2 Unused argument.
+ * @param device_id Device id for the Astarte device.
+ * @param cred_secr/arg2 Unused argument or credential secret.
  * @param arg3 Unused argument.
  */
-static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3);
+#if CONFIG_DEVICE_REGISTRATION
+static void device_rx_thread_entry_point(void *device_id, void *arg2, void *arg3);
+#else
+static void device_rx_thread_entry_point(void *device_id, void *cred_secr, void *arg3);
+#endif
 /**
  * @brief Entry point for the Astarte device transmission thread.
  *
@@ -154,14 +148,23 @@ int main(void)
     LOG_INF("Astarte device sample"); // NOLINT
     LOG_INF("Board: %s", CONFIG_BOARD); // NOLINT
 
+    struct sample_config cfg_from_file = { 0 };
+    sample_config_get(&cfg_from_file);
+    LOG_INF("Configured device ID: %s", cfg_from_file.device_id); // NOLINT
+#if !defined(CONFIG_DEVICE_REGISTRATION)
+    LOG_INF("Configured credential secret: %s", cfg_from_file.credential_secret); // NOLINT
+#endif
+#if defined(CONFIG_WIFI)
+    LOG_INF("Configured WiFi SSID: %s", cfg_from_file.wifi_ssid); // NOLINT
+    LOG_INF("Configured WiFi password: %s", cfg_from_file.wifi_pwd); // NOLINT
+#endif
+
 #if defined(CONFIG_WIFI)
     LOG_INF("Initializing WiFi driver."); // NOLINT
     app_wifi_init();
     k_sleep(K_SECONDS(5));
-    const char *ssid = CONFIG_WIFI_SSID;
     enum wifi_security_type sec = WIFI_SECURITY_TYPE_PSK;
-    const char *psk = CONFIG_WIFI_PASSWORD;
-    if (app_wifi_connect(ssid, sec, psk) != 0) {
+    if (app_wifi_connect(cfg_from_file.wifi_ssid, sec, cfg_from_file.wifi_pwd) != 0) {
         LOG_ERR("Connectivity intialization failed!"); // NOLINT
         return -1;
     }
@@ -182,9 +185,17 @@ int main(void)
 #endif
 
     // Spawn new rx thread for the Astarte device
+#if CONFIG_DEVICE_REGISTRATION
+
     k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
-        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point, NULL,
-        NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point,
+        cfg_from_file.device_id, NULL, NULL, CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+#else
+    k_thread_create(&device_rx_thread_data, device_rx_thread_stack_area,
+        K_THREAD_STACK_SIZEOF(device_rx_thread_stack_area), device_rx_thread_entry_point,
+        cfg_from_file.device_id, cfg_from_file.credential_secret, NULL,
+        CONFIG_DEVICE_THREAD_PRIORITY, 0, K_NO_WAIT);
+#endif
     // Spawn new tx thread for the Astarte device
     k_thread_create(&device_tx_thread_data, device_tx_thread_stack_area,
         K_THREAD_STACK_SIZEOF(device_tx_thread_stack_area), device_tx_thread_entry_point, NULL,
@@ -221,10 +232,14 @@ int main(void)
  * Static functions definitions
  ***********************************************/
 
-static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
+#if CONFIG_DEVICE_REGISTRATION
+static void device_rx_thread_entry_point(void *device_id, void *arg2, void *arg3)
 {
-    ARG_UNUSED(arg1);
     ARG_UNUSED(arg2);
+#else
+static void device_rx_thread_entry_point(void *device_id, void *cred_secr, void *arg3)
+{
+#endif
     ARG_UNUSED(arg3);
 
     astarte_device_handle_t device = NULL;
@@ -232,17 +247,12 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
 
     // Create a new instance of an Astarte device
 #if CONFIG_DEVICE_REGISTRATION
-    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = { 0 };
-
-    if (register_device(device_id, cred_secr) != 0) {
+    if (register_device((char *) device_id, cred_secr) != 0) {
         LOG_ERR("Device registration failed, stopping rx thread"); // NOLINT
         k_msgq_put(&device_msgq, (void *) &device, K_FOREVER);
         return;
     }
-#else
-    char device_id[ASTARTE_DEVICE_ID_LEN + 1] = CONFIG_DEVICE_ID;
-    char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1] = CONFIG_CREDENTIAL_SECRET;
 #endif
 
     const astarte_interface_t *interfaces[] = {
@@ -266,8 +276,8 @@ static void device_rx_thread_entry_point(void *arg1, void *arg2, void *arg3)
     device_config.property_unset_cbk = unset_property_callback;
     device_config.interfaces = interfaces;
     device_config.interfaces_size = ARRAY_SIZE(interfaces);
-    memcpy(device_config.device_id, device_id, sizeof(device_id));
-    memcpy(device_config.cred_secr, cred_secr, sizeof(cred_secr));
+    memcpy(device_config.device_id, device_id, ASTARTE_DEVICE_ID_LEN + 1);
+    memcpy(device_config.cred_secr, (const char *) cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
 
     res = astarte_device_new(&device_config, &device);
     if (res != ASTARTE_RESULT_OK) {

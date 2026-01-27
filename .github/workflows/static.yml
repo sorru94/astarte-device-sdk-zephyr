@@ -1,28 +1,16 @@
-#
-# This file is part of Astarte.
-#
-# Copyright 2024 SECO Mind Srl
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# (C) Copyright 2026, SECO Mind Srl
 #
 # SPDX-License-Identifier: Apache-2.0
-#
 
 name: Static
 
 on:
   push:
   pull_request:
+
+env:
+  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
+  SAMPLE_NAME: astarte_app
 
 jobs:
   clang-format:
@@ -34,9 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: astarte-device-sdk-zephyr
+          path: ${{ env.PROJECT_MANIFEST_FOLDER }}
       - name: Set CI manifest as defaults
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -45,13 +33,13 @@ jobs:
       - name: Setup Zephyr project
         uses: zephyrproject-rtos/action-zephyr-setup@v1
         with:
-          app-path: astarte-device-sdk-zephyr
+          app-path: ${{ env.PROJECT_MANIFEST_FOLDER }}
           toolchains: x86_64-zephyr-elf
       - name: Install Python dependencies
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check format
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: west format --dry-run
   interfaces-generation:
     runs-on: ubuntu-latest
@@ -62,9 +50,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: astarte-device-sdk-zephyr
+          path: ${{ env.PROJECT_MANIFEST_FOLDER }}
       - name: Set CI manifest as defaults
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -73,13 +61,13 @@ jobs:
       - name: Setup Zephyr project
         uses: zephyrproject-rtos/action-zephyr-setup@v1
         with:
-          app-path: astarte-device-sdk-zephyr
+          app-path: ${{ env.PROJECT_MANIFEST_FOLDER }}
           toolchains: x86_64-zephyr-elf
       - name: Install Python dependencies
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check if generated interfaces are up to date
-        run: west generate-interfaces -c ./astarte-device-sdk-zephyr/samples/astarte_app/interfaces
+        run: west generate-interfaces -c ./${{ env.PROJECT_MANIFEST_FOLDER }}/samples/${{ env.SAMPLE_NAME }}/interfaces
   code-checker:
     runs-on: ubuntu-latest
     concurrency:
@@ -89,9 +77,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: astarte-device-sdk-zephyr
+          path: ${{ env.PROJECT_MANIFEST_FOLDER }}
       - name: Set CI manifest as defaults
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: mv west-ci-4.2.yml west.yml
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -100,19 +88,19 @@ jobs:
       - name: Setup Zephyr project
         uses: zephyrproject-rtos/action-zephyr-setup@v1
         with:
-          app-path: astarte-device-sdk-zephyr
+          app-path: ${{ env.PROJECT_MANIFEST_FOLDER }}
           toolchains: x86_64-zephyr-elf
       - name: Install Python dependencies
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Change code checker version
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |
           pip uninstall codechecker -y
           pip install codechecker==6.24.4
       - name: Run clang-tidy
-        working-directory: astarte-device-sdk-zephyr
-        run: west static --sample astarte_app
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
+        run: west static --sample ${{ env.SAMPLE_NAME }}
   python-checks:
     runs-on: ubuntu-latest
     concurrency:
@@ -122,17 +110,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: astarte-device-sdk-zephyr
+          path: ${{ env.PROJECT_MANIFEST_FOLDER }}
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: Install Python dependencies
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install black
       - name: Check format for the west extension scripts
-        working-directory: astarte-device-sdk-zephyr
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: python -m black --line-length 100 --diff --check ./scripts/*.py
       - name: Check format for the end to end scripts
-        working-directory: astarte-device-sdk-zephyr
-        run: python -m black --line-length 100 --diff --check ./e2e/pytest/*.py
+        working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
+        run: |
+          if [ -d "./e2e" ]; then
+            python -m black --line-length 100 --diff --check ./e2e/pytest/*.py
+          else
+            echo "Directory ./e2e does not exist. Skipping."
+          fi

@@ -1,22 +1,6 @@
-#
-# This file is part of Astarte.
-#
-# Copyright 2024 SECO Mind Srl
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# (C) Copyright 2026, SECO Mind Srl
 #
 # SPDX-License-Identifier: Apache-2.0
-#
 
 name: Documentation generation
 
@@ -28,6 +12,13 @@ on:
 
 env:
   DOXYGEN_VERSION: 1.12.0
+  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
+  DOCS_REMOTE_ORG: astarte-platform
+  MACRO_PROJECT_BASE: ASTARTE_DEVICE_SDK_BASE
+  REMOTE_PROJECT_FOLDER: device-sdks
+  USER_EMAIL_API: astarte-machine-sdk@ispirata.com
+  GET_STARTED_ROOT_REPO: sdk-doc
+  USER_EMAIL_GET_STARTED: astarte-machine@ispirata.com
 
 jobs:
   api-docs:
@@ -40,10 +31,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
       with:
-        path: astarte-device-sdk-zephyr
+        path: ${{ env.PROJECT_MANIFEST_FOLDER }}
     - uses: actions/checkout@v6
       with:
-        repository: astarte-platform/docs
+        repository: ${{ env.DOCS_REMOTE_ORG }}/docs
         ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
         path: docs
     - name: Install ubuntu packages
@@ -51,7 +42,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ninja-build graphviz
     - name: Install doxygen
-      working-directory: astarte-device-sdk-zephyr
+      working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
       shell: bash
       run: |
         wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
@@ -66,15 +57,15 @@ jobs:
         pip install cmake
         pip install coverxygen
     - name: Set CI manifest as defaults
-      working-directory: astarte-device-sdk-zephyr
+      working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
       run: mv west-ci-4.2.yml west.yml
     - name: Setup Zephyr project
       uses: zephyrproject-rtos/action-zephyr-setup@v1
       with:
-        app-path: astarte-device-sdk-zephyr
+        app-path: ${{ env.PROJECT_MANIFEST_FOLDER }}
         toolchains: x86_64-zephyr-elf
     - name: Build documentation
-      working-directory: astarte-device-sdk-zephyr
+      working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
       shell: bash
       run: |
         if [[ "$GITHUB_REF" =~ "refs/tags/v" ]]; then
@@ -82,20 +73,20 @@ jobs:
         else
           DOC_TAG="development"
         fi
-        DOC_TAG=${DOC_TAG} ASTARTE_DEVICE_SDK_BASE="$PWD" make -C doc doxygen
+        DOC_TAG=${DOC_TAG} ${{ env.MACRO_PROJECT_BASE }}="$PWD" make -C doc doxygen
     - name: Upload HTML documentation
       uses: actions/upload-artifact@v6
       with:
         name: docs_html
-        path: astarte-device-sdk-zephyr/doc/_build/doxygen/html
+        path: ${{ env.PROJECT_MANIFEST_FOLDER }}/doc/_build/doxygen/html
     - name: Copy HTML documentation
       run: |
-        export DOCS_DIRNAME="device-sdks/zephyr/$(echo ${{ github.ref }} | sed 's,refs/heads/,,' | sed 's/master/snapshot/g' | sed 's/release-//g')"
+        export DOCS_DIRNAME="${{ env.REMOTE_PROJECT_FOLDER }}/zephyr/$(echo ${{ github.ref }} | sed 's,refs/heads/,,' | sed 's/master/snapshot/g' | sed 's/release-//g')"
         rm -rf docs/$DOCS_DIRNAME
         mkdir -p docs/$DOCS_DIRNAME/api
-        cp -r astarte-device-sdk-zephyr/doc/_build/doxygen/html/* docs/$DOCS_DIRNAME/api
+        cp -r ${{ env.PROJECT_MANIFEST_FOLDER }}/doc/_build/doxygen/html/* docs/$DOCS_DIRNAME/api
     - name: Update symlink
-      working-directory: ./docs/device-sdks/zephyr
+      working-directory: ./docs/${{ env.REMOTE_PROJECT_FOLDER }}/zephyr
       run: |
         rm -f "latest"
         latest_version=$(ls -d * | grep -v snapshot | sort -V | tail -n 1)
@@ -104,10 +95,10 @@ jobs:
     - name: Commit files
       working-directory: ./docs
       run: |
-        git config --local user.email "astarte-machine-sdk@ispirata.com"
-        git config --local user.name "Astarte Bot"
+        git config --local user.email "${{ env.USER_EMAIL_API }}"
+        git config --local user.name "Documentation Bot"
         git add .
-        git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK documentation"
+        git diff-index --quiet HEAD || git commit -m "Update Zephyr documentation"
     - name: Push changes
       working-directory: ./docs
       run: |
@@ -118,16 +109,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          path: astarte-device-sdk-zephyr
+          path: ${{ env.PROJECT_MANIFEST_FOLDER }}
           fetch-depth: 0
       - uses: actions/checkout@v6
         with:
-          repository: astarte-platform/sdk-doc
+          repository: ${{ env.DOCS_REMOTE_ORG }}/${{ env.GET_STARTED_ROOT_REPO }}
           ssh-key: ${{ secrets.SDK_DOC_DEPLOY_KEY }}
-          path: sdk-doc
+          path: ${{ env.GET_STARTED_ROOT_REPO }}
       - name: Check release branch
         id: check-release-branch
-        working-directory: ./astarte-device-sdk-zephyr
+        working-directory: ./${{ env.PROJECT_MANIFEST_FOLDER }}
         shell: bash
         run: |
           latest_release=$(git branch -r | grep "release-*" | sort -t '-' -k 2,2n | tail -n 1 | cut -d '/' -f 2)
@@ -143,8 +134,8 @@ jobs:
         id: cmp-and-copy-get-started
         if: steps.check-release-branch.outputs.RESULT == 'OK'
         run: |
-          our_get_started="./astarte-device-sdk-zephyr/get_started.md"
-          their_get_started="./sdk-doc/source/get_started/zephyr.md"
+          our_get_started="./${{ env.PROJECT_MANIFEST_FOLDER }}/get_started.md"
+          their_get_started="./${{ env.GET_STARTED_ROOT_REPO }}/source/get_started/zephyr.md"
           if cmp -s "$our_get_started" "$their_get_started"; then
             echo "Get started are identical, no need for substitution"
             echo "RESULT=NO_SUBSTITUTION" >> $GITHUB_OUTPUT
@@ -156,14 +147,14 @@ jobs:
       - name: Commit changes
         id: commit-changes
         if: steps.cmp-and-copy-get-started.outputs.RESULT == 'SUBSTITUTION'
-        working-directory: ./sdk-doc
+        working-directory: ./${{ env.GET_STARTED_ROOT_REPO }}
         run: |
-          git config --local user.email "astarte-machine@ispirata.com"
-          git config --local user.name "Astarte Bot"
+          git config --local user.email "${{ env.USER_EMAIL_GET_STARTED }}"
+          git config --local user.name "Documentation Bot"
           git add .
-          git diff-index --quiet HEAD || git commit -m "Update Zephyr SDK get started"
+          git diff-index --quiet HEAD || git commit -m "Update Zephyr get started"
       - name: Push changes
         if: steps.commit-changes.conclusion == 'success'
-        working-directory: ./sdk-doc
+        working-directory: ./${{ env.GET_STARTED_ROOT_REPO }}
         run: |
           git push

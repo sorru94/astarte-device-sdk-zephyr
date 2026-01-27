@@ -11,18 +11,22 @@ on:
 
 jobs:
   run-unit-tests:
-    name: Run the unit tests
+    name: Run unit tests
     uses: ./.github/workflows/test.yml
     with:
       PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
       LIBRARY_NAME: "astarte_device_sdk"
 
   run-static-analysis:
-    name: Run the static analysis
+    name: Run static analysis
     uses: ./.github/workflows/static.yml
     with:
       PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
       SAMPLE_NAME: "astarte_app"
+
+  run-reuse-compliance:
+    name: Run REUSE compliance check
+    uses: ./.github/workflows/reuse-lint.yml
 
   run-build:
     name: Run build
@@ -30,6 +34,11 @@ jobs:
     with:
       PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
       SAMPLE_NAME: "astarte_app"
+
+  run-e2e-tests:
+    name: Run end to end tests
+    uses: ./.github/workflows/e2e-test.yaml
+    secrets: inherit
 
   run-doc-generation:
     name: Run documentation generation

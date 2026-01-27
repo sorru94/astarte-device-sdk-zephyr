@@ -4,15 +4,16 @@
 
 name: E2E test
 
-on:
-  push:
-  pull_request:
+on: [workflow_call, workflow_dispatch]
+
 permissions:
   contents: read
+
 env:
   ASTARTE_API_BASE: api.autotest.astarte-platform.org
   ASTARTE_BROKER_BASE: broker.autotest.astarte-platform.org
   ASTARTE_ACTION_CERT: /usr/local/share/ca-certificates/astarte-autotest.crt
+
 jobs:
   e2e-test:
     runs-on: ubuntu-24.04

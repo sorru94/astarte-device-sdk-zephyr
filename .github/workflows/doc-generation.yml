@@ -122,10 +122,10 @@ jobs:
         git config --local user.name "Documentation Bot"
         git add .
         git diff-index --quiet HEAD || git commit -m "Update Zephyr documentation"
-    - name: Push changes
-      working-directory: ./docs
-      run: |
-        git push
+    # - name: Push changes
+    #   working-directory: ./docs
+    #   run: |
+    #     git push
   get-started-docs:
     runs-on: ubuntu-latest
     needs: [api-docs]
@@ -176,8 +176,8 @@ jobs:
           git config --local user.name "Documentation Bot"
           git add .
           git diff-index --quiet HEAD || git commit -m "Update Zephyr get started"
-      - name: Push changes
-        if: steps.commit-changes.conclusion == 'success'
-        working-directory: ./${{ env.GET_STARTED_ROOT_REPO }}
-        run: |
-          git push
+      # - name: Push changes
+      #   if: steps.commit-changes.conclusion == 'success'
+      #   working-directory: ./${{ env.GET_STARTED_ROOT_REPO }}
+      #   run: |
+      #     git push

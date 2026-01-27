@@ -6,8 +6,6 @@ name: CI orchestrator
 
 on:
   push:
-    branches: [ master, 'release-*' ]
-    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
 

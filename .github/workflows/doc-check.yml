@@ -5,24 +5,27 @@
 name: Documentation checks
 
 on:
-  push:
-    tags:
-    - v*
-  pull_request:
-    paths:
-    - 'README.md'
-    - 'doc/**'
-    - 'include/**'
-    - '.github/workflows/doc-build.yml'
-    - 'scripts/docs.py'
-    - 'scripts/west-commands.py'
-    - 'scripts/requirements.txt'
+  workflow_call:
+    inputs:
+      DOXYGEN_VERSION:
+        required: false
+        type: string
+        default: '1.12.0'
+      PROJECT_MANIFEST_FOLDER:
+        required: true
+        type: string
+      MACRO_PROJECT_BASE:
+        required: true
+        type: string
+      MACRO_PROJECT_EXTENDED_DOCS:
+        required: true
+        type: string
 
 env:
-  DOXYGEN_VERSION: 1.12.0
-  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
-  MACRO_PROJECT_BASE: ASTARTE_DEVICE_SDK_BASE
-  MACRO_PROJECT_EXTENDED_DOCS: ASTARTE_DEVICE_SDK_EXTENDED_DOCS
+  DOXYGEN_VERSION: ${{ inputs.DOXYGEN_VERSION }}
+  PROJECT_MANIFEST_FOLDER: ${{ inputs.PROJECT_MANIFEST_FOLDER }}
+  MACRO_PROJECT_BASE: ${{ inputs.MACRO_PROJECT_BASE }}
+  MACRO_PROJECT_EXTENDED_DOCS: ${{ inputs.MACRO_PROJECT_EXTENDED_DOCS }}
 
 jobs:
   check-docs:

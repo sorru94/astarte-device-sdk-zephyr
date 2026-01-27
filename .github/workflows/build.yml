@@ -5,12 +5,18 @@
 name: Build
 
 on:
-  push:
-  pull_request:
+  workflow_call:
+    inputs:
+      PROJECT_MANIFEST_FOLDER:
+        required: true
+        type: string
+      SAMPLE_NAME:
+        required: true
+        type: string
 
 env:
-  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
-  SAMPLE_NAME: astarte_app
+  PROJECT_MANIFEST_FOLDER: ${{ inputs.PROJECT_MANIFEST_FOLDER }}
+  SAMPLE_NAME: ${{ inputs.SAMPLE_NAME }}
 
 jobs:
   build:
@@ -32,29 +38,24 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: ${{ env.PROJECT_MANIFEST_FOLDER }}
-
       - name: Set CI manifest as defaults
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: mv west-ci-${{ matrix.sample-variant.zephyr-version }}.yml west.yml
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-
       - name: Setup Zephyr project
         uses: zephyrproject-rtos/action-zephyr-setup@v1
         with:
           app-path: ${{ env.PROJECT_MANIFEST_FOLDER }}
           toolchains: arm-zephyr-eabi
-
       - name: Fetch binary blobs
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         if: matrix.sample-variant.name == 'sample.wifi'
         run: |
           west --version
           west blobs -a fetch hal_nxp
-
       - name: Build sample
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |

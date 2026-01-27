@@ -5,12 +5,18 @@
 name: Static
 
 on:
-  push:
-  pull_request:
+  workflow_call:
+    inputs:
+      PROJECT_MANIFEST_FOLDER:
+        required: true
+        type: string
+      SAMPLE_NAME:
+        required: true
+        type: string
 
 env:
-  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
-  SAMPLE_NAME: astarte_app
+  PROJECT_MANIFEST_FOLDER: ${{ inputs.PROJECT_MANIFEST_FOLDER }}
+  SAMPLE_NAME: ${{ inputs.SAMPLE_NAME }}
 
 jobs:
   clang-format:

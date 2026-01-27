@@ -5,20 +5,43 @@
 name: Documentation generation
 
 on:
-  push:
-    branches:
-    - 'master'
-    - 'release-*'
+  workflow_call:
+    inputs:
+      DOXYGEN_VERSION:
+        required: false
+        type: string
+        default: '1.12.0'
+      PROJECT_MANIFEST_FOLDER:
+        required: true
+        type: string
+      DOCS_REMOTE_ORG:
+        required: true
+        type: string
+      MACRO_PROJECT_BASE:
+        required: true
+        type: string
+      REMOTE_PROJECT_FOLDER:
+        required: true
+        type: string
+      USER_EMAIL_API:
+        required: true
+        type: string
+      GET_STARTED_ROOT_REPO:
+        required: true
+        type: string
+      USER_EMAIL_GET_STARTED:
+        required: true
+        type: string
 
 env:
-  DOXYGEN_VERSION: 1.12.0
-  PROJECT_MANIFEST_FOLDER: astarte-device-sdk-zephyr
-  DOCS_REMOTE_ORG: astarte-platform
-  MACRO_PROJECT_BASE: ASTARTE_DEVICE_SDK_BASE
-  REMOTE_PROJECT_FOLDER: device-sdks
-  USER_EMAIL_API: astarte-machine-sdk@ispirata.com
-  GET_STARTED_ROOT_REPO: sdk-doc
-  USER_EMAIL_GET_STARTED: astarte-machine@ispirata.com
+  DOXYGEN_VERSION: ${{ inputs.DOXYGEN_VERSION }}
+  PROJECT_MANIFEST_FOLDER: ${{ inputs.PROJECT_MANIFEST_FOLDER }}
+  DOCS_REMOTE_ORG: ${{ inputs.DOCS_REMOTE_ORG }}
+  MACRO_PROJECT_BASE: ${{ inputs.MACRO_PROJECT_BASE }}
+  REMOTE_PROJECT_FOLDER: ${{ inputs.REMOTE_PROJECT_FOLDER }}
+  USER_EMAIL_API: ${{ inputs.USER_EMAIL_API }}
+  GET_STARTED_ROOT_REPO: ${{ inputs.GET_STARTED_ROOT_REPO }}
+  USER_EMAIL_GET_STARTED: ${{ inputs.USER_EMAIL_GET_STARTED }}
 
 jobs:
   api-docs:

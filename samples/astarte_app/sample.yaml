@@ -9,7 +9,7 @@ sample:
   description: Astarte application sample
   name: astarte-sample
 tests:
-  astarte.default:
+  sample.default:
     build_only: true
     integration_platforms:
       - frdm_rw612
@@ -18,12 +18,12 @@ tests:
       - mimxrt1064_evk
       - stm32h573i_dk
       - native_sim
-  astarte.wifi:
+  sample.wifi:
     build_only: true
     extra_args: EXTRA_CONF_FILE="prj-wifi.conf"
     integration_platforms:
       - frdm_rw612
-  astarte.lts:
+  sample.lts:
     build_only: true
     extra_args: CONF_FILE="zephyr-lts.conf"
     integration_platforms:

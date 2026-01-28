@@ -1,0 +1,64 @@
+# (C) Copyright 2026, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI orchestrator
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run-unit-tests:
+    name: Run unit tests
+    uses: ./.github/workflows/test.yml
+    with:
+      PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
+      LIBRARY_NAME: "astarte_device_sdk"
+
+  run-static-analysis:
+    name: Run static analysis
+    uses: ./.github/workflows/static.yml
+    with:
+      PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
+      SAMPLE_NAME: "astarte_app"
+
+  run-reuse-compliance:
+    name: Run REUSE compliance check
+    uses: ./.github/workflows/reuse-lint.yml
+
+  run-build:
+    name: Run build
+    uses: ./.github/workflows/build.yml
+    with:
+      PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
+      SAMPLE_NAME: "astarte_app"
+
+  run-e2e-tests:
+    name: Run end to end tests
+    uses: ./.github/workflows/e2e-test.yaml
+    secrets: inherit
+
+  run-doc-generation:
+    name: Run documentation generation
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-')
+    uses: ./.github/workflows/doc-generation.yml
+    secrets: inherit
+    with:
+      PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
+      DOCS_REMOTE_ORG: "astarte-platform"
+      MACRO_PROJECT_BASE: "ASTARTE_DEVICE_SDK_BASE"
+      REMOTE_PROJECT_FOLDER: "device-sdks"
+      USER_EMAIL_API: "astarte-machine-sdk@ispirata.com"
+      GET_STARTED_ROOT_REPO: "sdk-doc"
+      USER_EMAIL_GET_STARTED: "astarte-machine@ispirata.com"
+
+  run-doc-check:
+    name: Run documentation check
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request'
+    uses: ./.github/workflows/doc-check.yml
+    with:
+      PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
+      MACRO_PROJECT_BASE: "ASTARTE_DEVICE_SDK_BASE"
+      MACRO_PROJECT_EXTENDED_DOCS: "ASTARTE_DEVICE_SDK_EXTENDED_DOCS"

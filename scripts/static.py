@@ -18,23 +18,11 @@ import subprocess
 import sys
 from linecache import getline
 from pathlib import Path
+from textwrap import dedent
+
 from colored import stylize, fg
-
 from colored import fore
-from west import log  # use this for user output
-from west.commands import WestCommand  # your extension must subclass this
-
-static_name = "static"
-static_help = "run static analysis on the sources (clang-tidy)"
-static_description = """\
-Convenience wrapper for performing static analysis on the sources.
-
-This command runs CodeChecker which in turn runs clang-tidy.
-Since this CodeChecker needs to be run on an application this command
-uses one of the samples as application.
-
-Will build each application from scratch and using target qemu_cortex_m3.
-"""
+from west.commands import WestCommand
 
 # Allowed number of lines for each .c and .h files.
 # Add the comment '// NOLINENUMBERLINT' in one of such files to exclude the file from this check.
@@ -54,12 +42,19 @@ class WestCommandStatic(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
-        super().__init__(static_name, static_help, static_description)
+        super().__init__(
+            "static",
+            "Run static analysis on the sources (clang-tidy)",
+            dedent("""Convenience wrapper for performing static analysis on the sources.
+                    This command runs CodeChecker which in turn runs clang-tidy.
+                    Since this CodeChecker needs to be run on an application this command
+                    uses one of the samples as application.
+                    Will build each application from scratch and using target qemu_cortex_m3."""),
+        )
 
     def do_add_parser(self, parser_adder):
         """
         This function can be used to add custom options for this command.
-
         Allows you full control over the type of argparse handling you want.
 
         Parameters
@@ -73,8 +68,6 @@ class WestCommandStatic(WestCommand):
             The argument parser for this command.
         """
         parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
-
-        # Add some options using the standard argparse module API.
         default_pristine = "auto"
         parser.add_argument(
             "-p",
@@ -82,32 +75,49 @@ class WestCommandStatic(WestCommand):
             help=f"west build pristine flag. Default: '{default_pristine}'.",
             default=default_pristine,
         )
-        default_sample = "astarte_app"
         parser.add_argument(
             "-s",
             "--sample",
-            help=f"sample to analyze. Default: '{default_sample}'.",
-            default=default_sample,
+            help="sample to analyze."
+            "Defaults to the first (alphabetical) sample folder containig a sample.yaml file.",
+            default=None,
         )
         parser.add_argument("-e", "--export", help="an additional (optional) export type")
+        return parser
 
-        return parser  # gets stored as self.parser
+    def do_run(self, args, _unknown_args):
+        library_path = Path(self.manifest.repo_abspath)
+        sample_name = args.sample or get_default_sample_name(library_path)
 
-    # pylint: disable-next=arguments-renamed,unused-argument,too-many-locals
-    def do_run(self, args, unknown_args):
+        if not sample_name:
+            self.die("Could not find an appropriate sample to analyze.")
+
+        self._run_codechecker(library_path, sample_name, args)
+
+        summary = {"UNSPECIFIED": 0, "STYLE": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+
+        has_cc_reports = self._process_codechecker_results(library_path, summary)
+        has_size_reports = self._process_file_size_reports(library_path, summary)
+
+        if has_cc_reports or has_size_reports:
+            self._print_summary(summary)
+            sys.exit(1)
+
+        self.inf(stylize("No issue detected.", fore("green")))
+
+    def _run_codechecker(self, library_path, sample_name, args):
         """
-        Function called when the user runs the custom command, e.g.:
-
-          $ west clean
+        Runs the CodeChecker analysis tool.
 
         Parameters
         ----------
-        args : Any
-            Arguments pre parsed by the parser defined by `do_add_parser()`.
-        unknown_args : Any
-            Extra unknown arguments.
+        library_path : Path
+            The absolute path to the library repository.
+        sample_name : str
+            The name of the sample to be used for the build and analysis.
+        args : argparse.Namespace
+            The parsed command line arguments.
         """
-        module_path = Path(self.topdir).joinpath("astarte-device-sdk-zephyr")
         codechecker_analyze_opts = [
             "--analyzers",
             "clang-tidy",
@@ -117,100 +127,161 @@ class WestCommandStatic(WestCommand):
             "$PWD/skipfile.txt",
         ]
         codechecker_exports = ["json", args.export] if args.export else ["json"]
+
         cmd = [
             "west build",
             f"-p {args.pristine}",
             "-b native_sim",
-            f"$PWD/samples/{args.sample} --",
+            f"$PWD/samples/{sample_name} --",
             "-DZEPHYR_SCA_VARIANT=codechecker",
             f'-DCODECHECKER_EXPORT={",".join(codechecker_exports)}',
             f'-DCODECHECKER_ANALYZE_OPTS="{";".join(codechecker_analyze_opts)}"',
         ]
-        print(stylize(" ".join(cmd), fg("cyan")))
-        subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=180, check=True)
+
+        self.inf(stylize(" ".join(cmd), fg("cyan")))
+        subprocess.run(" ".join(cmd), shell=True, cwd=library_path, timeout=180, check=True)
+
+    def _process_codechecker_results(self, library_path, summary):
+        """
+        Processes the results generated by CodeChecker.
+
+        Parameters
+        ----------
+        library_path : Path
+            The absolute path to the library repository.
+        summary : dict
+            A dictionary to keep track of the number of issues found for each severity.
+
+        Returns
+        -------
+        bool
+            True if any issues were found in the CodeChecker results, False otherwise.
+        """
+        result_file = library_path / "build/sca/codechecker/codechecker.json"
+        if not result_file.exists():
+            return False
 
         has_reports = False
-        summary = {"UNSPECIFIED": 0, "STYLE": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
-
-        result_file = (
-            module_path.joinpath("build")
-            .joinpath("sca")
-            .joinpath("codechecker")
-            .joinpath("codechecker.json")
-        )
         with open(result_file, "r", encoding="utf-8") as rf:
-            for report in json.load(rf).get("reports", []):
+            reports = json.load(rf).get("reports", [])
+            for report in reports:
                 has_reports = True
-                pretty_msg = []
+                self._report_issue(report, summary)
+        return has_reports
 
-                severity = report.get("severity", None)
-                analyzer_name = report.get("analyzer_name", None)
-                checker_name = report.get("checker_name", None)
-                message = report.get("message", None)
-                file = report.get("file", {"path": None}).get("path", None)
-                line = report.get("line", None)
-                column = report.get("column", None)
+    def _report_issue(self, report, summary):
+        """
+        Reports a single issue found by the static analysis.
 
-                summary[severity] += 1
+        Parameters
+        ----------
+        report : dict
+            The issue report as a dictionary.
+        summary : dict
+            A dictionary to keep track of the number of issues found for each severity.
+        """
+        severity = report.get("severity", "UNSPECIFIED")
+        summary[severity] += 1
 
-                pretty_msg += [
-                    stylize(
-                        f"{severity} [{analyzer_name}:{checker_name}]", severity_colours[severity]
-                    )
-                ]
-                pretty_msg += [f"Message: {message}"]
-                pretty_msg += [stylize("--> ", fore("blue")) + f"{file}:{line}:{column}"]
-                report_line = getline(file, line).removesuffix("\n")
-                pretty_msg += [stylize(" | ", fore("light_blue")) + report_line]
-                cursor_line = (" " * (column - 1)) + "^"
-                pretty_msg += [stylize(" | ", fore("light_blue")) + cursor_line]
-                next_line = getline(file, line + 1).removesuffix("\n")
-                pretty_msg += [stylize(" | ", fore("blue")) + next_line]
-                next_next_line = getline(file, line + 2).removesuffix("\n")
-                pretty_msg += [stylize(" | ", fore("blue")) + next_next_line]
+        file = report.get("file", {}).get("path")
+        line, col = report.get("line"), report.get("column")
 
-                log.inf("\n" + "\n".join(pretty_msg))
+        pretty_msg = [
+            stylize(
+                f"{severity} [{report.get('analyzer_name')}:{report.get('checker_name')}]",
+                severity_colours[severity],
+            ),
+            f"Message: {report.get('message')}",
+            stylize("--> ", fore("blue")) + f"{file}:{line}:{col}",
+            stylize(" | ", fore("light_blue")) + getline(file, line).strip(),
+            stylize(" | ", fore("light_blue")) + (" " * (col - 1)) + "^",
+            stylize(" | ", fore("blue")) + getline(file, line + 1).strip(),
+            stylize(" | ", fore("blue")) + getline(file, line + 2).strip(),
+        ]
+        self.inf("\n" + "\n".join(pretty_msg))
 
-        for file, n in calculate_file_sizes(module_path):
-            has_reports = True
-            pretty_msg = []
+    def _process_file_size_reports(self, library_path, summary):
+        """
+        Processes reports regarding file sizes (line counts).
 
+        Parameters
+        ----------
+        library_path : Path
+            The absolute path to the library repository.
+        summary : dict
+            A dictionary to keep track of the number of issues found for each severity.
+
+        Returns
+        -------
+        bool
+            True if any file size limit violations were found, False otherwise.
+        """
+        found = False
+        for file, n in calculate_file_sizes(library_path):
+            found = True
             severity = "STYLE"
-            analyzer_name = "internal-analyzer"
-            checker_name = "readability-file-line-limit"
-            message = f"Maximum line number exceeded ({n}/{FILE_LINES_LIMIT})"
-
             summary[severity] += 1
 
-            pretty_msg += [
-                stylize(f"{severity} [{analyzer_name}:{checker_name}]", severity_colours[severity])
+            pretty_msg = [
+                stylize(
+                    f"{severity} [internal-analyzer:readability-file-line-limit]",
+                    severity_colours[severity],
+                ),
+                f"Message: Maximum line number exceeded ({n}/{FILE_LINES_LIMIT})",
+                stylize("--> ", fore("blue")) + f"{file}:0:0",
             ]
-            pretty_msg += [f"Message: {message}"]
-            pretty_msg += [stylize("--> ", fore("blue")) + f"{file}:{0}:{0}"]
+            self.inf("\n" + "\n".join(pretty_msg))
+        return found
 
-            log.inf("\n" + "\n".join(pretty_msg))
+    def _print_summary(self, summary):
+        """
+        Prints the summary of the diagnosed issues.
 
-        if has_reports:
-            final_message = ["\nSummary for the diagnosed issues: "] + [
-                stylize(f"{s}", severity_colours[s]) + f": {n} issues detected"
-                for s, n in summary.items()
-                if n
-            ]
-            log.inf("\n - ".join(final_message) + "\n")
-            sys.exit(1)
+        Parameters
+        ----------
+        summary : dict
+            A dictionary containing the counts of issues detected for each severity.
+        """
+        final_message = ["\nSummary for the diagnosed issues: "] + [
+            stylize(f"{s}", severity_colours[s]) + f": {n} issues detected"
+            for s, n in summary.items()
+            if n
+        ]
+        self.inf("\n - ".join(final_message) + "\n")
 
-        log.inf(stylize("No issue detected.", fore("green")))
+
+def get_default_sample_name(library_path: Path):
+    """
+    Get the default sample name if not specified by the user.
+    The default sample name is the name of the first folder in the samples subdirectory which
+    contains a sample.yaml file.
+
+    Parameters
+    ----------
+    library_path : Path
+        The root directory for the library under test.
+
+    Returns
+    -------
+    str
+        The name of the sample folder.
+    """
+    samples_path = library_path / "samples"
+    match = next(samples_path.rglob("sample.yaml"), None)
+    if match:
+        return match.parent.name
+    return None
 
 
-def calculate_file_sizes(module_path: Path):
+def calculate_file_sizes(library_path: Path):
     """
     Calculate the number of lines for all the .c and .h files in the project.
     The number of lines will refer to the number of lines without counting comments and emptylines.
 
     Parameters
     ----------
-    module_path : Path
-        The module path for the Astarte device.
+    library_path : Path
+        The path for the library under analysis.
 
     Returns
     -------
@@ -218,16 +289,11 @@ def calculate_file_sizes(module_path: Path):
         A list of pairs, with the first element is the path to the file and the second element is
         the number of lines of the file.
     """
-    files = (
-        list(module_path.joinpath("lib").joinpath("astarte_device_sdk").glob("*.c"))
-        + list(module_path.joinpath("include").joinpath("astarte_device_sdk").glob("*.h"))
-        + list(
-            module_path.joinpath("lib")
-            .joinpath("astarte_device_sdk")
-            .joinpath("include")
-            .glob("*.h")
-        )
-    )
+    search_patterns = [("lib", "*/*.c"), ("include", "*/*.h"), ("lib", "*/include/*.h")]
+
+    files = []
+    for base, pattern in search_patterns:
+        files.extend(library_path.joinpath(base).glob(pattern))
 
     file_lengths = []
     for file in files:
@@ -239,7 +305,7 @@ def calculate_file_sizes(module_path: Path):
         cap = subprocess.run(
             f"gcc -fpreprocessed -dD -E {file}",
             shell=True,
-            cwd=module_path,
+            cwd=library_path,
             timeout=60,
             check=True,
             capture_output=True,

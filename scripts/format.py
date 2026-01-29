@@ -13,28 +13,26 @@ python -m black --line-length 100 ./scripts/*.py
 """
 
 import subprocess
+
+from textwrap import dedent
 from pathlib import Path
 from colored import stylize, fg
-
-from west.commands import WestCommand  # your extension must subclass this
-
-# from west import log  # use this for user output
-
-static_name = "format"
-static_help = "format the source files (clang-format)"
-static_description = """Convenience wrapper for formatting the source files."""
+from west.commands import WestCommand
 
 
 class WestCommandFormat(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
-        super().__init__(static_name, static_help, static_description)
+        super().__init__(
+            "format",
+            "Format the source files (clang-format)",
+            dedent("""Convenience wrapper for formatting the source files."""),
+        )
 
     def do_add_parser(self, parser_adder):
         """
         This function can be used to add custom options for this command.
-
         Allows you full control over the type of argparse handling you want.
 
         Parameters
@@ -48,47 +46,41 @@ class WestCommandFormat(WestCommand):
             The argument parser for this command.
         """
         parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
-
-        # Add some options using the standard argparse module API.
         parser.add_argument(
             "-d",
             "--dry-run",
             help="If set, do not actually make the formatting changes",
             action="store_true",
         )
+        return parser
 
-        return parser  # gets stored as self.parser
-
-    # pylint: disable-next=arguments-renamed,unused-argument
-    def do_run(self, args, unknown_args):
+    def do_run(self, args, _unknown_args):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west clean
+          $ west format
 
         Parameters
         ----------
         args : Any
             Arguments pre parsed by the parser defined by `do_add_parser()`.
-        unknown_args : Any
-            Extra unknown arguments.
         """
-        module_path = Path(self.topdir).joinpath("astarte-device-sdk-zephyr")
+        library_path = Path(self.manifest.repo_abspath)
         headers_and_sources = [
-            str(Path(module_path).joinpath(s))
+            str(Path(library_path).joinpath(s))
             for s in (
-                "include/astarte_device_sdk/*.h",
-                "lib/astarte_device_sdk/include/*.h",
-                "lib/astarte_device_sdk/*.c",
+                "include/**/*.h",
+                "lib/**/include/*.h",
+                "lib/**/*.c",
                 "samples/**/include/*.h",
                 "samples/**/src/*.c",
-                "tests/lib/astarte_device_sdk/**/include/*.h",
-                "tests/lib/astarte_device_sdk/**/**/src/*.c",
+                "tests/lib/**/**/include/*.h",
+                "tests/lib/**/**/**/src/*.c",
                 "e2e/include/*.h",
                 "e2e/src/*.c",
             )
         ]
         for header_or_source in headers_and_sources:
             cmd = ["clang-format", "--dry-run -Werror" if args.dry_run else "-i", header_or_source]
-            print(stylize(" ".join(cmd), fg("cyan")))
-            subprocess.run(" ".join(cmd), shell=True, cwd=module_path, timeout=60, check=True)
+            self.inf(stylize(" ".join(cmd), fg("cyan")))
+            subprocess.run(" ".join(cmd), shell=True, cwd=library_path, timeout=60, check=True)

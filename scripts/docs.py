@@ -16,27 +16,24 @@ import os
 import subprocess
 from pathlib import Path
 
+from textwrap import dedent
 from colored import fore, stylize
-from west import log  # use this for user output
-from west.commands import WestCommand  # your extension must subclass this
-
-# from west import log  # use this for user output
-
-static_name = "docs"
-static_help = "Generate documentation (doxygen)"
-static_description = """Convenience wrapper to buld documentation with doxygen."""
+from west.commands import WestCommand
 
 
 class WestCommandDocs(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
-        super().__init__(static_name, static_help, static_description)
+        super().__init__(
+            "docs",
+            "Generate documentation (doxygen)",
+            dedent("""Convenience wrapper to buld documentation with doxygen."""),
+        )
 
     def do_add_parser(self, parser_adder):
         """
         This function can be used to add custom options for this command.
-
         Allows you full control over the type of argparse handling you want.
 
         Parameters
@@ -50,8 +47,6 @@ class WestCommandDocs(WestCommand):
             The argument parser for this command.
         """
         parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
-
-        # Add some options using the standard argparse module API.
         parser.add_argument(
             "-c", "--clean", help="clean previous documentation", action="store_true"
         )
@@ -62,50 +57,48 @@ class WestCommandDocs(WestCommand):
             "If active, the documentation will be generated also for private include files.",
             action="store_true",
         )
+        return parser
 
-        return parser  # gets stored as self.parser
-
-    # pylint: disable-next=arguments-renamed,unused-argument
-    def do_run(self, args, unknown_args):
+    def do_run(self, args, _unknown_args):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west clean
+          $ west docs
 
         Parameters
         ----------
         args : Any
             Arguments pre parsed by the parser defined by `do_add_parser()`.
-        unknown_args : Any
-            Extra unknown arguments.
         """
-        module_path = Path(self.topdir).joinpath("astarte-device-sdk-zephyr")
+        library_path = Path(self.manifest.repo_abspath)
         if args.clean:
-            build_path = os.path.join(module_path, "doc", "_build")
+            build_path = os.path.join(library_path, "doc", "_build")
             if os.path.exists(build_path):
-                log.inf(stylize("make -C doc clean", fore("cyan")))
+                make_clean_cmd = "make -C doc clean"
+                self.inf(stylize(make_clean_cmd, fore("cyan")))
                 subprocess.run(
-                    "make -C doc clean",
+                    make_clean_cmd,
                     shell=True,
-                    cwd=module_path,
+                    cwd=library_path,
                     timeout=60,
                     check=True,
                     env=dict(
                         os.environ,
-                        ASTARTE_DEVICE_SDK_BASE=f"{module_path}",
-                        ASTARTE_DEVICE_SDK_EXTENDED_DOCS="yes" if args.extended else "no",
+                        LIBRARY_PATH=f"{library_path}",
+                        EXTENDED_DOCS="yes" if args.extended else "no",
                     ),
                 )
-        log.inf(stylize("make -C doc doxygen", fore("cyan")))
+        make_docs_cmd = "make -C doc doxygen"
+        self.inf(stylize(make_docs_cmd, fore("cyan")))
         subprocess.run(
-            "make -C doc doxygen",
+            make_docs_cmd,
             shell=True,
-            cwd=module_path,
+            cwd=library_path,
             timeout=60,
             check=True,
             env=dict(
                 os.environ,
-                ASTARTE_DEVICE_SDK_BASE=f"{module_path}",
-                ASTARTE_DEVICE_SDK_EXTENDED_DOCS="yes" if args.extended else "no",
+                LIBRARY_PATH=f"{library_path}",
+                EXTENDED_DOCS="yes" if args.extended else "no",
             ),
         )

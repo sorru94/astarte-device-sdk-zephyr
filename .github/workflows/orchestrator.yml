@@ -48,7 +48,7 @@ jobs:
     with:
       PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
       DOCS_REMOTE_ORG: "astarte-platform"
-      MACRO_PROJECT_BASE: "ASTARTE_DEVICE_SDK_BASE"
+      MACRO_PROJECT_BASE: "LIBRARY_PATH"
       REMOTE_PROJECT_FOLDER: "device-sdks"
       USER_EMAIL_API: "astarte-machine-sdk@ispirata.com"
       GET_STARTED_ROOT_REPO: "sdk-doc"
@@ -60,5 +60,5 @@ jobs:
     uses: ./.github/workflows/doc-check.yml
     with:
       PROJECT_MANIFEST_FOLDER: "astarte-device-sdk-zephyr"
-      MACRO_PROJECT_BASE: "ASTARTE_DEVICE_SDK_BASE"
-      MACRO_PROJECT_EXTENDED_DOCS: "ASTARTE_DEVICE_SDK_EXTENDED_DOCS"
+      MACRO_PROJECT_BASE: "LIBRARY_PATH"
+      MACRO_PROJECT_EXTENDED_DOCS: "EXTENDED_DOCS"

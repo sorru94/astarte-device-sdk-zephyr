@@ -65,22 +65,27 @@ class WestCommandFormat(WestCommand):
         args : Any
             Arguments pre parsed by the parser defined by `do_add_parser()`.
         """
+
         library_path = Path(self.manifest.repo_abspath)
-        headers_and_sources = [
-            str(Path(library_path).joinpath(s))
-            for s in (
-                "include/**/*.h",
-                "lib/**/include/*.h",
-                "lib/**/*.c",
-                "samples/**/include/*.h",
-                "samples/**/src/*.c",
-                "tests/lib/**/**/include/*.h",
-                "tests/lib/**/**/**/src/*.c",
-                "e2e/include/*.h",
-                "e2e/src/*.c",
-            )
+        patterns = [
+            "include/**/*.h",
+            "lib/**/include/*.h",
+            "lib/**/*.c",
+            "samples/**/include/*.h",
+            "samples/**/src/*.c",
+            "tests/lib/**/**/include/*.h",
+            "tests/lib/**/**/**/src/*.c",
+            "e2e/include/*.h",
+            "e2e/src/*.c",
         ]
-        for header_or_source in headers_and_sources:
-            cmd = ["clang-format", "--dry-run -Werror" if args.dry_run else "-i", header_or_source]
+
+        for pattern in patterns:
+            files = list(library_path.glob(pattern))
+            if not files:
+                continue
+            file_list = [str(f) for f in files]
+            mode = "--dry-run -Werror" if args.dry_run else "-i"
+            cmd = ["clang-format", mode] + file_list
+
             self.inf(stylize(" ".join(cmd), fg("cyan")))
             subprocess.run(" ".join(cmd), shell=True, cwd=library_path, timeout=60, check=True)

@@ -192,9 +192,15 @@ Run `west format --help` to learn about the formatting options.
 ### Static code analysis
 
 [CodeChecker](https://codechecker.readthedocs.io/en/latest/) is the one of the
-[two](https://docs.zephyrproject.org/latest/develop/sca/index.html) natively supported static
+[many](https://docs.zephyrproject.org/latest/develop/sca/index.html) natively supported static
 analysis tools in `west`.
 It can be configured to run different static checkers, such as `clang-tidy` and `cppcheck`.
+
+Due to dependency conflicts with the zephyr venv it's suggested to install CodeChecker using
+pipx. The following command should suffice:
+```sh
+pipx install codechecker
+```
 
 An extension command for `west` has been created to facilitate running static analysis with
 `clang-tidy`.

@@ -99,11 +99,12 @@ jobs:
       - name: Install Python dependencies
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install -r $PWD/scripts/requirements.txt
-      - name: Change code checker version
+      - name: Install codechecker through pipx
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |
-          pip uninstall codechecker -y
-          pip install codechecker==6.24.4
+          sudo apt install pipx
+          pipx ensurepath
+          pipx install codechecker
       - name: Run clang-tidy
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: west static --sample ${{ env.SAMPLE_NAME }}

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""docs.py
+"""generate_interfaces.py
 
 West extension that can be used to generate interfaces definitions.
 
@@ -18,26 +18,26 @@ import sys
 from pathlib import Path
 from string import Template
 
+from textwrap import dedent
 from astarte.device import Interface
 from colored import fore, stylize
 from west import log
 from west.commands import WestCommand
-
-static_name = "generate-interfaces"
-static_help = "Generate interfaces header(s)"
-static_description = """Generates C interfaces definitions from .json definitions."""
 
 
 class WestCommandGenerateInterfaces(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
-        super().__init__(static_name, static_help, static_description)
+        super().__init__(
+            "generate-interfaces",
+            "Generate interfaces header(s)",
+            dedent("""Generates C interfaces definitions from .json definitions."""),
+        )
 
     def do_add_parser(self, parser_adder):
         """
         This function can be used to add custom options for this command.
-
         Allows you full control over the type of argparse handling you want.
 
         Parameters
@@ -51,20 +51,19 @@ class WestCommandGenerateInterfaces(WestCommand):
             The argument parser for this command.
         """
         parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
-
-        # Add some options using the standard argparse module API.
         parser.add_argument("json_dir", help="Directory containing the interfaces .json file(s).")
         parser.add_argument(
             "-p",
             "--output_prefix",
-            help="Prefix to add to all generated sources.",
+            help="Prefix to add to all generated sources. Defaults to no prefix if not specified.",
             type=str,
             default="",
         )
         parser.add_argument(
             "-d",
             "--output_dir",
-            help="Directory where the generated headers will be stored.",
+            help="Directory where the generated headers will be stored. "
+            "Defaults to json_dir if not specified.",
             default=None,
         )
         parser.add_argument(
@@ -73,11 +72,9 @@ class WestCommandGenerateInterfaces(WestCommand):
             help="Check if previously generated interfaces are up to date.",
             action="store_true",
         )
+        return parser
 
-        return parser  # gets stored as self.parser
-
-    # pylint: disable-next=arguments-renamed,unused-argument
-    def do_run(self, args, unknown_args):
+    def do_run(self, args, _unknown_args):
         """
         Function called when the user runs the custom command, e.g.:
 
@@ -87,8 +84,6 @@ class WestCommandGenerateInterfaces(WestCommand):
         ----------
         args : Any
             Arguments pre parsed by the parser defined by `do_add_parser()`.
-        unknown_args : Any
-            Extra unknown arguments.
         """
         interfaces_dir = Path(args.json_dir).absolute()
         output_dir = Path(args.output_dir).absolute() if args.output_dir else interfaces_dir

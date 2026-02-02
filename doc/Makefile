@@ -7,7 +7,7 @@
 
 BUILDDIR ?= _build
 DOC_TAG ?= development
-ASTARTE_DEVICE_SDK_BASE ?=
+LIBRARY_PATH ?=
 
 # ------------------------------------------------------------------------------
 # Documentation targets
@@ -23,8 +23,8 @@ configure:
 		-B${BUILDDIR} \
 		-S. \
 		-DDOC_TAG=${DOC_TAG} \
-		-DASTARTE_DEVICE_SDK_BASE=${ASTARTE_DEVICE_SDK_BASE} \
-		-DASTARTE_DEVICE_SDK_EXTENDED_DOCS=${ASTARTE_DEVICE_SDK_EXTENDED_DOCS}
+		-DLIBRARY_PATH=${LIBRARY_PATH} \
+		-DEXTENDED_DOCS=${EXTENDED_DOCS}
 
 clean:
 	cmake --build ${BUILDDIR} --target clean

@@ -28,8 +28,9 @@ jobs:
             zephyr-version: "reference"
           - name: "sample.wifi"
             zephyr-version: "reference"
-          - name: "sample.lts"
-            zephyr-version: "lts"
+          # Removed due to https://github.com/zephyrproject-rtos/zephyr/issues/103814
+          # - name: "sample.lts"
+          #   zephyr-version: "lts"
     concurrency:
       group: build-${{ matrix.sample-variant.name }}-${{ github.ref }}
       cancel-in-progress: true

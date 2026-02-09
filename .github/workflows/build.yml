@@ -25,9 +25,9 @@ jobs:
       matrix:
         sample-variant:
           - name: "sample.default"
-            zephyr-version: "4.2"
+            zephyr-version: "4.3"
           - name: "sample.wifi"
-            zephyr-version: "4.2"
+            zephyr-version: "4.3"
           - name: "sample.lts"
             zephyr-version: "lts"
     concurrency:

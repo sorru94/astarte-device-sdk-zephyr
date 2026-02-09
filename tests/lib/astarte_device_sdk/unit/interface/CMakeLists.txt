@@ -12,6 +12,9 @@ target_include_directories(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/include
 )
 
+# Force inculde the ztest header in all sources
+target_compile_options(testbinary PRIVATE -include zephyr/ztest.h)
+
 target_sources(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/result.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/mapping.c

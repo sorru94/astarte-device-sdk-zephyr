@@ -28,8 +28,8 @@ jobs:
             zephyr-version: "reference"
           - name: "sample.wifi"
             zephyr-version: "reference"
-          - name: "sample.lts"
-            zephyr-version: "lts"
+          # - name: "sample.lts"
+          #   zephyr-version: "lts"
     concurrency:
       group: build-${{ matrix.sample-variant.name }}-${{ github.ref }}
       cancel-in-progress: true

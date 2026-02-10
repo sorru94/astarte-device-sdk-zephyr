@@ -3,19 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.20.0)
-project(Astarte-Device-SDK-Doc LANGUAGES)
+project(library-documentation LANGUAGES)
 
-set(MIN_WEST_VERSION 1.0.0)
-
-set(Astarte_Device_SDK_VERSION 0.9.0)
-
-message(STATUS "Zephyr base: ${LIBRARY_PATH}")
-message(STATUS "Documentation tag: ${DOC_TAG}")
+set(DOXYGEN_CMAKE_TARGET_NAME library_documentation)
 
 #-------------------------------------------------------------------------------
 # Options
 
-set(DOC_TAG "development" CACHE STRING "Documentation tag")
+message(STATUS "Library name: ${DOXYGEN_LIBRARY_NAME}")
+message(STATUS "Library version: ${DOXYGEN_LIBRARY_VERSION}")
+message(STATUS "Library brief: ${DOXYGEN_LIBRARY_BRIEF}")
+message(STATUS "Library path: ${LIBRARY_PATH}")
 
 #-------------------------------------------------------------------------------
 # Dependencies
@@ -23,45 +21,30 @@ set(DOC_TAG "development" CACHE STRING "Documentation tag")
 find_package(Doxygen REQUIRED dot)
 
 #-------------------------------------------------------------------------------
-# Environment & Paths
-
-set(DOCS_CFG_DIR ${CMAKE_CURRENT_LIST_DIR})
-set(DOCS_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
-set(DOCS_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
-set(DOCS_HTML_DIR ${CMAKE_CURRENT_BINARY_DIR}/html)
-
-if(WIN32)
-  set(SEP $<SEMICOLON>)
-else()
-  set(SEP :)
-endif()
-
-#-------------------------------------------------------------------------------
-# Doxygen (standalone)
+# Doxygen
 
 set(DOXY_OUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen)
 
 if("${EXTENDED_DOCS}" STREQUAL "yes")
-message(STATUS "Generating extended documentation.")
-set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/astarte-device-sdk.extended.doxyfile.in)
+  message(STATUS "Generating extended documentation.")
+  set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/library.extended.doxyfile.in)
 else()
-set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/astarte-device-sdk.doxyfile.in)
+  set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/library.doxyfile.in)
 endif()
 
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/zephyr.doxyfile)
-set(ASTARTE_DEVICE_SDK_VERSION "${Astarte_Device_SDK_VERSION}")
 
 configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
 
 add_custom_target(
-  doxygen
+  ${DOXYGEN_CMAKE_TARGET_NAME}
   COMMAND
     ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
   COMMENT "Running Doxygen..."
 )
 
 set_target_properties(
-  doxygen
+  ${DOXYGEN_CMAKE_TARGET_NAME}
   PROPERTIES
     ADDITIONAL_CLEAN_FILES "${DOXY_OUT}"
 )

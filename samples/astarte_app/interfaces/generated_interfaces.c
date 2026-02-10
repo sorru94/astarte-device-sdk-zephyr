@@ -10,6 +10,7 @@
 // Interface names should resemble as closely as possible their respective .json file names.
 // NOLINTBEGIN(readability-identifier-naming)
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggregate_mappings[14] = {
 
     {
@@ -112,6 +113,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceAggregate = {
     .name = "org.astarteplatform.zephyr.examples.DeviceAggregate",
     .major_version = 0,
@@ -123,6 +125,7 @@ const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceAggregate = 
     .mappings_length = 14U,
 };
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastream_mappings[14] = {
 
     {
@@ -225,6 +228,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceDatastream = {
     .name = "org.astarteplatform.zephyr.examples.DeviceDatastream",
     .major_version = 0,
@@ -236,6 +240,7 @@ const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceDatastream =
     .mappings_length = 14U,
 };
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceProperty_mappings[14] = {
 
     {
@@ -338,6 +343,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DevicePropert
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceProperty = {
     .name = "org.astarteplatform.zephyr.examples.DeviceProperty",
     .major_version = 0,
@@ -349,6 +355,7 @@ const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceProperty = {
     .mappings_length = 14U,
 };
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggregate_mappings[14] = {
 
     {
@@ -451,6 +458,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_ServerAggregate = {
     .name = "org.astarteplatform.zephyr.examples.ServerAggregate",
     .major_version = 0,
@@ -462,6 +470,7 @@ const astarte_interface_t org_astarteplatform_zephyr_examples_ServerAggregate = 
     .mappings_length = 14U,
 };
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastream_mappings[14] = {
 
     {
@@ -564,6 +573,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_ServerDatastream = {
     .name = "org.astarteplatform.zephyr.examples.ServerDatastream",
     .major_version = 0,
@@ -575,6 +585,7 @@ const astarte_interface_t org_astarteplatform_zephyr_examples_ServerDatastream =
     .mappings_length = 14U,
 };
 
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerProperty_mappings[14] = {
 
     {
@@ -677,6 +688,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerPropert
     },
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t org_astarteplatform_zephyr_examples_ServerProperty = {
     .name = "org.astarteplatform.zephyr.examples.ServerProperty",
     .major_version = 0,

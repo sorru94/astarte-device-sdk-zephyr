@@ -8,12 +8,27 @@ project(library-documentation LANGUAGES)
 set(DOXYGEN_CMAKE_TARGET_NAME library_documentation)
 
 #-------------------------------------------------------------------------------
+# Project specific defaults
+
+if(NOT DEFINED DOXYGEN_LIBRARY_NAME)
+    set(DOXYGEN_LIBRARY_NAME "Astarte device API for Zephyr")
+endif()
+
+if(NOT DEFINED DOXYGEN_LIBRARY_VERSION)
+    set(DOXYGEN_LIBRARY_VERSION "0.9.0")
+endif()
+
+if(NOT DEFINED DOXYGEN_LIBRARY_BRIEF)
+    set(DOXYGEN_LIBRARY_BRIEF "Astarte device SDK for Zephyr RTOS")
+endif()
+
+#-------------------------------------------------------------------------------
 # Options
 
 message(STATUS "Library name: ${DOXYGEN_LIBRARY_NAME}")
 message(STATUS "Library version: ${DOXYGEN_LIBRARY_VERSION}")
 message(STATUS "Library brief: ${DOXYGEN_LIBRARY_BRIEF}")
-message(STATUS "Library path: ${LIBRARY_PATH}")
+message(STATUS "Library path: ${DOXYGEN_LIBRARY_PATH}")
 
 #-------------------------------------------------------------------------------
 # Dependencies

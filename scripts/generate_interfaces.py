@@ -140,14 +140,17 @@ ${interfaces_declarations}
 """)
 
 interface_declaration_template = Template(
-    r"""extern const astarte_interface_t ${interface_name_sc};"""
+    r"""/** @brief Automatically generated interface declaration. */
+extern const astarte_interface_t ${interface_name_sc};"""
 )
 
 interface_definition_template = Template(r"""
+/** @brief Automatically generated mapping definition. */
 static const astarte_mapping_t ${interface_name_sc}_mappings[${mappings_number}] = {
 ${mappings}
 };
 
+/** @brief Automatically generated interface definition. */
 const astarte_interface_t ${interface_name_sc} = {
     .name = "${interface_name}",
     .major_version = ${version_major},

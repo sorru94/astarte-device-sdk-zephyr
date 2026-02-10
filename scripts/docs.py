@@ -14,6 +14,7 @@ python -m black --line-length 100 ./scripts/*.py
 
 import os
 import subprocess
+import shutil
 from pathlib import Path
 
 from textwrap import dedent
@@ -28,7 +29,7 @@ class WestCommandDocs(WestCommand):
         super().__init__(
             "docs",
             "Generate documentation (doxygen)",
-            dedent("""Convenience wrapper to buld documentation with doxygen."""),
+            dedent("""Convenience wrapper to build documentation with doxygen."""),
         )
 
     def do_add_parser(self, parser_adder):
@@ -59,6 +60,29 @@ class WestCommandDocs(WestCommand):
         )
         return parser
 
+    def _run_cmd(self, cmd, cwd, env=None):
+        """
+        Helper to run a subprocess command and print it.
+
+        Parameters
+        ----------
+        cmd : list of str
+            The command to be executed, provided as a list of strings.
+        cwd : Path or str
+            The current working directory where the command should be executed.
+        env : dict, optional
+            Environment variables to pass to the subprocess. Defaults to os.environ.
+        """
+        cmd_str = " ".join(cmd)
+        self.inf(stylize(cmd_str, fore("cyan")))
+        subprocess.run(
+            cmd,
+            cwd=cwd,
+            timeout=300,
+            check=True,
+            env=env if env else os.environ,
+        )
+
     def do_run(self, args, _unknown_args):
         """
         Function called when the user runs the custom command, e.g.:
@@ -70,35 +94,33 @@ class WestCommandDocs(WestCommand):
         args : Any
             Arguments pre parsed by the parser defined by `do_add_parser()`.
         """
-        library_path = Path(self.manifest.repo_abspath)
+        repo_root = Path(self.manifest.repo_abspath)
+        doc_source_dir = repo_root / "doc"
+        build_dir = doc_source_dir / "_build"
+        env = dict(os.environ)
+
         if args.clean:
-            build_path = os.path.join(library_path, "doc", "_build")
-            if os.path.exists(build_path):
-                make_clean_cmd = "make -C doc clean"
-                self.inf(stylize(make_clean_cmd, fore("cyan")))
-                subprocess.run(
-                    make_clean_cmd,
-                    shell=True,
-                    cwd=library_path,
-                    timeout=60,
-                    check=True,
-                    env=dict(
-                        os.environ,
-                        LIBRARY_PATH=f"{library_path}",
-                        EXTENDED_DOCS="yes" if args.extended else "no",
-                    ),
-                )
-        make_docs_cmd = "make -C doc doxygen"
-        self.inf(stylize(make_docs_cmd, fore("cyan")))
-        subprocess.run(
-            make_docs_cmd,
-            shell=True,
-            cwd=library_path,
-            timeout=60,
-            check=True,
-            env=dict(
-                os.environ,
-                LIBRARY_PATH=f"{library_path}",
-                EXTENDED_DOCS="yes" if args.extended else "no",
-            ),
-        )
+            if build_dir.exists():
+                self.inf(f"Cleaning build directory: {build_dir}")
+                shutil.rmtree(build_dir)
+            else:
+                self.inf("Clean requested, but build directory does not exist.")
+
+        configure_cmd = [
+            "cmake",
+            "-GNinja",
+            f"-B{build_dir}",
+            f"-S{doc_source_dir}",
+            f"-DDOXYGEN_LIBRARY_PATH={repo_root}",
+            f"-DEXTENDED_DOCS={'yes' if args.extended else 'no'}",
+        ]
+        self._run_cmd(configure_cmd, cwd=repo_root, env=env)
+
+        build_cmd = [
+            "cmake",
+            "--build",
+            str(build_dir),
+            "--target",
+            "library_documentation",
+        ]
+        self._run_cmd(build_cmd, cwd=repo_root, env=env)

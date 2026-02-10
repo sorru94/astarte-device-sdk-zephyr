@@ -25,11 +25,12 @@ jobs:
       matrix:
         sample-variant:
           - name: "sample.default"
-            zephyr-version: "4.2"
+            zephyr-version: "reference"
           - name: "sample.wifi"
-            zephyr-version: "4.2"
-          - name: "sample.lts"
-            zephyr-version: "lts"
+            zephyr-version: "reference"
+          # Removed due to https://github.com/zephyrproject-rtos/zephyr/issues/103814
+          # - name: "sample.lts"
+          #   zephyr-version: "lts"
     concurrency:
       group: build-${{ matrix.sample-variant.name }}-${{ github.ref }}
       cancel-in-progress: true

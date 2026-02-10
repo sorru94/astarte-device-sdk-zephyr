@@ -22,6 +22,39 @@ if(NOT DEFINED DOXYGEN_LIBRARY_BRIEF)
     set(DOXYGEN_LIBRARY_BRIEF "Astarte device SDK for Zephyr RTOS")
 endif()
 
+set(DOXYGEN_LIBRARY_DIR "astarte_device_sdk")
+
+#-------------------------------------------------------------------------------
+# Doxygen Inputs
+
+# Define common sources used by both standard and extended documentation
+set(COMMON_SOURCES
+    "${DOXYGEN_LIBRARY_PATH}/README.md"
+    "${DOXYGEN_LIBRARY_PATH}/doc/architecture"
+    "${DOXYGEN_LIBRARY_PATH}/doc/_doxygen/groups.dox"
+    "${DOXYGEN_LIBRARY_PATH}/include/"
+)
+
+if("${EXTENDED_DOCS}" STREQUAL "yes")
+  message(STATUS "Generating extended documentation.")
+  set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/library.extended.doxyfile.in)
+
+  # Combine common sources with the extended paths
+  set(DOXYGEN_INPUT_SOURCES
+      ${COMMON_SOURCES}
+      "${DOXYGEN_LIBRARY_PATH}/lib/${DOXYGEN_LIBRARY_DIR}/include/"
+      "${DOXYGEN_LIBRARY_PATH}/lib/${DOXYGEN_LIBRARY_DIR}/"
+  )
+else()
+  set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/library.doxyfile.in)
+
+  # Use only common sources for standard documentation
+  set(DOXYGEN_INPUT_SOURCES ${COMMON_SOURCES})
+endif()
+
+# Convert the CMake list into a space-separated string for the Doxyfile
+string(REPLACE ";" " " DOXYGEN_INPUT_SOURCES "${DOXYGEN_INPUT_SOURCES}")
+
 #-------------------------------------------------------------------------------
 # Options
 

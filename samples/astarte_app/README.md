@@ -56,9 +56,6 @@ CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP=y
 CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT=y
 CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=1
 CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
-
-CONFIG_DEVICE_ID="<DEVICE_ID>"
-CONFIG_CREDENTIAL_SECRET="<CREDENTIAL_SECRET>"
 ```
 
 #### Option B: Production (fully TLS capable)
@@ -71,9 +68,6 @@ Use this for production Astarte instances with valid CA certificates.
    CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG=1
    CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG=2
    CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME="<REALM_NAME>"
-
-   CONFIG_DEVICE_ID="<DEVICE_ID>"
-   CONFIG_CREDENTIAL_SECRET="<CREDENTIAL_SECRET>"
    ```
 2. Update `ca_certificates.h`: Place your valid CA certificate (PEM format) in the `ca_certificate_root` array.
 
@@ -83,9 +77,10 @@ Use this for production Astarte instances with valid CA certificates.
 
 Avoid committing secrets to version control by creating a `samples/astarte_app/private.conf` file (ignored by git).
 ```conf
-# samples/astarte_app/private.conf
-CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="..."
+CONFIG_DEVICE_ID="..."
+# CONFIG_ASTARTE_DEVICE_SDK_PAIRING_JWT="..."
 CONFIG_CREDENTIAL_SECRET="..."
+CONFIG_WIFI_SSID="..."
 CONFIG_WIFI_PASSWORD="..."
 ```
 
@@ -99,7 +94,9 @@ Store credentials in a dedicated flash partition so the application binary remai
    littlefs-python create samples/astarte_app/config_lfs/ samples/astarte_app/lfs.bin --block-size 4096 --block-count 6
    ```
 4. Flash `lfs.bin` to the correct address for your board.
+
    **⚠️ IMPORTANT**: The address `0xBE20000` is specific to the **NXP FRDM RW612**. If using a different board, check your Device Tree (`.dts`) or partition map to find the correct address for the storage partition. Flashing to the wrong address may brick your device.
+
    *Example for FRDM RW612 via JLink:*
    ```bash
    JLinkExe -Device RW612 -if SWD -Speed 4000
@@ -129,6 +126,14 @@ west build -b <your_board_name> samples/astarte_app -- -DCONF_FILE="zephyr-lts.c
 ./net-setup.sh --config nat.conf
 west build -b native_sim samples/astarte_app
 ```
+
+### Flashing the sample
+
+Run the following `west` command from your Zephyr workspace.
+```bash
+west flash
+```
+By default the sample will print logs to the serial port connected to your host machine. You can use tools such as minicom to view the device logs.
 
 ### Testing with Astarte
 Once the device is running, use `astartectl` to simulate server-side interactions.

@@ -17,11 +17,17 @@
 
 // Interface names should resemble as closely as possible their respective .json file names.
 // NOLINTBEGIN(readability-identifier-naming)
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceAggregate;
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceDatastream;
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_DeviceProperty;
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_ServerAggregate;
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_ServerDatastream;
+/** @brief Automatically generated interface declaration. */
 extern const astarte_interface_t org_astarteplatform_zephyr_examples_ServerProperty;
 // NOLINTEND(readability-identifier-naming)
 

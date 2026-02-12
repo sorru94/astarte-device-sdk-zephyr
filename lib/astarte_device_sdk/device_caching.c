@@ -65,6 +65,7 @@ static astarte_result_t parse_property_bson(
  * @note This function will append the property only if it's device owned and if it's present in
  * the introspection.
  *
+ * @param[in,out] handle Pointer to an initialized handle structure.
  * @param[in] introspection Introspection to be used to check ownership for the property.
  * @param[in] interface_name Interface name for the property to append.
  * @param[in] path Path for the property to append.
@@ -73,36 +74,87 @@ static astarte_result_t parse_property_bson(
  * @param[in] str_buff_size Size of the @p str_buff buffer.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static astarte_result_t append_property_to_string(introspection_t *introspection,
-    char *interface_name, char *path, size_t *str_size, char *str_buff, size_t str_buff_size);
+static astarte_result_t append_property_to_string(astarte_device_caching_t *handle,
+    introspection_t *introspection, char *interface_name, char *path, size_t *str_size,
+    char *str_buff, size_t str_buff_size);
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
+astarte_result_t astarte_device_caching_init(astarte_device_caching_t *handle)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
 
-    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
+    if (!handle) {
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    // Zero out the memory to ensure clean state
+    memset(handle, 0, sizeof(astarte_device_caching_t));
+
+    // 1. Init Synchronization Storage
+    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
     if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for synchronization cache: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
+    }
+
+    // 2. Init Introspection Storage
+    ares = open_kv_storage(INTROSPECTION_NAMESPACE, &handle->intro_storage);
+    if (ares != ASTARTE_RESULT_OK) {
+        astarte_kv_storage_destroy(handle->sync_storage); // Rollback
+        return ares;
+    }
+
+    // 3. Init Properties Storage
+    ares = open_kv_storage(PROPERTIES_NAMESPACE, &handle->prop_storage);
+    if (ares != ASTARTE_RESULT_OK) {
+        astarte_kv_storage_destroy(handle->sync_storage); // Rollback
+        astarte_kv_storage_destroy(handle->intro_storage); // Rollback
+        return ares;
+    }
+
+    handle->initialized = true;
+    return ASTARTE_RESULT_OK;
+}
+
+void astarte_device_caching_destroy(astarte_device_caching_t *handle)
+{
+    if (!handle || !handle->initialized) {
+        return;
+    }
+
+    // Destroy individual storage instances
+    astarte_kv_storage_destroy(handle->sync_storage);
+    astarte_kv_storage_destroy(handle->intro_storage);
+    astarte_kv_storage_destroy(handle->prop_storage);
+
+    handle->initialized = false;
+}
+
+astarte_result_t astarte_device_caching_synchronization_get(
+    astarte_device_caching_t *handle, bool *sync)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     bool read_sync = false;
     size_t read_sync_size = sizeof(read_sync);
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", SYNCHRONIZATION_KEY);
-    ares = astarte_kv_storage_find(&kv_storage, SYNCHRONIZATION_KEY, &read_sync, &read_sync_size);
+    ares = astarte_kv_storage_find(
+        &handle->sync_storage, SYNCHRONIZATION_KEY, &read_sync, &read_sync_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ASTARTE_LOG_INF("No previous synchronization with Astarte present.");
-        goto exit;
+        return ares;
     }
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     if (!read_sync) {
@@ -110,78 +162,68 @@ astarte_result_t astarte_device_caching_synchronization_get(bool *sync)
     }
     *sync = read_sync;
 
-exit:
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
-
     return ares;
 }
 
-astarte_result_t astarte_device_caching_synchronization_set(bool sync)
+astarte_result_t astarte_device_caching_synchronization_set(
+    astarte_device_caching_t *handle, bool sync)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
+
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
 
     ASTARTE_LOG_DBG("Storing synchronization: %s", (sync) ? "synchronized" : "not synchronized");
 
-    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for synchronization cache: %s.", astarte_result_to_name(ares));
-        return ares;
-    }
-
     ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", SYNCHRONIZATION_KEY);
-    ares = astarte_kv_storage_insert(&kv_storage, SYNCHRONIZATION_KEY, &sync, sizeof(sync));
+    ares = astarte_kv_storage_insert(
+        &handle->sync_storage, SYNCHRONIZATION_KEY, &sync, sizeof(sync));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching synchronization: %s.", astarte_result_to_name(ares));
     }
-
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     return ares;
 }
 
-astarte_result_t astarte_device_caching_introspection_store(const char *intr, size_t intr_size)
+astarte_result_t astarte_device_caching_introspection_store(
+    astarte_device_caching_t *handle, const char *intr, size_t intr_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
+
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
 
     ASTARTE_LOG_DBG("Storing introspection in key-value storage: '%s' (%d).", intr, intr_size);
 
-    ares = open_kv_storage(INTROSPECTION_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for introspection cache: %s.", astarte_result_to_name(ares));
-        return ares;
-    }
-
     ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", INTROSPECTION_KEY);
-    ares = astarte_kv_storage_insert(&kv_storage, INTROSPECTION_KEY, intr, intr_size);
+    ares = astarte_kv_storage_insert(&handle->intro_storage, INTROSPECTION_KEY, intr, intr_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching introspection: %s.", astarte_result_to_name(ares));
     }
 
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     return ares;
 }
 
-astarte_result_t astarte_device_caching_introspection_check(const char *intr, size_t intr_size)
+astarte_result_t astarte_device_caching_introspection_check(
+    astarte_device_caching_t *handle, const char *intr, size_t intr_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
     char *read_intr = NULL;
     size_t read_intr_size = 0;
 
-    ASTARTE_LOG_DBG("Checking stored introspection against new one: '%s' (%d).", intr, intr_size);
-
-    ares = open_kv_storage(INTROSPECTION_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for introspection cache: %s.", astarte_result_to_name(ares));
-        goto exit;
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
+    ASTARTE_LOG_DBG("Checking stored introspection against new one: '%s' (%d).", intr, intr_size);
+
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
-    ares = astarte_kv_storage_find(&kv_storage, INTROSPECTION_KEY, NULL, &read_intr_size);
+    ares
+        = astarte_kv_storage_find(&handle->intro_storage, INTROSPECTION_KEY, NULL, &read_intr_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ares = ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
         goto exit;
@@ -204,7 +246,8 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
     }
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
-    ares = astarte_kv_storage_find(&kv_storage, INTROSPECTION_KEY, read_intr, &read_intr_size);
+    ares = astarte_kv_storage_find(
+        &handle->intro_storage, INTROSPECTION_KEY, read_intr, &read_intr_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
         goto exit;
@@ -217,28 +260,24 @@ astarte_result_t astarte_device_caching_introspection_check(const char *intr, si
     }
 
 exit:
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     free(read_intr);
 
     return ares;
 }
 
-astarte_result_t astarte_device_caching_property_store(
+astarte_result_t astarte_device_caching_property_store(astarte_device_caching_t *handle,
     const char *interface_name, const char *path, uint32_t major, astarte_data_t data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
     astarte_bson_serializer_t bson = { 0 };
 
-    ASTARTE_LOG_DBG("Caching property ('%s' - '%s').", interface_name, path);
-
-    ares = open_kv_storage(PROPERTIES_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
-        goto exit;
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
+
+    ASTARTE_LOG_DBG("Caching property ('%s' - '%s').", interface_name, path);
 
     // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
@@ -283,34 +322,30 @@ astarte_result_t astarte_device_caching_property_store(
     }
 
     ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", key);
-    ares = astarte_kv_storage_insert(&kv_storage, key, data_ser, data_ser_len);
+    ares = astarte_kv_storage_insert(&handle->prop_storage, key, data_ser, data_ser_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching property: %s.", astarte_result_to_name(ares));
     }
 
 exit:
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     free(key);
     astarte_bson_serializer_destroy(&bson);
     return ares;
 }
 
-astarte_result_t astarte_device_caching_property_load(
+astarte_result_t astarte_device_caching_property_load(astarte_device_caching_t *handle,
     const char *interface_name, const char *path, uint32_t *out_major, astarte_data_t *data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
     char *value = NULL;
 
-    ASTARTE_LOG_DBG("Loading cached property ('%s' - '%s').", interface_name, path);
-
-    ares = open_kv_storage(PROPERTIES_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
-        goto exit;
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
+
+    ASTARTE_LOG_DBG("Loading cached property ('%s' - '%s').", interface_name, path);
 
     // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
@@ -329,7 +364,8 @@ astarte_result_t astarte_device_caching_property_load(
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     size_t value_len = 0;
-    ares = astarte_kv_storage_find(&kv_storage, key, NULL, &value_len);
+    // Use handle->prop_storage
+    ares = astarte_kv_storage_find(&handle->prop_storage, key, NULL, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -344,7 +380,7 @@ astarte_result_t astarte_device_caching_property_load(
 
     // Get the data from NVS
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
-    ares = astarte_kv_storage_find(&kv_storage, key, value, &value_len);
+    ares = astarte_kv_storage_find(&handle->prop_storage, key, value, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not get property from storage: %s.", astarte_result_to_name(ares));
         goto exit;
@@ -356,8 +392,6 @@ astarte_result_t astarte_device_caching_property_load(
     }
 
 exit:
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     free(key);
     free(value);
     return ares;
@@ -369,19 +403,17 @@ void astarte_device_caching_property_destroy_loaded(astarte_data_t data)
 }
 
 astarte_result_t astarte_device_caching_property_delete(
-    const char *interface_name, const char *path)
+    astarte_device_caching_t *handle, const char *interface_name, const char *path)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_kv_storage_t kv_storage = { 0 };
     char *key = NULL;
 
-    ASTARTE_LOG_DBG("Deleting cached property ('%s' - '%s').", interface_name, path);
-
-    ares = open_kv_storage(PROPERTIES_NAMESPACE, &kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
-        goto exit;
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
+
+    ASTARTE_LOG_DBG("Deleting cached property ('%s' - '%s').", interface_name, path);
 
     // Get the full key interface_name + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
@@ -399,42 +431,33 @@ astarte_result_t astarte_device_caching_property_delete(
     }
 
     ASTARTE_LOG_DBG("Deleting pair from storage. Key: %s", key);
-    ares = astarte_kv_storage_delete(&kv_storage, key);
+    ares = astarte_kv_storage_delete(&handle->prop_storage, key);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Error deleting cached property: %s.", astarte_result_to_name(ares));
     }
 
 exit:
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(kv_storage);
     free(key);
     return ares;
 }
 
 astarte_result_t astarte_device_caching_property_iterator_new(
-    astarte_device_caching_property_iter_t *iter)
+    astarte_device_caching_t *handle, astarte_device_caching_property_iter_t *iter)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
-    ares = open_kv_storage(PROPERTIES_NAMESPACE, &iter->kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Init error for property cache: %s.", astarte_result_to_name(ares));
-        return ares;
+    if (!handle || !handle->initialized) {
+        ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     ASTARTE_LOG_DBG("Initializing iterator for key value storage.");
-    ares = astarte_kv_storage_iterator_init(&iter->kv_storage, &iter->kv_iter);
+    ares = astarte_kv_storage_iterator_init(&handle->prop_storage, &iter->kv_iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Key-value storage iterator init error: %s.", astarte_result_to_name(ares));
     }
 
     return ares;
-}
-
-void astarte_device_caching_property_iterator_destroy(astarte_device_caching_property_iter_t iter)
-{
-    ASTARTE_LOG_DBG("Destroying the key value storage instance.");
-    astarte_kv_storage_destroy(iter.kv_storage);
 }
 
 astarte_result_t astarte_device_caching_property_iterator_next(
@@ -533,7 +556,7 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_device_caching_property_get_device_string(
+astarte_result_t astarte_device_caching_property_get_device_string(astarte_device_caching_t *handle,
     introspection_t *introspection, char *output, size_t *output_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -542,7 +565,7 @@ astarte_result_t astarte_device_caching_property_get_device_string(
     char *interface_name = NULL;
     char *path = NULL;
 
-    ares = astarte_device_caching_property_iterator_new(&iter);
+    ares = astarte_device_caching_property_iterator_new(handle, &iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
         goto error;
@@ -577,7 +600,7 @@ astarte_result_t astarte_device_caching_property_get_device_string(
         }
 
         ares = append_property_to_string(
-            introspection, interface_name, path, &string_size, output, *output_size);
+            handle, introspection, interface_name, path, &string_size, output, *output_size);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed appending the property to the string: %s", astarte_result_to_name(ares));
@@ -598,11 +621,9 @@ astarte_result_t astarte_device_caching_property_get_device_string(
 
     *output_size = string_size;
 
-    astarte_device_caching_property_iterator_destroy(iter);
     return ASTARTE_RESULT_OK;
 
 error:
-    astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
     return ares;
@@ -685,15 +706,16 @@ static astarte_result_t parse_property_bson(
     return ares;
 }
 
-static astarte_result_t append_property_to_string(introspection_t *introspection,
-    char *interface_name, char *path, size_t *str_size, char *str_buff, size_t str_buff_size)
+static astarte_result_t append_property_to_string(astarte_device_caching_t *handle,
+    introspection_t *introspection, char *interface_name, char *path, size_t *str_size,
+    char *str_buff, size_t str_buff_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     // Check if property is device owned
     const astarte_interface_t *interface = introspection_get(introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_DBG("Purge property from unknown interface: '%s%s'", interface_name, path);
-        ares = astarte_device_caching_property_delete(interface_name, path);
+        ares = astarte_device_caching_property_delete(handle, interface_name, path);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed deleting the cached property: %s", astarte_result_to_name(ares));

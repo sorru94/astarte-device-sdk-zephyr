@@ -119,11 +119,20 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    ares = astarte_device_caching_init(&handle->caching);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Caching initialization failure %s.", astarte_result_to_name(ares));
+        goto failure;
+    }
+#endif
+
     // Initializing the connection hashmap and status flags
     handle->synchronization_completed = false;
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
     ASTARTE_LOG_DBG("Getting stored synchronization");
-    ares = astarte_device_caching_synchronization_get(&handle->synchronization_completed);
+    ares = astarte_device_caching_synchronization_get(
+        &handle->caching, &handle->synchronization_completed);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Synchronization state getter failure %s.", astarte_result_to_name(ares));
         goto failure;
@@ -190,6 +199,10 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     return ares;
 
 failure:
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    astarte_device_caching_destroy(&handle->caching);
+#endif
     if (handle) {
         introspection_free(handle->introspection);
     }
@@ -219,6 +232,10 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         ASTARTE_LOG_ERR("Failed deleting the client TLS cert: %s.", astarte_result_to_name(ares));
         return ares;
     }
+
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    astarte_device_caching_destroy(&device->caching);
+#endif
 
     introspection_free(device->introspection);
     free(device);
@@ -345,7 +362,8 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_data_t data = { 0 };
     uint32_t out_major = 0U;
-    ares = astarte_device_caching_property_load(interface_name, path, &out_major, &data);
+    ares = astarte_device_caching_property_load(
+        &device->caching, interface_name, path, &out_major, &data);
     if (ares != ASTARTE_RESULT_OK) {
         if (ares != ASTARTE_RESULT_NOT_FOUND) {
             ASTARTE_LOG_ERR("Failed getting property: %s.", astarte_result_to_name(ares));

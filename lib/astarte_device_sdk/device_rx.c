@@ -59,23 +59,23 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
  * @note All the properties that do not belong to an interface contained in the introspection will
  * be removed as well.
  *
- * @param[in] introspection Device's introspection to be used to check ownership of each property.
+ * @param[in] device Handle to the device instance.
  * @param[in] allow_list Purge properties allow list.
  */
-static void purge_server_properties(introspection_t *introspection, sys_slist_t *allow_list);
+static void purge_server_properties(astarte_device_handle_t device, sys_slist_t *allow_list);
 /**
  * @brief Purge a single stored server owned property if not contained in the allow list.
  *
  * @note If the property does not belong to an interface contained in the introspection it will be
  * removed as well.
  *
- * @param[in] introspection Device's introspection to be used to check ownership of each property.
+ * @param[in] device Handle to the device instance..
  * @param[in] interface_name Interface name for the stored property to be removed.
  * @param[in] path Path for the stored property to be removed.
  * @param[in] allow_list Purge properties allow list.
  */
 static void purge_server_property(
-    introspection_t *introspection, char *interface_name, char *path, sys_slist_t *allow_list);
+    astarte_device_handle_t device, char *interface_name, char *path, sys_slist_t *allow_list);
 #endif
 /**
  * @brief Handles an incoming generic data message.
@@ -240,7 +240,7 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
     }
 
     // Iterate over the stored properties and purge the ones not in the allow list
-    purge_server_properties(&device->introspection, &allow_list);
+    purge_server_properties(device, &allow_list);
 
 exit:
     sys_snode_t *node = NULL;
@@ -253,14 +253,14 @@ exit:
     free(decomp_data);
 }
 
-static void purge_server_properties(introspection_t *introspection, sys_slist_t *allow_list)
+static void purge_server_properties(astarte_device_handle_t device, sys_slist_t *allow_list)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_device_caching_property_iter_t iter = { 0 };
     char *interface_name = NULL;
     char *path = NULL;
 
-    ares = astarte_device_caching_property_iterator_new(&iter);
+    ares = astarte_device_caching_property_iterator_new(&device->caching, &iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
         goto end;
@@ -292,7 +292,7 @@ static void purge_server_properties(introspection_t *introspection, sys_slist_t 
         }
 
         // Purge the property if not in the allow list
-        purge_server_property(introspection, interface_name, path, allow_list);
+        purge_server_property(device, interface_name, path, allow_list);
 
         free(interface_name);
         interface_name = NULL;
@@ -307,21 +307,21 @@ static void purge_server_properties(introspection_t *introspection, sys_slist_t 
     }
 
 end:
-    astarte_device_caching_property_iterator_destroy(iter);
     free(interface_name);
     free(path);
 }
 
 static void purge_server_property(
-    introspection_t *introspection, char *interface_name, char *path, sys_slist_t *allow_list)
+    astarte_device_handle_t device, char *interface_name, char *path, sys_slist_t *allow_list)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char *property = NULL;
 
-    const astarte_interface_t *interface = introspection_get(introspection, interface_name);
+    const astarte_interface_t *interface = introspection_get(
+        &device->introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_DBG("Purging property from unknown interface: '%s%s'", interface_name, path);
-        ares = astarte_device_caching_property_delete(interface_name, path);
+        ares = astarte_device_caching_property_delete(&device->caching, interface_name, path);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed deleting the cached property: %s", astarte_result_to_name(ares));
@@ -358,7 +358,7 @@ static void purge_server_property(
     }
 
     ASTARTE_LOG_DBG("Purging property not in allow list: '%s%s'", interface_name, path);
-    ares = astarte_device_caching_property_delete(interface_name, path);
+    ares = astarte_device_caching_property_delete(&device->caching, interface_name, path);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed deleting the cached property: %s",
             astarte_result_to_name(ares));
@@ -457,7 +457,8 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
     }
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
-    ares = astarte_device_caching_property_delete(event.interface_name, event.path);
+    ares = astarte_device_caching_property_delete(
+        &device->caching, event.interface_name, event.path);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed deleting the stored server property.");
     }
@@ -488,8 +489,8 @@ static void on_set_property(
     }
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
-    ares = astarte_device_caching_property_store(
-        base_event.interface_name, base_event.path, interface->major_version, data);
+    ares = astarte_device_caching_property_store(&device->caching, base_event.interface_name,
+        base_event.path, interface->major_version, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed storing the server property.");
     }

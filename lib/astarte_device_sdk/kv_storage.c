@@ -316,20 +316,25 @@ astarte_result_t astarte_kv_storage_delete(astarte_kv_storage_t *kv_storage, con
     }
     ASTARTE_LOG_DBG("Found pair with key: '%s' at base ID: '%d'", key, base_id);
 
-    // The initial +1 accounts for the first entry used to store the number of stored entries.
+    // Calculate the base ID of the very last pair in the storage
+    // The ids for all the key value pairs start from 1 (as 0 is used for the stored_pairs number)
     uint16_t last_base_id = 1 + ((stored_pairs - 1) * NVS_ENTRIES_FOR_PAIR);
-    for (uint16_t i = base_id; i < last_base_id; i += NVS_ENTRIES_FOR_PAIR) {
-        uint16_t relocation_src = i + NVS_ENTRIES_FOR_PAIR;
-        uint16_t relocation_dst = i;
+
+    // If the pair we are deleting is NOT the last one, we move the last pair into the slot of the
+    // pair we are deleting.
+    if (base_id != last_base_id) {
         ASTARTE_LOG_DBG(
-            "Relocating pair with base id '%d' from %d to %d", i, relocation_src, relocation_dst);
-        ares = relocate_pair(&kv_storage->nvs_fs, relocation_dst, relocation_src);
+            "Swapping last pair (ID %d) to deleted position (ID %d)", last_base_id, base_id);
+        ares = relocate_pair(&kv_storage->nvs_fs, base_id, last_base_id);
         if (ares != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Relocation failed %s.", astarte_result_to_name(ares));
+            ASTARTE_LOG_ERR("Relocation (swap) failed %s.", astarte_result_to_name(ares));
             goto exit;
         }
+    } else {
+        ASTARTE_LOG_DBG("Deleting the last pair, no swap needed.");
     }
 
+    // The last pair (now moved or deleted) is logically removed by decrementing the stored_pairs.
     stored_pairs--;
     ASTARTE_LOG_DBG("Updating number of stored pairs to: %d", stored_pairs);
     ares = update_stored_pairs(&kv_storage->nvs_fs, stored_pairs);

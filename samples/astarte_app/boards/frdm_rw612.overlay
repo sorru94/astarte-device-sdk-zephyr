@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/delete-node/ &storage_partition;
+
 / {
     fstab {
         compatible = "zephyr,fstab";
@@ -23,6 +25,11 @@
 
 &w25q512jvfiq {
 	partitions {
+        storage_partition: partition@620000 {
+            label = "storage";
+            reg = <0x00620000 (DT_SIZE_M(56) - DT_SIZE_K(128))>;
+        };
+
 		astarte_partition: partition@3E00000 {
 			label = "astarte";
 			reg = <0x03E00000 DT_SIZE_K(128)>;

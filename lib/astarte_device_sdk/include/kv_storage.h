@@ -83,6 +83,8 @@ typedef struct
     uint16_t flash_sector_count;
     /** @brief Namespace used for this key-value storage instance. */
     char *namespace;
+    /** @brief Persistent NVS file system context */
+    struct nvs_fs nvs_fs;
 } astarte_kv_storage_t;
 
 /** @brief Iterator struct for the key-value pair storage. */

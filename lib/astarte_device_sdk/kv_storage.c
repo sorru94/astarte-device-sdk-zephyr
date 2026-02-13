@@ -494,11 +494,9 @@ astarte_result_t astarte_kv_storage_iterator_get(
     uint16_t key_id = get_base_id(iter->current_pair) + NVS_ID_OFFSET_KEY;
 
     int nvs_rc = 0;
-    if (!key && (*key_size == 0)) {
-        uint8_t foo = 0;
-        ASTARTE_LOG_DBG(
-            "NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, (void *) &foo, sizeof(foo));
-        nvs_rc = nvs_read(&iter->kv_storage->nvs_fs, key_id, &foo, sizeof(foo));
+    if (!key) {
+        ASTARTE_LOG_DBG("NVS read. Id: '%u'", key_id);
+        nvs_rc = nvs_read(&iter->kv_storage->nvs_fs, key_id, NULL, 0);
     } else {
         ASTARTE_LOG_DBG("NVS read. Id: '%u', data: '%p', len: '%zu'", key_id, key, *key_size);
         nvs_rc = nvs_read(&iter->kv_storage->nvs_fs, key_id, key, *key_size);

@@ -116,6 +116,12 @@ static astarte_result_t get_stored_pairs(struct nvs_fs *nvs_fs, uint16_t *stored
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 static astarte_result_t update_stored_pairs(struct nvs_fs *nvs_fs, uint16_t stored_pairs);
+/**
+ * @brief Scans storage for duplicate keys caused by interrupted delete operations.
+ *
+ * @param[in,out] nvs_fs NVS file system to use.
+ */
+static astarte_result_t recover_duplicate_keys(struct nvs_fs *nvs_fs);
 
 /************************************************
  *         Global functions definitions         *
@@ -154,6 +160,13 @@ astarte_result_t astarte_kv_storage_new(
         ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         ares = ASTARTE_RESULT_NVS_ERROR;
         goto error;
+    }
+
+    ASTARTE_LOG_DBG("Checking for interrupted delete operations...");
+    ares = recover_duplicate_keys(&kv_storage->nvs_fs);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_WRN("Recovery check failed: %s. Storage might contain duplicates.",
+            astarte_result_to_name(ares));
     }
 
     return ASTARTE_RESULT_OK;
@@ -748,4 +761,94 @@ static astarte_result_t update_stored_pairs(struct nvs_fs *nvs_fs, uint16_t stor
         return ASTARTE_RESULT_NVS_ERROR;
     }
     return ASTARTE_RESULT_OK;
+}
+
+static astarte_result_t recover_duplicate_keys(struct nvs_fs *nvs_fs)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    uint16_t stored_pairs = 0;
+    char *last_key = NULL;
+    char *last_namespace = NULL;
+    char *current_key = NULL;
+    char *current_namespace = NULL;
+    size_t last_key_size = 0;
+    size_t last_namespace_size = 0;
+    size_t current_key_size = 0;
+    size_t current_namespace_size = 0;
+
+    ares = get_stored_pairs(nvs_fs, &stored_pairs);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
+    }
+
+    // No duplicates possible if we have 0 or 1 items
+    if (stored_pairs < 2) {
+        return ASTARTE_RESULT_OK;
+    }
+
+    // In a failed "swap-and-pop", the last item is the duplicate source.
+    uint16_t last_pair_idx = stored_pairs - 1;
+    uint16_t last_base_id = get_base_id(last_pair_idx);
+    ares = get_nvs_entry_with_alloc(
+        nvs_fs, last_base_id + NVS_ID_OFFSET_KEY, (void **) &last_key, &last_key_size);
+    if (ares != ASTARTE_RESULT_OK) {
+        goto exit;
+    }
+    ares = get_nvs_entry_with_alloc(nvs_fs, last_base_id + NVS_ID_OFFSET_NAMESPACE,
+        (void **) &last_namespace, &last_namespace_size);
+    if (ares != ASTARTE_RESULT_OK) {
+        goto exit;
+    }
+
+    // Scan all previous items to see if this pair (namespace + key) appears earlier
+    for (uint16_t i = 0; i < last_pair_idx; i++) {
+        uint16_t curr_base_id = get_base_id(i);
+
+        // Fetch current key for comparison
+        ares = get_nvs_entry_with_alloc(
+            nvs_fs, curr_base_id + NVS_ID_OFFSET_KEY, (void **) &current_key, &current_key_size);
+        if (ares != ASTARTE_RESULT_OK) {
+            goto exit;
+        }
+
+        // Check if keys match first
+        if (strcmp(last_key, current_key) == 0) {
+
+            // Fetch current namespace for comparison
+            ares = get_nvs_entry_with_alloc(nvs_fs, curr_base_id + NVS_ID_OFFSET_NAMESPACE,
+                (void **) &current_namespace, &current_namespace_size);
+            if (ares != ASTARTE_RESULT_OK) {
+                goto exit;
+            }
+
+            // Final check: do both key and namespace match?
+            if (strcmp(last_namespace, current_namespace) == 0) {
+                ASTARTE_LOG_WRN(
+                    "Recovering from interrupted delete. Duplicate pair '%s/%s' found at base "
+                    "ids %d and %d.",
+                    last_namespace, last_key, curr_base_id, last_base_id);
+
+                // Found a duplicate! Decrement the count to "pop" the end element.
+                stored_pairs--;
+                ares = update_stored_pairs(nvs_fs, stored_pairs);
+                goto exit;
+            }
+
+            // Free namespace if it wasn't a match
+            free(current_namespace);
+            current_namespace = NULL;
+        }
+
+        // Free the current key before the next iteration
+        free(current_key);
+        current_key = NULL;
+    }
+
+exit:
+    free(last_key);
+    free(last_namespace);
+    free(current_key);
+    free(current_namespace);
+
+    return ares;
 }

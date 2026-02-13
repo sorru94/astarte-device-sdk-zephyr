@@ -36,6 +36,13 @@ static SYS_MUTEX_DEFINE(astarte_kv_storage_mutex);
  ***********************************************/
 
 /**
+ * @brief Calculate the base NVS ID for a given pair index.
+ *
+ * @param[in] pair_index The 0-based index of the pair (0 to stored_pairs - 1).
+ * @return The NVS ID for the start of that pair's record.
+ */
+static uint16_t get_base_id(uint16_t pair_index);
+/**
  * @brief Insert a new key-value pair using an NVS base ID.
  *
  * @param[inout] nvs_fs NVS file system to use.
@@ -153,6 +160,7 @@ astarte_result_t astarte_kv_storage_new(
 
 error:
     free(namespace_cpy);
+    kv_storage->namespace = NULL;
 
     return ares;
 }
@@ -200,7 +208,7 @@ astarte_result_t astarte_kv_storage_insert(
 
     // If the key is not present, add it to at the end of NVS
     if (append_at_end) {
-        size_t unbound_base_id = 1 + (stored_pairs * NVS_ENTRIES_FOR_PAIR);
+        size_t unbound_base_id = get_base_id(stored_pairs);
         if (unbound_base_id + NVS_ID_OFFSET_VALUE >= UINT16_MAX) {
             ares = ASTARTE_RESULT_KV_STORAGE_FULL;
             goto exit;
@@ -318,7 +326,7 @@ astarte_result_t astarte_kv_storage_delete(astarte_kv_storage_t *kv_storage, con
 
     // Calculate the base ID of the very last pair in the storage
     // The ids for all the key value pairs start from 1 (as 0 is used for the stored_pairs number)
-    uint16_t last_base_id = 1 + ((stored_pairs - 1) * NVS_ENTRIES_FOR_PAIR);
+    uint16_t last_base_id = get_base_id(stored_pairs - 1);
 
     // If the pair we are deleting is NOT the last one, we move the last pair into the slot of the
     // pair we are deleting.
@@ -376,10 +384,9 @@ astarte_result_t astarte_kv_storage_iterator_init(
     ASTARTE_LOG_DBG("Searching for the first pair in namespace: '%s'.", kv_storage->namespace);
     for (int32_t pair_number = stored_pairs - 1; pair_number >= 0; pair_number--) {
 
-        uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
+        uint16_t namespace_id = get_base_id(pair_number) + NVS_ID_OFFSET_NAMESPACE;
         size_t namespace_size = 0U;
-        ASTARTE_LOG_DBG(
-            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
+        ASTARTE_LOG_DBG("Fetching namespace of entry at base id '%d'.", get_base_id(pair_number));
         ares = get_nvs_entry_with_alloc(
             &kv_storage->nvs_fs, namespace_id, &namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
@@ -392,7 +399,7 @@ astarte_result_t astarte_kv_storage_iterator_init(
             iter->kv_storage = kv_storage;
             iter->current_pair = pair_number;
             ASTARTE_LOG_DBG("Namespace match, first pair in namespace has base id: '%d'",
-                iter->current_pair * NVS_ENTRIES_FOR_PAIR);
+                get_base_id(iter->current_pair));
             goto exit;
         }
 
@@ -426,10 +433,9 @@ astarte_result_t astarte_kv_storage_iterator_next(astarte_kv_storage_iter_t *ite
     ASTARTE_LOG_DBG("Searching for the next pair in namespace: '%s'.", iter->kv_storage->namespace);
     for (int32_t pair_number = iter->current_pair - 1; pair_number >= 0; pair_number--) {
 
-        uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
+        uint16_t namespace_id = get_base_id(pair_number) + NVS_ID_OFFSET_NAMESPACE;
         size_t namespace_size = 0U;
-        ASTARTE_LOG_DBG(
-            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
+        ASTARTE_LOG_DBG("Fetching namespace of entry at base id '%d'.", get_base_id(pair_number));
         ares = get_nvs_entry_with_alloc(
             &iter->kv_storage->nvs_fs, namespace_id, &namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
@@ -472,7 +478,7 @@ astarte_result_t astarte_kv_storage_iterator_get(
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    uint16_t key_id = 1 + (iter->current_pair * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_KEY;
+    uint16_t key_id = get_base_id(iter->current_pair) + NVS_ID_OFFSET_KEY;
 
     int nvs_rc = 0;
     if (!key && (*key_size == 0)) {
@@ -509,6 +515,12 @@ exit:
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
+
+static uint16_t get_base_id(uint16_t pair_index)
+{
+    // 1 is the offset for the global counter (STORED_PAIRS_NVS_ID is 0)
+    return 1U + (pair_index * NVS_ENTRIES_FOR_PAIR);
+}
 
 static astarte_result_t insert_pair_at(struct nvs_fs *nvs_fs, uint16_t base_id,
     const char *namespace, const char *key, const void *value, size_t value_size)
@@ -557,9 +569,8 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
     for (; pair_number < stored_pairs; pair_number++) {
 
         size_t namespace_size = 0;
-        uint16_t namespace_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_NAMESPACE;
-        ASTARTE_LOG_DBG(
-            "Fetching namespace of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
+        uint16_t namespace_id = get_base_id(pair_number) + NVS_ID_OFFSET_NAMESPACE;
+        ASTARTE_LOG_DBG("Fetching namespace of entry at base id '%d'.", get_base_id(pair_number));
         ares = get_nvs_entry_with_alloc(nvs_fs, namespace_id, &tmp_namespace, &namespace_size);
         if (ares != ASTARTE_RESULT_OK) {
             goto exit;
@@ -569,9 +580,8 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
         if (strcmp((char *) tmp_namespace, namespace) == 0) {
 
             size_t key_size = 0;
-            uint16_t key_id = 1 + (pair_number * NVS_ENTRIES_FOR_PAIR) + NVS_ID_OFFSET_KEY;
-            ASTARTE_LOG_DBG(
-                "Fetching key of entry at base id '%d'.", pair_number * NVS_ENTRIES_FOR_PAIR);
+            uint16_t key_id = get_base_id(pair_number) + NVS_ID_OFFSET_KEY;
+            ASTARTE_LOG_DBG("Fetching key of entry at base id '%d'.", get_base_id(pair_number));
             ares = get_nvs_entry_with_alloc(nvs_fs, key_id, &tmp_key, &key_size);
             if (ares != ASTARTE_RESULT_OK) {
                 goto exit;
@@ -595,7 +605,7 @@ static astarte_result_t find_pair_base_id(struct nvs_fs *nvs_fs, const char *nam
         ares = ASTARTE_RESULT_NOT_FOUND;
         goto exit;
     }
-    *base_id = (uint16_t) (1 + (pair_number * NVS_ENTRIES_FOR_PAIR));
+    *base_id = (uint16_t) (get_base_id(pair_number));
 
 exit:
     free(tmp_namespace);

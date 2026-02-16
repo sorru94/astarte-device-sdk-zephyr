@@ -36,7 +36,7 @@ astarte_result_t kv_storage_nvs_get_pairs_number(struct nvs_fs *nvs_fs, uint16_t
     uint16_t data = 0;
     int nvs_rc = nvs_read(nvs_fs, STORED_PAIRS_NVS_ID, &data, sizeof(data));
     if ((nvs_rc < 0) && (nvs_rc != -ENOENT)) {
-        LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
     // If ENOENT (first run), count is 0
@@ -48,7 +48,7 @@ astarte_result_t kv_storage_nvs_set_pairs_number(struct nvs_fs *nvs_fs, uint16_t
 {
     int nvs_rc = nvs_write(nvs_fs, STORED_PAIRS_NVS_ID, &count, sizeof(count));
     if (nvs_rc < 0) {
-        LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
     return ASTARTE_RESULT_OK;
@@ -65,12 +65,12 @@ astarte_result_t kv_storage_nvs_read_entry(
     }
 
     if (nvs_rc < 0) {
-        LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
+        ASTARTE_LOG_ERR("NVS read error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
     }
 
     if (data && (nvs_rc > *data_size)) {
-        LOG_ERR("Stored data is too large for provided buffer.");
+        ASTARTE_LOG_ERR("Stored data is too large for provided buffer.");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
@@ -111,11 +111,11 @@ astarte_result_t kv_storage_nvs_write_pair(struct nvs_fs *nvs_fs, uint16_t base_
     const char *namespace, const char *key, const void *value, size_t value_size)
 {
     ssize_t nvs_rc = 0;
-    uint16_t id_ns = base_id + NVS_ID_OFFSET_NAMESPACE;
+    uint16_t id_nsp = base_id + NVS_ID_OFFSET_NAMESPACE;
     uint16_t id_key = base_id + NVS_ID_OFFSET_KEY;
     uint16_t id_val = base_id + NVS_ID_OFFSET_VALUE;
 
-    nvs_rc = nvs_write(nvs_fs, id_ns, namespace, strlen(namespace) + 1);
+    nvs_rc = nvs_write(nvs_fs, id_nsp, namespace, strlen(namespace) + 1);
     if (nvs_rc < 0) {
         ASTARTE_LOG_ERR("NVS write error: %s (%d).", strerror(-nvs_rc), nvs_rc);
         return ASTARTE_RESULT_NVS_ERROR;
@@ -138,14 +138,14 @@ astarte_result_t kv_storage_nvs_relocate_pair(
     struct nvs_fs *nvs_fs, uint16_t dst_base_id, uint16_t src_base_id)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    void *ns = NULL;
+    void *nsp = NULL;
     void *key = NULL;
     void *val = NULL;
 
     // Fetch all components from source
-    size_t ns_len = 0;
+    size_t nsp_len = 0;
     ares = kv_storage_nvs_read_entry_alloc(
-        nvs_fs, src_base_id + NVS_ID_OFFSET_NAMESPACE, &ns, &ns_len);
+        nvs_fs, src_base_id + NVS_ID_OFFSET_NAMESPACE, &nsp, &nsp_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed fetching entry namespace %s.", astarte_result_to_name(ares));
         goto exit;
@@ -165,84 +165,114 @@ astarte_result_t kv_storage_nvs_relocate_pair(
     }
 
     // Write to destination
-    ares = kv_storage_nvs_write_pair(nvs_fs, dst_base_id, (char *) ns, (char *) key, val, val_len);
+    ares = kv_storage_nvs_write_pair(nvs_fs, dst_base_id, (char *) nsp, (char *) key, val, val_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed relocating entry %s.", astarte_result_to_name(ares));
     }
 
 exit:
-    free(ns);
+    free(nsp);
     free(key);
     free(val);
     return ares;
 }
 
+// This function is still understandable
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 astarte_result_t kv_storage_nvs_remove_duplicates(struct nvs_fs *nvs_fs)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint16_t count = 0;
+    uint16_t pairs_number = 0;
 
-    ares = kv_storage_nvs_get_pairs_number(nvs_fs, &count);
-    if ((ares != ASTARTE_RESULT_OK) || count < 2) {
-        // Error of if we have 0 or 1 items no chance of duplication
+    ares = kv_storage_nvs_get_pairs_number(nvs_fs, &pairs_number);
+    if ((ares != ASTARTE_RESULT_OK) || pairs_number < 2) {
+        // Error, or if we have 0 or 1 items no chance of duplication
         return ares;
     }
 
-    uint16_t last_idx = count - 1;
-    uint16_t last_base = kv_storage_nvs_get_pair_base_id(last_idx);
+    uint16_t last_idx = pairs_number - 1;
+    uint16_t last_base_id = kv_storage_nvs_get_pair_base_id(last_idx);
+    uint16_t last_key_id = last_base_id + NVS_ID_OFFSET_KEY;
+    uint16_t last_nsp_id = last_base_id + NVS_ID_OFFSET_NAMESPACE;
 
     char *last_key = NULL;
-    char *last_ns = NULL;
+    char *last_nsp = NULL;
     char *curr_key = NULL;
-    char *curr_ns = NULL;
-    size_t len;
+    char *curr_nsp = NULL;
+    size_t last_key_len = 0;
+    size_t last_nsp_len = 0;
 
     // Fetch the last pair (the potential duplicate)
-    ares = kv_storage_nvs_read_entry_alloc(
-        nvs_fs, last_base + NVS_ID_OFFSET_KEY, (void **) &last_key, &len);
+    ares = kv_storage_nvs_read_entry_alloc(nvs_fs, last_key_id, (void **) &last_key, &last_key_len);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
-    ares = kv_storage_nvs_read_entry_alloc(
-        nvs_fs, last_base + NVS_ID_OFFSET_NAMESPACE, (void **) &last_ns, &len);
+    ares = kv_storage_nvs_read_entry_alloc(nvs_fs, last_nsp_id, (void **) &last_nsp, &last_nsp_len);
     if (ares != ASTARTE_RESULT_OK) {
+        goto exit;
+    }
+
+    // Pre allocate memory where to store the key and namespace of the other items
+    curr_key = calloc(last_key_len, sizeof(char));
+    curr_nsp = calloc(last_nsp_len, sizeof(char));
+    if (!curr_key || !curr_nsp) {
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto exit;
     }
 
     // Scan previous items
-    for (uint16_t i = 0; i < last_idx; i++) {
-        uint16_t curr_base = kv_storage_nvs_get_pair_base_id(i);
+    for (uint16_t curr_idx = 0; curr_idx < last_idx; curr_idx++) {
+        uint16_t curr_base_id = kv_storage_nvs_get_pair_base_id(curr_idx);
+        uint16_t curr_key_id = curr_base_id + NVS_ID_OFFSET_KEY;
+        uint16_t curr_nsp_id = curr_base_id + NVS_ID_OFFSET_NAMESPACE;
+        size_t size = 0;
 
-        ares = kv_storage_nvs_read_entry_alloc(
-            nvs_fs, curr_base + NVS_ID_OFFSET_KEY, (void **) &curr_key, &len);
+        // Check if the current pair key matches first the length then the content of the last
+        ares = kv_storage_nvs_read_entry(nvs_fs, curr_key_id, NULL, &size);
         if (ares != ASTARTE_RESULT_OK) {
             goto exit;
         }
 
-        if (strcmp(last_key, curr_key) == 0) {
-            ares = kv_storage_nvs_read_entry_alloc(
-                nvs_fs, curr_base + NVS_ID_OFFSET_NAMESPACE, (void **) &curr_ns, &len);
-            if (ares != ASTARTE_RESULT_OK) {
-                goto exit;
-            }
-
-            if (strcmp(last_ns, curr_ns) == 0) {
-                LOG_WRN("Recovering duplicate pair at IDs %d and %d.", curr_base, last_base);
-                count--;
-                ares = kv_storage_nvs_set_pairs_number(nvs_fs, count);
-                goto exit;
-            }
-            free(curr_ns);
-            curr_ns = NULL;
+        if (size != last_key_len) {
+            continue;
         }
-        free(curr_key);
-        curr_key = NULL;
+
+        ares = kv_storage_nvs_read_entry(nvs_fs, curr_key_id, curr_key, &size);
+        if (ares != ASTARTE_RESULT_OK) {
+            goto exit;
+        }
+
+        if (strcmp(last_key, curr_key) != 0) {
+            continue;
+        }
+
+        // Check if the current pair namespace matches first the length then the content of the last
+        ares = kv_storage_nvs_read_entry(nvs_fs, curr_nsp_id, NULL, &size);
+        if (ares != ASTARTE_RESULT_OK) {
+            goto exit;
+        }
+
+        if (size != last_nsp_len) {
+            continue;
+        }
+
+        ares = kv_storage_nvs_read_entry(nvs_fs, curr_nsp_id, curr_nsp, &size);
+        if (ares != ASTARTE_RESULT_OK) {
+            goto exit;
+        }
+
+        if (strcmp(last_nsp, curr_nsp) == 0) {
+            ASTARTE_LOG_WRN("Recovering duplicate pair IDs %d and %d.", curr_base_id, last_base_id);
+            pairs_number--;
+            ares = kv_storage_nvs_set_pairs_number(nvs_fs, pairs_number);
+            goto exit;
+        }
     }
 
 exit:
     free(last_key);
-    free(last_ns);
+    free(last_nsp);
     free(curr_key);
-    free(curr_ns);
+    free(curr_nsp);
     return ares;
 }

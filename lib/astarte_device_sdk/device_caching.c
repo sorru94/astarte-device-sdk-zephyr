@@ -40,14 +40,6 @@ ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CAC
  ***********************************************/
 
 /**
- * @brief Open a key-value storage namespace.
- *
- * @param[in] namespace Namespace to open.
- * @param[out] kv_storage Uninitialized key-value storage handle.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
- */
-static astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage);
-/**
  * @brief Parse BSON file used to store a property
  *
  * @param[in] value BSON file
@@ -93,24 +85,37 @@ astarte_result_t astarte_device_caching_init(astarte_device_caching_t *handle)
     // Zero out the memory to ensure clean state
     memset(handle, 0, sizeof(astarte_device_caching_t));
 
-    // 1. Init Synchronization Storage
-    ares = open_kv_storage(SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
+    // Open the key value storage flash partition
+    astarte_kv_storage_cfg_t kv_storage_cfg = {
+        .flash_device = NVS_PARTITION_DEVICE,
+        .flash_offset = NVS_PARTITION_OFFSET,
+        .flash_partition_size = NVS_PARTITION_SIZE,
+    };
+    ares = astarte_kv_storage_open(kv_storage_cfg, &handle->nvs_fs);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Error opening cache: %s.", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    // Init Synchronization Storage
+    ares
+        = astarte_kv_storage_new(&handle->nvs_fs, SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
 
-    // 2. Init Introspection Storage
-    ares = open_kv_storage(INTROSPECTION_NAMESPACE, &handle->intro_storage);
+    // Init Introspection Storage
+    ares = astarte_kv_storage_new(&handle->nvs_fs, INTROSPECTION_NAMESPACE, &handle->intro_storage);
     if (ares != ASTARTE_RESULT_OK) {
-        astarte_kv_storage_destroy(handle->sync_storage); // Rollback
+        astarte_kv_storage_destroy(&handle->sync_storage); // Rollback
         return ares;
     }
 
-    // 3. Init Properties Storage
-    ares = open_kv_storage(PROPERTIES_NAMESPACE, &handle->prop_storage);
+    // Init Properties Storage
+    ares = astarte_kv_storage_new(&handle->nvs_fs, PROPERTIES_NAMESPACE, &handle->prop_storage);
     if (ares != ASTARTE_RESULT_OK) {
-        astarte_kv_storage_destroy(handle->sync_storage); // Rollback
-        astarte_kv_storage_destroy(handle->intro_storage); // Rollback
+        astarte_kv_storage_destroy(&handle->sync_storage);
+        astarte_kv_storage_destroy(&handle->intro_storage);
         return ares;
     }
 
@@ -125,9 +130,9 @@ void astarte_device_caching_destroy(astarte_device_caching_t *handle)
     }
 
     // Destroy individual storage instances
-    astarte_kv_storage_destroy(handle->sync_storage);
-    astarte_kv_storage_destroy(handle->intro_storage);
-    astarte_kv_storage_destroy(handle->prop_storage);
+    astarte_kv_storage_destroy(&handle->sync_storage);
+    astarte_kv_storage_destroy(&handle->intro_storage);
+    astarte_kv_storage_destroy(&handle->prop_storage);
 
     handle->initialized = false;
 }
@@ -364,7 +369,6 @@ astarte_result_t astarte_device_caching_property_load(astarte_device_caching_t *
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     size_t value_len = 0;
-    // Use handle->prop_storage
     ares = astarte_kv_storage_find(&handle->prop_storage, key, NULL, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
@@ -633,39 +637,6 @@ error:
  *         Static functions definitions         *
  ***********************************************/
 
-static astarte_result_t open_kv_storage(const char *namespace, astarte_kv_storage_t *kv_storage)
-{
-    int flash_rc = 0;
-    struct flash_pages_info fp_info = { 0 };
-
-    const struct device *flash_device = NVS_PARTITION_DEVICE;
-    if (!device_is_ready(flash_device)) {
-        ASTARTE_LOG_ERR("Flash device %s not ready.", flash_device->name);
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
-    }
-    off_t flash_offset = NVS_PARTITION_OFFSET;
-    flash_rc = flash_get_page_info_by_offs(flash_device, flash_offset, &fp_info);
-    if (flash_rc) {
-        ASTARTE_LOG_ERR("Unable to get page info: %d.", flash_rc);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    ASTARTE_LOG_DBG("Initializing new storage instance for namespace: '%s'", namespace);
-    astarte_kv_storage_cfg_t kv_storage_cfg = {
-        .flash_device = flash_device,
-        .flash_offset = flash_offset,
-        .flash_sector_count = NVS_PARTITION_SIZE / fp_info.size,
-        .flash_sector_size = fp_info.size,
-    };
-    astarte_result_t ares = astarte_kv_storage_new(kv_storage_cfg, namespace, kv_storage);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Error initialize introspection cache: %s.", astarte_result_to_name(ares));
-        return ares;
-    }
-
-    return ASTARTE_RESULT_OK;
-}
-
 static astarte_result_t parse_property_bson(
     const char *value, uint32_t *out_major, astarte_data_t *data)
 {
@@ -706,6 +677,8 @@ static astarte_result_t parse_property_bson(
     return ares;
 }
 
+// Function is still readable for now
+// NOLINTNEXTLINE(readability-function-size)
 static astarte_result_t append_property_to_string(astarte_device_caching_t *handle,
     introspection_t *introspection, char *interface_name, char *path, size_t *str_size,
     char *str_buff, size_t str_buff_size)

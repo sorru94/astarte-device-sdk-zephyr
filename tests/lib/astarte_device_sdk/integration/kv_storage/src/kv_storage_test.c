@@ -30,6 +30,7 @@ struct astarte_device_sdk_kv_storage_fixture
     off_t flash_offset;
     uint16_t flash_sector_size;
     uint16_t flash_sector_count;
+    uint64_t flash_partition_size;
     struct k_mutex test_mutex;
 };
 
@@ -49,6 +50,7 @@ static void *kv_storage_test_setup(void)
     fixture->flash_offset = NVS_PARTITION_OFFSET;
     fixture->flash_sector_count = NVS_PARTITION_SIZE / fp_info.size;
     fixture->flash_sector_size = fp_info.size;
+    fixture->flash_partition_size = NVS_PARTITION_SIZE;
     k_mutex_init(&fixture->test_mutex);
 
     return fixture;
@@ -126,16 +128,19 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_store_and_find) // NOLINT
 
     // Initialize storage driver
     astarte_kv_storage_t kv_storage = { 0 };
+    struct nvs_fs nvs_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_kv_storage_cfg_t storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
+        .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
+    ret = astarte_kv_storage_new(&nvs_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -246,7 +251,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_store_and_find) // NOLINT
     ret = astarte_kv_storage_find(&kv_storage, key4, NULL, &value_size);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
 
-    astarte_kv_storage_destroy(kv_storage);
+    astarte_kv_storage_destroy(&kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
@@ -255,16 +260,19 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
 
     // Initialize storage driver
     astarte_kv_storage_t kv_storage = { 0 };
+    struct nvs_fs nvs_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_kv_storage_cfg_t storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
+        .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
+    ret = astarte_kv_storage_new(&nvs_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -314,7 +322,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_read_sizes) // NOLINT
     zassert_equal(value_size, ARRAY_SIZE(value4), "Incorrect value size:%s", value_size);
     zassert_mem_equal(res_value4, value4, ARRAY_SIZE(value4), "Mismatched values.");
 
-    astarte_kv_storage_destroy(kv_storage);
+    astarte_kv_storage_destroy(&kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
@@ -323,16 +331,19 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
 
     // Initialize storage driver
     astarte_kv_storage_t kv_storage = { 0 };
+    struct nvs_fs nvs_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_kv_storage_cfg_t storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
+        .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
+    ret = astarte_kv_storage_new(&nvs_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -393,7 +404,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_overwrite) // NOLINT
     zassert_equal(value_size, ARRAY_SIZE(value4), "Incorrect value size:%s", value_size);
     zassert_mem_equal(res_value4, value4, ARRAY_SIZE(value4), "Mismatched values.");
 
-    astarte_kv_storage_destroy(kv_storage);
+    astarte_kv_storage_destroy(&kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
@@ -402,16 +413,19 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
 
     // Initialize storage driver
     astarte_kv_storage_t kv_storage = { 0 };
+    struct nvs_fs nvs_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_kv_storage_cfg_t storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
+        .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
+    ret = astarte_kv_storage_new(&nvs_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -486,23 +500,26 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration) // NOLINT
     ret = astarte_kv_storage_iterator_next(&iter);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
 
-    astarte_kv_storage_destroy(kv_storage);
+    astarte_kv_storage_destroy(&kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration_empty_storage) // NOLINT
 {
     // Initialize storage driver
     astarte_kv_storage_t kv_storage = { 0 };
+    struct nvs_fs nvs_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_kv_storage_cfg_t storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
+        .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_kv_storage_new(storage_cfg, namespace, &kv_storage);
+    astarte_result_t ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
+    ret = astarte_kv_storage_new(&nvs_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Iterate over storage
@@ -510,7 +527,7 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_iteration_empty_storage) 
     ret = astarte_kv_storage_iterator_init(&kv_storage, &iter);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
 
-    astarte_kv_storage_destroy(kv_storage);
+    astarte_kv_storage_destroy(&kv_storage);
 }
 
 ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // NOLINT
@@ -518,28 +535,26 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // N
     astarte_result_t ret = ASTARTE_RESULT_OK;
     size_t value_size = 0U;
 
+    struct nvs_fs nvs_fs = { 0 };
+    astarte_kv_storage_cfg_t storage_cfg = {
+        .flash_device = fixture->flash_device,
+        .flash_offset = fixture->flash_offset,
+        .flash_partition_size = fixture->flash_partition_size,
+    };
+
+    ret = astarte_kv_storage_open(storage_cfg, &nvs_fs);
+    zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
+
     // Initialize first storage driver
     astarte_kv_storage_t kv_storage_1 = { 0 };
     const char namespace_1[] = "first namespace";
-    astarte_kv_storage_cfg_t storage_1_cfg = {
-        .flash_device = fixture->flash_device,
-        .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
-    };
-    ret = astarte_kv_storage_new(storage_1_cfg, namespace_1, &kv_storage_1);
+    ret = astarte_kv_storage_new(&nvs_fs, namespace_1, &kv_storage_1);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Initialize second storage driver
     astarte_kv_storage_t kv_storage_2 = { 0 };
     const char namespace_2[] = "second namespace";
-    astarte_kv_storage_cfg_t storage_2_cfg = {
-        .flash_device = fixture->flash_device,
-        .flash_offset = fixture->flash_offset,
-        .flash_sector_count = fixture->flash_sector_count,
-        .flash_sector_size = fixture->flash_sector_size,
-    };
-    ret = astarte_kv_storage_new(storage_2_cfg, namespace_2, &kv_storage_2);
+    ret = astarte_kv_storage_new(&nvs_fs, namespace_2, &kv_storage_2);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs with multiple namespaces
@@ -609,6 +624,6 @@ ZTEST_F(astarte_device_sdk_kv_storage, test_kv_storage_multiple_namespaces) // N
     ret = astarte_kv_storage_iterator_next(&iter_2);
     zassert_equal(ret, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ret));
 
-    astarte_kv_storage_destroy(kv_storage_1);
-    astarte_kv_storage_destroy(kv_storage_2);
+    astarte_kv_storage_destroy(&kv_storage_1);
+    astarte_kv_storage_destroy(&kv_storage_2);
 }

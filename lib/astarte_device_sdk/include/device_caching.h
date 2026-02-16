@@ -25,6 +25,8 @@
  */
 typedef struct
 {
+    /** @brief NVS file system handle shared between all caching */
+    struct nvs_fs nvs_fs;
     /** @brief Storage handle for synchronization state */
     astarte_kv_storage_t sync_storage;
     /** @brief Storage handle for introspection data */

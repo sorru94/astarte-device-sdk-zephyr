@@ -64,27 +64,17 @@ typedef struct
     const struct device *flash_device;
     /** @brief Flash partition offset */
     off_t flash_offset;
-    /** @brief Flash page sector size, each sector must be multiple of erase-block-size */
-    uint16_t flash_sector_size;
-    /** @brief Flash page sector count */
-    uint16_t flash_sector_count;
+    /** @brief Full size of the partition */
+    uint64_t flash_partition_size;
 } astarte_kv_storage_cfg_t;
 
 /** @brief Data struct for an instance of the key-value storage driver. */
 typedef struct
 {
-    /** @brief Flash device runtime structure */
-    const struct device *flash_device;
-    /** @brief Flash partition offset */
-    off_t flash_offset;
-    /** @brief Flash page sector size, each sector must be multiple of erase-block-size */
-    uint16_t flash_sector_size;
-    /** @brief Flash page sector count */
-    uint16_t flash_sector_count;
     /** @brief Namespace used for this key-value storage instance. */
     char *namespace;
     /** @brief Persistent NVS file system context */
-    struct nvs_fs nvs_fs;
+    struct nvs_fs *nvs_fs;
 } astarte_kv_storage_t;
 
 /** @brief Iterator struct for the key-value pair storage. */
@@ -101,25 +91,38 @@ extern "C" {
 #endif
 
 /**
- * @brief Create a new instance of the key-value pairs storage driver.
+ * @brief Initialize a NVS partition for use with the key-value driver.
+ *
+ * @note Each NVS partition should be only initialize once. Furthermore call this function only
+ * once for each NVS partition.
+ *
+ * @param[in] config Configuration struct for the NVS partition.
+ * @param[in,out] nvs_fs The NVS file system context to open.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_kv_storage_open(astarte_kv_storage_cfg_t config, struct nvs_fs *nvs_fs);
+
+/**
+ * @brief Create a new instance of the key-value pairs storage driver for a specific namespace.
  *
  * @note After being used the key-value storage instance should be destroyed with
  * #astarte_kv_storage_destroy.
  *
- * @param[in] config Configuration struct for the storage instance.
+ * @param[in,out] nvs_fs The NVS file system context to use. This should have been opened previously
+ * using #astarte_kv_storage_open
  * @param[in] namespace The namespace to be used for this storage instance.
  * @param[out] kv_storage Data struct for the key-value storage instance to initialize.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_kv_storage_new(
-    astarte_kv_storage_cfg_t config, const char *namespace, astarte_kv_storage_t *kv_storage);
+    struct nvs_fs *nvs_fs, const char *namespace, astarte_kv_storage_t *kv_storage);
 
 /**
  * @brief Destroy an instance of the key-value pairs storage driver.
  *
  * @param[inout] kv_storage The storage instance to destroy.
  */
-void astarte_kv_storage_destroy(astarte_kv_storage_t kv_storage);
+void astarte_kv_storage_destroy(astarte_kv_storage_t *kv_storage);
 
 /**
  * @brief Insert or update a new key-value pair into storage.

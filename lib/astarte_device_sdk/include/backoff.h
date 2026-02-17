@@ -1,4 +1,4 @@
-// (C) Copyright 2025, SECO Mind Srl
+// (C) Copyright 2026, SECO Mind Srl
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -7,14 +7,15 @@
 
 #include <stdint.h>
 
-/**
- * @brief Struct for generating exponential backoff delays with jitter.
- */
+/** @brief Struct for generating exponential backoff delays with jitter. */
 struct backoff_context
 {
-    int64_t mul_coeff;
-    int64_t cutoff_coeff;
-    int64_t prev_delay;
+    /** @brief Multiplier coefficient as defined in the configuration. */
+    uint32_t mul_coeff;
+    /** @brief Cutoff coefficient as defined in the configuration. */
+    uint32_t cutoff_coeff;
+    /** @brief Previous delay used to calculate the next one. */
+    uint32_t prev_delay;
 };
 
 /**
@@ -31,15 +32,15 @@ struct backoff_context
  * @param cutoff_coeff The cut-off coefficient, an upper bound for the exponential curve (in ms).
  * @return 0 on success, or -EINVAL if the coefficients are invalid.
  */
-int backoff_init(struct backoff_context *backoff, int64_t mul_coeff, int64_t cutoff_coeff);
+int backoff_init(struct backoff_context *backoff, uint32_t mul_coeff, uint32_t cutoff_coeff);
 
 /**
  * @brief Calculates and returns the next backoff delay.
  *
  * @param backoff Pointer to the initialized backoff structure.
- * @return The calculated delay duration in milliseconds, or -1 if the pointer is null.
+ * @return The calculated delay duration in milliseconds, or 0 if the pointer is null.
  */
-int64_t backoff_get_next_delay(struct backoff_context *backoff);
+uint32_t backoff_get_next_delay(struct backoff_context *backoff);
 
 /**
  * @brief Resets the backoff generator.
@@ -48,4 +49,4 @@ int64_t backoff_get_next_delay(struct backoff_context *backoff);
  */
 void backoff_reset(struct backoff_context *backoff);
 
-#endif /* EXPONENTIAL_BACKOFF_H */
+#endif /* BACKOFF_H */

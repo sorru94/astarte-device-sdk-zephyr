@@ -1,66 +1,51 @@
-/*
- * (C) Copyright 2024, SECO Mind Srl
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+// (C) Copyright 2025, SECO Mind Srl
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef BACKOFF_H
 #define BACKOFF_H
 
-/**
- * @file backoff.h
- * @brief Utility to be used to generate an exponential backoff.
- *
- * @details Each backoff context can be utilized to generate a series of backoff periods.
- * Use #backoff_context_init to initialize a new context and repeatedly call
- * #backoff_get_next to get the next period. Each context can be optionally configured to use
- * jitter.
- *
- * See
- * [exponential-backoff-and-jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
- * for more details.
- */
-
-#include "astarte_device_sdk/astarte.h"
+#include <stdint.h>
 
 /**
- * @brief Backoff context.
+ * @brief Struct for generating exponential backoff delays with jitter.
  */
 struct backoff_context
 {
-    /** @brief Maximum backoff for the next attempt. */
-    uint32_t attempt_max_backoff_ms;
-    /** @brief Maximum overall backoff. */
-    uint32_t max_backoff_ms;
-    /** @brief Enables jitter for the backoff context. */
-    bool enable_jitter;
+    int64_t mul_coeff;
+    int64_t cutoff_coeff;
+    int64_t prev_delay;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/**
+ * @brief Initializes an backoff_context struct.
+ *
+ * @details The exponential backoff will compute an exponential delay using
+ * 2 as the base for the power operation and @p mul_coeff as the multiplier coefficient.
+ * The values returned by calls to #backoff_get_next_delay will follow the formula:
+ * min( @p mul_coeff * 2 ^ ( number of calls ) , @p cutoff_coeff ) + random jitter.
+ * The random jitter will be in the range [ - @p mul_coeff , + @p mul_coeff ].
+ *
+ * @param backoff Pointer to the backoff structure to initialize.
+ * @param mul_coeff Multiplier coefficient used in the exponential delay calculation (in ms).
+ * @param cutoff_coeff The cut-off coefficient, an upper bound for the exponential curve (in ms).
+ * @return 0 on success, or -EINVAL if the coefficients are invalid.
+ */
+int backoff_init(struct backoff_context *backoff, int64_t mul_coeff, int64_t cutoff_coeff);
 
 /**
- * @brief Initialize a backoff context.
+ * @brief Calculates and returns the next backoff delay.
  *
- * @param[out] ctx Backoff context to intialize.
- * @param[in] base_backoff_ms First backoff duration.
- * @param[in] max_backoff_ms Maximum backoff duration.
- * @param[in] enable_jitter Enable jitter.
+ * @param backoff Pointer to the initialized backoff structure.
+ * @return The calculated delay duration in milliseconds, or -1 if the pointer is null.
  */
-void backoff_context_init(struct backoff_context *ctx, uint32_t base_backoff_ms,
-    uint32_t max_backoff_ms, bool enable_jitter);
+int64_t backoff_get_next_delay(struct backoff_context *backoff);
 
 /**
- * @brief Get next backoff duration.
+ * @brief Resets the backoff generator.
  *
- * @param[in] ctx Backoff context to use.
- * @param[out] next_backoff_ms Next backoff period.
+ * @param backoff Pointer to the initialized backoff structure.
  */
-void backoff_get_next(struct backoff_context *ctx, uint32_t *next_backoff_ms);
+void backoff_reset(struct backoff_context *backoff);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // BACKOFF_H
+#endif /* EXPONENTIAL_BACKOFF_H */

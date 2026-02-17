@@ -406,17 +406,15 @@ static void state_machine_handshake_error_run(astarte_device_handle_t device)
         device->connection_state = DEVICE_START_HANDSHAKE;
 
         // Update backoff for the next attempt
-        uint32_t next_backoff_ms = 0;
-        backoff_get_next(&device->backoff_ctx, &next_backoff_ms);
+        uint64_t next_backoff_ms = backoff_get_next_delay(&device->backoff_ctx);
         device->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
     }
 }
 
 static void state_machine_connected_run(astarte_device_handle_t device)
 {
-    backoff_context_init(&device->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS, true);
+    backoff_init(&device->backoff_ctx, CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 }
 
 #if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)

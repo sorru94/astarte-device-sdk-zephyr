@@ -259,9 +259,9 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
     astarte_mqtt->connection_timepoint = sys_timepoint_calc(K_FOREVER);
 
     // Initialize the backoff context
-    backoff_context_init(&astarte_mqtt->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_MAX_MS, false);
+    backoff_init(&astarte_mqtt->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 
     // Initialize the reconnection timepoint
     astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
@@ -574,8 +574,7 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
         && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->reconnection_timepoint), K_NO_WAIT)) {
 
         // Update reconnection timepoint to the next backoff value
-        uint32_t next_backoff_ms = 0;
-        backoff_get_next(&astarte_mqtt->backoff_ctx, &next_backoff_ms);
+        uint64_t next_backoff_ms = backoff_get_next_delay(&astarte_mqtt->backoff_ctx);
         astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
 
         // Attempt reconnection
@@ -664,9 +663,9 @@ static void handle_connack_event(
 {
     ASTARTE_LOG_DBG("Received CONNACK packet, session present: %d", connack.session_present_flag);
     // Reset the backoff context for the next connection failure
-    backoff_context_init(&astarte_mqtt->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_MQTT_BACKOFF_MAX_MS, true);
+    backoff_init(&astarte_mqtt->backoff_ctx,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 
     if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING) {
         astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTED;

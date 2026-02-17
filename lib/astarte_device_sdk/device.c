@@ -190,9 +190,8 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     // Initialize the handle data to be used during the handshake with Astarte
     handle->mqtt_session_present_flag = 0;
     handle->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
-    backoff_context_init(&handle->backoff_ctx,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_INITIAL_MS,
-        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_ASTARTE_BACKOFF_MAX_MS, true);
+    backoff_init(&handle->backoff_ctx, CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
+        CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 
     *device = handle;
 

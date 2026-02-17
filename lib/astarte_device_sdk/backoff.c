@@ -5,15 +5,16 @@
 #include "backoff.h"
 
 #include <zephyr/random/random.h>
+#include <zephyr/sys/util.h>
 
 #include <errno.h>
 
-int backoff_init(struct backoff_context *backoff, int64_t mul_coeff, int64_t cutoff_coeff)
+int backoff_init(struct backoff_context *backoff, uint32_t mul_coeff, uint32_t cutoff_coeff)
 {
     if (!backoff) {
         return -EINVAL;
     }
-    if (mul_coeff <= 0 || cutoff_coeff <= 0) {
+    if (mul_coeff == 0 || cutoff_coeff == 0) {
         return -EINVAL;
     }
     if (cutoff_coeff < mul_coeff) {
@@ -27,18 +28,18 @@ int backoff_init(struct backoff_context *backoff, int64_t mul_coeff, int64_t cut
     return 0;
 }
 
-int64_t backoff_get_next_delay(struct backoff_context *backoff)
+uint32_t backoff_get_next_delay(struct backoff_context *backoff)
 {
     if (!backoff) {
-        return -EINVAL;
+        return 0;
     }
 
-    const int64_t mul_coeff = backoff->mul_coeff;
-    const int64_t max_milliseconds = INT64_MAX;
-    const int64_t max_allowed_final_delay = max_milliseconds - mul_coeff;
+    const uint32_t mul_coeff = backoff->mul_coeff;
+    const uint32_t max_milliseconds = UINT32_MAX;
+    const uint32_t max_allowed_final_delay = max_milliseconds - mul_coeff;
 
     // Update last delay value with the new value
-    int64_t delay = 0;
+    uint32_t delay = 0;
     if (backoff->prev_delay == 0) {
         delay = mul_coeff;
     } else if (backoff->prev_delay <= (max_allowed_final_delay / 2)) {
@@ -48,33 +49,35 @@ int64_t backoff_get_next_delay(struct backoff_context *backoff)
     }
 
     // Bound the delay to the maximum
-    const int64_t bounded_delay = MIN(delay, backoff->cutoff_coeff);
+    const uint32_t bounded_delay = MIN(delay, backoff->cutoff_coeff);
 
     // Store the new delay before jitter application
     backoff->prev_delay = bounded_delay;
 
     // Insert some jitter
-    int64_t jitter_minimum = -mul_coeff;
-    if (bounded_delay - mul_coeff < 0) {
-        jitter_minimum = 0;
+    uint32_t lower_bound = 0;
+    if (bounded_delay > mul_coeff) {
+        lower_bound = bounded_delay - mul_coeff;
     }
-    int64_t jitter_maximum = mul_coeff;
-    if (bounded_delay > max_milliseconds - mul_coeff) {
-        jitter_maximum = max_milliseconds - bounded_delay;
+    uint32_t upper_bound = UINT32_MAX;
+    if (bounded_delay < max_allowed_final_delay) {
+        upper_bound = bounded_delay + mul_coeff;
     }
 
     // Calculate the range for the jitter
-    int64_t jitter_range = jitter_maximum - jitter_minimum;
-    int64_t jitter = 0;
-
-    if (jitter_range > 0) {
+    uint32_t jitter_range = upper_bound - lower_bound;
+    uint32_t final_delay = bounded_delay;
+    if (jitter_range == UINT32_MAX) {
+        // Prevent overflow: jitter_range + 1 would be 0.
+        final_delay = sys_rand32_get();
+    } else if (jitter_range > 0) {
         // sys_rand32_get() returns a 32-bit unsigned integer.
         // The modulo operation confines it to the calculated range.
         uint32_t random_val = sys_rand32_get();
-        jitter = (int64_t) (random_val % (jitter_range + 1)) + jitter_minimum;
+        final_delay = lower_bound + (random_val % (jitter_range + 1));
     }
 
-    return bounded_delay + jitter;
+    return final_delay;
 }
 
 void backoff_reset(struct backoff_context *backoff)

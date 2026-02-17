@@ -16,6 +16,9 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+#include "device_caching.h"
+#endif
 #include "backoff.h"
 #include "introspection.h"
 #include "mqtt.h"
@@ -131,6 +134,10 @@ struct astarte_device
     char control_consumer_prop_topic[MQTT_CONTROL_CONSUMER_PROP_TOPIC_LEN + 1];
     /** @brief Publish topic for control producer properties. */
     char control_producer_prop_topic[MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN + 1];
+#if defined(CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
+    /** @brief Device caching instance, used to acced non volatile storage. */
+    astarte_device_caching_t caching;
+#endif
 };
 
 #endif // DEVICE_PRIVATE_H

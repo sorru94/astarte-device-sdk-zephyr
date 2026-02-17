@@ -305,7 +305,7 @@ astarte_result_t astarte_device_caching_property_store(astarte_device_caching_t 
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    astarte_bson_serializer_append_int32(&bson, "major", *(int32_t *) &major);
+    astarte_bson_serializer_append_int32(&bson, "major", (int32_t) major);
     astarte_bson_serializer_append_int64(&bson, "type", (int64_t) data.tag);
     ares = astarte_data_serialize(&bson, "data", data);
     if (ares != ASTARTE_RESULT_OK) {
@@ -650,7 +650,7 @@ static astarte_result_t parse_property_bson(
             return ares;
         }
         int32_t major = astarte_bson_deserializer_element_to_int32(major_elem);
-        *out_major = *(uint32_t *) &major;
+        *out_major = (uint32_t) major;
     }
     if (data) {
         astarte_bson_element_t type_elem = { 0 };

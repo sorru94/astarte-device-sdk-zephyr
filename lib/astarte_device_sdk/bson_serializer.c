@@ -488,8 +488,10 @@ static astarte_result_t byte_array_append(
     if (res != ASTARTE_RESULT_OK) {
         return res;
     }
-    memcpy(bson->buf + bson->size, bytes, count);
-    bson->size += count;
+    if (count > 0 && bytes) {
+        memcpy(bson->buf + bson->size, bytes, count);
+        bson->size += count;
+    }
     return ASTARTE_RESULT_OK;
 }
 

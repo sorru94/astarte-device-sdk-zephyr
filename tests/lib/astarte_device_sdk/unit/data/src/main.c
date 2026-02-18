@@ -153,7 +153,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_integer)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_integer));
     zassert_mem_equal(
         data_ser, test_data_serialized_integer, len, "Serialized: %s", hex_to_str(data_ser, len));
@@ -167,7 +167,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_longinteger)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_longinteger));
     zassert_mem_equal(data_ser, test_data_serialized_longinteger, len, "Serialized: %s",
         hex_to_str(data_ser, len));
@@ -181,7 +181,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_double)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_double));
     zassert_mem_equal(
         data_ser, test_data_serialized_double, len, "Serialized: %s", hex_to_str(data_ser, len));
@@ -195,7 +195,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_boolean)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_boolean));
     zassert_mem_equal(
         data_ser, test_data_serialized_boolean, len, "Serialized: %s", hex_to_str(data_ser, len));
@@ -209,7 +209,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_string)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_string));
     zassert_mem_equal(
         data_ser, test_data_serialized_string, len, "Serialized: %s", hex_to_str(data_ser, len));
@@ -224,7 +224,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_integer_array)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_integer_array));
     zassert_mem_equal(data_ser, test_data_serialized_integer_array, len, "Serialized: %s",
         hex_to_str(data_ser, len));
@@ -239,7 +239,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_string_array)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
     zassert_equal(len, sizeof(test_data_serialized_string_array));
     zassert_mem_equal(data_ser, test_data_serialized_string_array, len, "Serialized: %s",
         hex_to_str(data_ser, len));
@@ -256,7 +256,7 @@ ZTEST(astarte_device_sdk_astarte_data, test_serialize_binaryblob_array)
     astarte_data_serialize(&bson, "v", data);
     astarte_bson_serializer_append_end_of_document(&bson);
     int len = 0;
-    const void *data_ser = astarte_bson_serializer_get_serialized(bson, &len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &len);
 
     zassert_equal(len, sizeof(test_data_serialized_binaryblob_array));
     zassert_mem_equal(data_ser, test_data_serialized_binaryblob_array, len, "Serialized: %s",

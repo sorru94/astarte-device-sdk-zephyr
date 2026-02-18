@@ -134,34 +134,34 @@ void astarte_bson_serializer_destroy(astarte_bson_serializer_t *bson)
     byte_array_destroy(bson);
 }
 
-const void *astarte_bson_serializer_get_serialized(astarte_bson_serializer_t bson, int *size)
+const void *astarte_bson_serializer_get_serialized(const astarte_bson_serializer_t *bson, int *size)
 {
     if (size) {
-        *size = (int) bson.size;
+        *size = (int) bson->size;
     }
-    return bson.buf;
+    return bson->buf;
 }
 
 astarte_result_t astarte_bson_serializer_get_serialized_copy(
-    astarte_bson_serializer_t bson, void *out_buf, int out_buf_size, int *out_doc_size)
+    const astarte_bson_serializer_t *bson, void *out_buf, int out_buf_size, int *out_doc_size)
 {
-    size_t doc_size = bson.size;
+    size_t doc_size = bson->size;
     if (out_doc_size) {
         *out_doc_size = (int) doc_size;
     }
 
-    if (out_buf_size < bson.size) {
+    if (out_buf_size < bson->size) {
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    memcpy(out_buf, bson.buf, doc_size);
+    memcpy(out_buf, bson->buf, doc_size);
 
     return ASTARTE_RESULT_OK;
 }
 
-size_t astarte_bson_serializer_get_serialized_size(astarte_bson_serializer_t bson)
+size_t astarte_bson_serializer_get_serialized_size(const astarte_bson_serializer_t *bson)
 {
-    return bson.size;
+    return bson->size;
 }
 
 astarte_result_t astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson)
@@ -345,7 +345,7 @@ astarte_result_t astarte_bson_serializer_append_document(
         }                                                                                          \
                                                                                                    \
         int size;                                                                                  \
-        const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);           \
+        const void *document = astarte_bson_serializer_get_serialized(&array_ser, &size);          \
                                                                                                    \
         ares = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);                              \
         if (ares == ASTARTE_RESULT_OK) {                                                           \
@@ -396,7 +396,7 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
     }
 
     int size = 0;
-    const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);
+    const void *document = astarte_bson_serializer_get_serialized(&array_ser, &size);
 
     ares = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);
     if (ares == ASTARTE_RESULT_OK) {

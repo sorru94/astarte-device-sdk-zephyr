@@ -88,7 +88,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_serializer_empty_document)
     zassert_equal(ares, ASTARTE_RESULT_OK, "Append failure");
 
     int ser_bson_size = 0;
-    const void *ser_bson = astarte_bson_serializer_get_serialized(bson, &ser_bson_size);
+    const void *ser_bson = astarte_bson_serializer_get_serialized(&bson, &ser_bson_size);
 
     zassert_equal(sizeof(serialized_bson_empty_document), ser_bson_size,
         "serialized_bson_empty_document size != from expected ser_bson_size");
@@ -156,7 +156,7 @@ ZTEST(astarte_device_sdk_bson, test_bson_serializer_complete_document)
     zassert_equal(ares, ASTARTE_RESULT_OK, "Append failure");
 
     int ser_bson_size = 0;
-    const void *ser_bson = astarte_bson_serializer_get_serialized(bson, &ser_bson_size);
+    const void *ser_bson = astarte_bson_serializer_get_serialized(&bson, &ser_bson_size);
 
     zassert_equal(sizeof(serialized_bson_complete_document), ser_bson_size,
         "serialized_bson_complete_document size != from expected ser_bson_size");

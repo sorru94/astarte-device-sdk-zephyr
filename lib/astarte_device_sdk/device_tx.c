@@ -91,7 +91,7 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
     }
 
     int data_ser_len = 0;
-    void *data_ser = (void *) astarte_bson_serializer_get_serialized(bson, &data_ser_len);
+    void *data_ser = (void *) astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
     if (!data_ser) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
@@ -167,7 +167,7 @@ astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t dev
         goto exit;
     }
     int inner_len = 0;
-    const void *inner_data = astarte_bson_serializer_get_serialized(inner_bson, &inner_len);
+    const void *inner_data = astarte_bson_serializer_get_serialized(&inner_bson, &inner_len);
     if (!inner_data) {
         ASTARTE_LOG_ERR("Error during BSON serialization");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
@@ -198,7 +198,7 @@ astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t dev
     }
 
     int len = 0;
-    const void *data = astarte_bson_serializer_get_serialized(outer_bson, &len);
+    const void *data = astarte_bson_serializer_get_serialized(&outer_bson, &len);
     if (!data) {
         ASTARTE_LOG_ERR("Error during BSON serialization");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;

@@ -107,7 +107,7 @@ astarte_result_t astarte_device_caching_property_store(astarte_device_caching_t 
     }
 
     int data_ser_len = 0;
-    void *data_ser = (void *) astarte_bson_serializer_get_serialized(bson, &data_ser_len);
+    void *data_ser = (void *) astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
     if (!data_ser) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;

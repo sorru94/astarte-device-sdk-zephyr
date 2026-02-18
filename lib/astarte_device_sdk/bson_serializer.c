@@ -86,14 +86,12 @@ static astarte_result_t byte_array_grow(astarte_bson_serializer_t *bson, size_t 
         if (new_capacity < bson->capacity + needed_size) {
             new_capacity = bson->capacity + needed_size;
         }
-        void *new_buf = malloc(new_capacity);
+        void *new_buf = realloc(bson->buf, new_capacity);
         if (!new_buf) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
         bson->capacity = new_capacity;
-        memcpy(new_buf, bson->buf, bson->size);
-        free(bson->buf);
         bson->buf = new_buf;
     }
     return ASTARTE_RESULT_OK;

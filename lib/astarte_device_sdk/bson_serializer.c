@@ -23,41 +23,37 @@ ASTARTE_LOG_MODULE_REGISTER(bson_serializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_
 static void uint32_to_bytes(uint32_t input, uint8_t out[static sizeof(uint32_t)])
 {
     uint32_t tmp = sys_cpu_to_le32(input);
-    for (size_t i = 0; i < sizeof(uint32_t); i++) {
-        out[i] = ((uint8_t *) &tmp)[i];
-    }
+    memcpy(out, &tmp, sizeof(tmp));
 }
 
 static void int32_to_bytes(int32_t input, uint8_t out[static sizeof(int32_t)])
 {
-    uint32_t tmp = sys_cpu_to_le32(*((uint32_t *) &input));
-    for (size_t i = 0; i < sizeof(uint32_t); i++) {
-        out[i] = ((uint8_t *) &tmp)[i];
-    }
+    uint32_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(int32_t));
+    uint32_t tmp = sys_cpu_to_le32(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
 }
 
 static void uint64_to_bytes(uint64_t input, uint8_t out[static sizeof(uint64_t)])
 {
     uint64_t tmp = sys_cpu_to_le64(input);
-    for (size_t i = 0; i < sizeof(uint64_t); i++) {
-        out[i] = ((uint8_t *) &tmp)[i];
-    }
+    memcpy(out, &tmp, sizeof(tmp));
 }
 
 static void int64_to_bytes(int64_t input, uint8_t out[static sizeof(int64_t)])
 {
-    uint64_t tmp = sys_cpu_to_le64(*((uint64_t *) &input));
-    for (size_t i = 0; i < sizeof(uint64_t); i++) {
-        out[i] = ((uint8_t *) &tmp)[i];
-    }
+    int64_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(int64_t));
+    int64_t tmp = sys_cpu_to_le64(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
 }
 
 static void double_to_bytes(double input, uint8_t out[static sizeof(double)])
 {
-    uint64_t tmp = sys_cpu_to_le64(*((uint64_t *) &input));
-    for (size_t i = 0; i < sizeof(uint64_t); i++) {
-        out[i] = ((uint8_t *) &tmp)[i];
-    }
+    uint64_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(double));
+    uint64_t tmp = sys_cpu_to_le64(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
 }
 
 static astarte_result_t byte_array_init(astarte_bson_serializer_t *bson, void *bytes, size_t size)
@@ -83,38 +79,47 @@ static void byte_array_destroy(astarte_bson_serializer_t *bson)
     bson->buf = NULL;
 }
 
-static void byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
+static astarte_result_t byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
 {
-    if (bson->size + needed_size >= bson->capacity) {
-        size_t new_capacity = bson->capacity * 2;
+    if (bson->size + needed_size > bson->capacity) {
+        size_t new_capacity = MAX(bson->capacity * 2, 64);
         if (new_capacity < bson->capacity + needed_size) {
             new_capacity = bson->capacity + needed_size;
         }
-        bson->capacity = new_capacity;
         void *new_buf = malloc(new_capacity);
         if (!new_buf) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            abort();
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
+        bson->capacity = new_capacity;
         memcpy(new_buf, bson->buf, bson->size);
         free(bson->buf);
         bson->buf = new_buf;
     }
+    return ASTARTE_RESULT_OK;
 }
 
-static void byte_array_append_byte(astarte_bson_serializer_t *bson, uint8_t byte)
+static astarte_result_t byte_array_append_byte(astarte_bson_serializer_t *bson, uint8_t byte)
 {
-    byte_array_grow(bson, sizeof(uint8_t));
+    astarte_result_t res = byte_array_grow(bson, sizeof(uint8_t));
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
     bson->buf[bson->size] = byte;
     bson->size++;
+    return ASTARTE_RESULT_OK;
 }
 
-static void byte_array_append(astarte_bson_serializer_t *bson, const void *bytes, size_t count)
+static astarte_result_t byte_array_append(
+    astarte_bson_serializer_t *bson, const void *bytes, size_t count)
 {
-    byte_array_grow(bson, count);
-
+    astarte_result_t res = byte_array_grow(bson, count);
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
     memcpy(bson->buf + bson->size, bytes, count);
     bson->size += count;
+    return ASTARTE_RESULT_OK;
 }
 
 static void byte_array_replace(
@@ -167,63 +172,91 @@ size_t astarte_bson_serializer_get_serialized_size(astarte_bson_serializer_t bso
     return bson.size;
 }
 
-void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson)
+astarte_result_t astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson)
 {
-    byte_array_append_byte(bson, '\0');
+    astarte_result_t res = byte_array_append_byte(bson, '\0');
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
 
     uint8_t size_buf[4] = { 0 };
     uint32_to_bytes(bson->size, size_buf);
 
     byte_array_replace(bson, 0, sizeof(int32_t), size_buf);
+    return ASTARTE_RESULT_OK;
 }
 
-void astarte_bson_serializer_append_double(
+astarte_result_t astarte_bson_serializer_append_double(
     astarte_bson_serializer_t *bson, const char *name, double value)
 {
     uint8_t val_buf[sizeof(double)] = { 0 };
     double_to_bytes(value, val_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOUBLE);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, val_buf, sizeof(double));
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOUBLE);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, val_buf, sizeof(double));
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_int32(
+astarte_result_t astarte_bson_serializer_append_int32(
     astarte_bson_serializer_t *bson, const char *name, int32_t value)
 {
     uint8_t val_buf[4] = { 0 };
     int32_to_bytes(value, val_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT32);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, val_buf, sizeof(int32_t));
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT32);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, val_buf, sizeof(int32_t));
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_int64(
+astarte_result_t astarte_bson_serializer_append_int64(
     astarte_bson_serializer_t *bson, const char *name, int64_t value)
 {
     uint8_t val_buf[sizeof(int64_t)] = { 0 };
     int64_to_bytes(value, val_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT64);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, val_buf, sizeof(int64_t));
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_INT64);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, val_buf, sizeof(int64_t));
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_binary(
+astarte_result_t astarte_bson_serializer_append_binary(
     astarte_bson_serializer_t *bson, const char *name, const void *value, size_t size)
 {
     uint8_t len_buf[4] = { 0 };
     uint32_to_bytes(size, len_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BINARY);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, len_buf, sizeof(int32_t));
-    byte_array_append_byte(bson, ASTARTE_BSON_SUBTYPE_DEFAULT_BINARY);
-    byte_array_append(bson, value, size);
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BINARY);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, len_buf, sizeof(int32_t));
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append_byte(bson, ASTARTE_BSON_SUBTYPE_DEFAULT_BINARY);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, value, size);
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_string(
+astarte_result_t astarte_bson_serializer_append_string(
     astarte_bson_serializer_t *bson, const char *name, const char *string)
 {
     size_t string_len = strlen(string);
@@ -231,42 +264,63 @@ void astarte_bson_serializer_append_string(
     uint8_t len_buf[4] = { 0 };
     uint32_to_bytes(string_len + 1, len_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_STRING);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, len_buf, sizeof(int32_t));
-    byte_array_append(bson, string, string_len + 1);
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_STRING);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, len_buf, sizeof(int32_t));
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, string, string_len + 1);
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_datetime(
+astarte_result_t astarte_bson_serializer_append_datetime(
     astarte_bson_serializer_t *bson, const char *name, uint64_t epoch_millis)
 {
     uint8_t val_buf[sizeof(uint64_t)] = { 0 };
     uint64_to_bytes(epoch_millis, val_buf);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DATETIME);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, val_buf, sizeof(uint64_t));
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DATETIME);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, val_buf, sizeof(uint64_t));
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_boolean(
+astarte_result_t astarte_bson_serializer_append_boolean(
     astarte_bson_serializer_t *bson, const char *name, bool value)
 {
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BOOLEAN);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append_byte(bson, value ? '\1' : '\0');
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_BOOLEAN);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append_byte(bson, value ? '\1' : '\0');
+    }
+    return res;
 }
 
-void astarte_bson_serializer_append_document(
+astarte_result_t astarte_bson_serializer_append_document(
     astarte_bson_serializer_t *bson, const char *name, const void *document)
 {
     uint32_t size = 0U;
     memcpy(&size, document, sizeof(uint32_t));
     size = sys_le32_to_cpu(size);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOCUMENT);
-    byte_array_append(bson, name, strlen(name) + 1);
-
-    byte_array_append(bson, document, size);
+    astarte_result_t res = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_DOCUMENT);
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (res == ASTARTE_RESULT_OK) {
+        res = byte_array_append(bson, document, size);
+    }
+    return res;
 }
 
 #define IMPLEMENT_ASTARTE_BSON_SERIALIZER_APPEND_TYPE_ARRAY(TYPE, TYPE_NAME)                       \
@@ -284,17 +338,30 @@ void astarte_bson_serializer_append_document(
             if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {                                   \
                 ares = ASTARTE_RESULT_INTERNAL_ERROR;                                              \
             }                                                                                      \
-            astarte_bson_serializer_append_##TYPE_NAME(&array_ser, key, arr[i]);                   \
+            if (ares == ASTARTE_RESULT_OK) {                                                       \
+                ares = astarte_bson_serializer_append_##TYPE_NAME(&array_ser, key, arr[i]);        \
+            }                                                                                      \
+            if (ares != ASTARTE_RESULT_OK) {                                                       \
+                astarte_bson_serializer_destroy(&array_ser);                                       \
+                return ares;                                                                       \
+            }                                                                                      \
         }                                                                                          \
-        astarte_bson_serializer_append_end_of_document(&array_ser);                                \
+        ares = astarte_bson_serializer_append_end_of_document(&array_ser);                         \
+        if (ares != ASTARTE_RESULT_OK) {                                                           \
+            astarte_bson_serializer_destroy(&array_ser);                                           \
+            return ares;                                                                           \
+        }                                                                                          \
                                                                                                    \
         int size;                                                                                  \
         const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);           \
                                                                                                    \
-        byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);                                     \
-        byte_array_append(bson, name, strlen(name) + 1);                                           \
-                                                                                                   \
-        byte_array_append(bson, document, size);                                                   \
+        ares = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);                              \
+        if (ares == ASTARTE_RESULT_OK) {                                                           \
+            ares = byte_array_append(bson, name, strlen(name) + 1);                                \
+        }                                                                                          \
+        if (ares == ASTARTE_RESULT_OK) {                                                           \
+            ares = byte_array_append(bson, document, size);                                        \
+        }                                                                                          \
                                                                                                    \
         astarte_bson_serializer_destroy(&array_ser);                                               \
                                                                                                    \
@@ -322,16 +389,30 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
         if ((ret < 0) || (ret >= BSON_ARRAY_SIZE_STR_LEN)) {
             ares = ASTARTE_RESULT_INTERNAL_ERROR;
         }
-        astarte_bson_serializer_append_binary(&array_ser, key, arr[i], sizes[i]);
+        if (ares == ASTARTE_RESULT_OK) {
+            ares = astarte_bson_serializer_append_binary(&array_ser, key, arr[i], sizes[i]);
+        }
+        if (ares != ASTARTE_RESULT_OK) {
+            astarte_bson_serializer_destroy(&array_ser);
+            return ares;
+        }
     }
-    astarte_bson_serializer_append_end_of_document(&array_ser);
+    ares = astarte_bson_serializer_append_end_of_document(&array_ser);
+    if (ares != ASTARTE_RESULT_OK) {
+        astarte_bson_serializer_destroy(&array_ser);
+        return ares;
+    }
 
     int size = 0;
     const void *document = astarte_bson_serializer_get_serialized(array_ser, &size);
 
-    byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);
-    byte_array_append(bson, name, strlen(name) + 1);
-    byte_array_append(bson, document, size);
+    ares = byte_array_append_byte(bson, ASTARTE_BSON_TYPE_ARRAY);
+    if (ares == ASTARTE_RESULT_OK) {
+        ares = byte_array_append(bson, name, strlen(name) + 1);
+    }
+    if (ares == ASTARTE_RESULT_OK) {
+        ares = byte_array_append(bson, document, size);
+    }
 
     astarte_bson_serializer_destroy(&array_ser);
 

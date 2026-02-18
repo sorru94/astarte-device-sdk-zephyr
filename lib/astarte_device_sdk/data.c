@@ -305,27 +305,27 @@ astarte_result_t astarte_data_serialize(
 
     switch (data.tag) {
         case ASTARTE_MAPPING_TYPE_INTEGER:
-            astarte_bson_serializer_append_int32(bson, key, data.data.integer);
+            ares = astarte_bson_serializer_append_int32(bson, key, data.data.integer);
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGER:
-            astarte_bson_serializer_append_int64(bson, key, data.data.longinteger);
+            ares = astarte_bson_serializer_append_int64(bson, key, data.data.longinteger);
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLE:
-            astarte_bson_serializer_append_double(bson, key, data.data.dbl);
+            ares = astarte_bson_serializer_append_double(bson, key, data.data.dbl);
             break;
         case ASTARTE_MAPPING_TYPE_STRING:
-            astarte_bson_serializer_append_string(bson, key, data.data.string);
+            ares = astarte_bson_serializer_append_string(bson, key, data.data.string);
             break;
         case ASTARTE_MAPPING_TYPE_BINARYBLOB: {
             astarte_data_binaryblob_t binaryblob = data.data.binaryblob;
-            astarte_bson_serializer_append_binary(bson, key, binaryblob.buf, binaryblob.len);
+            ares = astarte_bson_serializer_append_binary(bson, key, binaryblob.buf, binaryblob.len);
             break;
         }
         case ASTARTE_MAPPING_TYPE_BOOLEAN:
-            astarte_bson_serializer_append_boolean(bson, key, data.data.boolean);
+            ares = astarte_bson_serializer_append_boolean(bson, key, data.data.boolean);
             break;
         case ASTARTE_MAPPING_TYPE_DATETIME:
-            astarte_bson_serializer_append_datetime(bson, key, data.data.datetime);
+            ares = astarte_bson_serializer_append_datetime(bson, key, data.data.datetime);
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY: {
             astarte_data_integerarray_t int32_array = data.data.integer_array;

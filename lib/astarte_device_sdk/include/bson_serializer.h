@@ -89,8 +89,9 @@ size_t astarte_bson_serializer_get_serialized_size(astarte_bson_serializer_t bso
  *
  * @details BSON document MUST be manually terminated with an end of document marker.
  * @param[in,out] bson a valid handle for the serializer instance.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson);
+astarte_result_t astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson);
 
 /**
  * @brief append a double value
@@ -99,8 +100,9 @@ void astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *b
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] value a double floating point value.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_double(
+astarte_result_t astarte_bson_serializer_append_double(
     astarte_bson_serializer_t *bson, const char *name, double value);
 
 /**
@@ -110,8 +112,9 @@ void astarte_bson_serializer_append_double(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] value a 32 bits signed integer value.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_int32(
+astarte_result_t astarte_bson_serializer_append_int32(
     astarte_bson_serializer_t *bson, const char *name, int32_t value);
 
 /**
@@ -121,8 +124,9 @@ void astarte_bson_serializer_append_int32(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] value a 64 bits signed integer value.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_int64(
+astarte_result_t astarte_bson_serializer_append_int64(
     astarte_bson_serializer_t *bson, const char *name, int64_t value);
 
 /**
@@ -133,8 +137,9 @@ void astarte_bson_serializer_append_int64(
  * @param[in] name BSON element name, which is a C string.
  * @param[in] value the buffer that holds the binary blob.
  * @param[in] size blob size in bytes.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_binary(
+astarte_result_t astarte_bson_serializer_append_binary(
     astarte_bson_serializer_t *bson, const char *name, const void *value, size_t size);
 
 /**
@@ -144,8 +149,9 @@ void astarte_bson_serializer_append_binary(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] string a 0 terminated UTF-8 string.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_string(
+astarte_result_t astarte_bson_serializer_append_string(
     astarte_bson_serializer_t *bson, const char *name, const char *string);
 
 /**
@@ -155,8 +161,9 @@ void astarte_bson_serializer_append_string(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] epoch_millis a 64 bits unsigned integer storing date time in milliseconds since epoch.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_datetime(
+astarte_result_t astarte_bson_serializer_append_datetime(
     astarte_bson_serializer_t *bson, const char *name, uint64_t epoch_millis);
 
 /**
@@ -166,8 +173,9 @@ void astarte_bson_serializer_append_datetime(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] value 0 as false value, not 0 as true value.
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_boolean(
+astarte_result_t astarte_bson_serializer_append_boolean(
     astarte_bson_serializer_t *bson, const char *name, bool value);
 
 /**
@@ -177,8 +185,9 @@ void astarte_bson_serializer_append_boolean(
  * @param[in,out] bson a valid handle for the serializer instance.
  * @param[in] name BSON element name, which is a C string.
  * @param[in] document a valid BSON document (that has been already terminated).
+ * @return ASTARTE_RESULT_OK upon success, an error on failure.
  */
-void astarte_bson_serializer_append_document(
+astarte_result_t astarte_bson_serializer_append_document(
     astarte_bson_serializer_t *bson, const char *name, const void *document);
 
 /**

@@ -142,28 +142,6 @@ const void *astarte_bson_serializer_get_serialized(const astarte_bson_serializer
     return bson->buf;
 }
 
-astarte_result_t astarte_bson_serializer_get_serialized_copy(
-    const astarte_bson_serializer_t *bson, void *out_buf, int out_buf_size, int *out_doc_size)
-{
-    size_t doc_size = bson->size;
-    if (out_doc_size) {
-        *out_doc_size = (int) doc_size;
-    }
-
-    if (out_buf_size < bson->size) {
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    memcpy(out_buf, bson->buf, doc_size);
-
-    return ASTARTE_RESULT_OK;
-}
-
-size_t astarte_bson_serializer_get_serialized_size(const astarte_bson_serializer_t *bson)
-{
-    return bson->size;
-}
-
 astarte_result_t astarte_bson_serializer_append_end_of_document(astarte_bson_serializer_t *bson)
 {
     astarte_result_t res = byte_array_append_byte(bson, '\0');

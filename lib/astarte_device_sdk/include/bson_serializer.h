@@ -62,30 +62,6 @@ const void *astarte_bson_serializer_get_serialized(
     const astarte_bson_serializer_t *bson, int *size);
 
 /**
- * @brief Copy and return the BSON serializer internal buffer.
- *
- * @details This function should be used to get a copy of the BSON document data. The document
- * should be terminated by calling the append end of document function before calling this function.
- * @param[in] bson a valid handle for the serializer instance.
- * @param[out] out_buf destination buffer, previously allocated.
- * @param[in] out_buf_size destination buffer size.
- * @param[out] out_doc_size BSON document size (that is <= out_buf_size).
- * Optional, pass NULL if not used.
- * @return ASTARTE_RESULT_OK on success, otherwise an error is returned.
- */
-astarte_result_t astarte_bson_serializer_get_serialized_copy(
-    const astarte_bson_serializer_t *bson, void *out_buf, int out_buf_size, int *out_doc_size);
-
-/**
- * @brief return the document size
- *
- * @details This function returns BSON document size in bytes.
- * @param[in] bson a valid handle for the serializer instance.
- * @return Size in bytes for the serialized document.
- */
-size_t astarte_bson_serializer_get_serialized_size(const astarte_bson_serializer_t *bson);
-
-/**
  * @brief append end of document marker.
  *
  * @details BSON document MUST be manually terminated with an end of document marker.

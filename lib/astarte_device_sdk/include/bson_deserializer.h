@@ -17,6 +17,9 @@
  */
 
 #include "astarte_device_sdk/result.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /** @brief Bson document object */
 typedef struct
@@ -62,7 +65,7 @@ bool astarte_bson_deserializer_check_validity(const uint8_t *buffer, size_t buff
  * @brief Initialize a document type from a BSON data buffer.
  *
  * @param[in] buffer Buffer containing the BSON data.
- * @return Initialized document struct.
+ * @return Initialized document struct. Returns an empty struct if buffer is NULL.
  */
 astarte_bson_document_t astarte_bson_deserializer_init_doc(const uint8_t *buffer);
 

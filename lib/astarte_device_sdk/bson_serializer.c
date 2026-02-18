@@ -16,115 +16,109 @@
 
 ASTARTE_LOG_MODULE_REGISTER(bson_serializer, CONFIG_ASTARTE_DEVICE_SDK_BSON_LOG_LEVEL);
 
+/************************************************
+ *        Defines, constants and typedef        *
+ ***********************************************/
+
 // When serializing a C array into a BSON array, this is the maximum allowed size of the string
 // field array length. 12 chars corresponding to 999999999999 elements.
 #define BSON_ARRAY_SIZE_STR_LEN 12
 
-static void uint32_to_bytes(uint32_t input, uint8_t out[static sizeof(uint32_t)])
-{
-    uint32_t tmp = sys_cpu_to_le32(input);
-    memcpy(out, &tmp, sizeof(tmp));
-}
+/************************************************
+ *         Static functions declaration         *
+ ***********************************************/
 
-static void int32_to_bytes(int32_t input, uint8_t out[static sizeof(int32_t)])
-{
-    uint32_t raw_bits = 0;
-    memcpy(&raw_bits, &input, sizeof(int32_t));
-    uint32_t tmp = sys_cpu_to_le32(raw_bits);
-    memcpy(out, &tmp, sizeof(tmp));
-}
-
-static void uint64_to_bytes(uint64_t input, uint8_t out[static sizeof(uint64_t)])
-{
-    uint64_t tmp = sys_cpu_to_le64(input);
-    memcpy(out, &tmp, sizeof(tmp));
-}
-
-static void int64_to_bytes(int64_t input, uint8_t out[static sizeof(int64_t)])
-{
-    int64_t raw_bits = 0;
-    memcpy(&raw_bits, &input, sizeof(int64_t));
-    int64_t tmp = sys_cpu_to_le64(raw_bits);
-    memcpy(out, &tmp, sizeof(tmp));
-}
-
-static void double_to_bytes(double input, uint8_t out[static sizeof(double)])
-{
-    uint64_t raw_bits = 0;
-    memcpy(&raw_bits, &input, sizeof(double));
-    uint64_t tmp = sys_cpu_to_le64(raw_bits);
-    memcpy(out, &tmp, sizeof(tmp));
-}
-
-static astarte_result_t byte_array_init(astarte_bson_serializer_t *bson, void *bytes, size_t size)
-{
-    bson->capacity = size;
-    bson->size = size;
-    bson->buf = malloc(size);
-
-    if (!bson->buf) {
-        ASTARTE_LOG_ERR("Cannot allocate memory for BSON payload (size: %zu)!", size);
-        return ASTARTE_RESULT_OUT_OF_MEMORY;
-    }
-
-    memcpy(bson->buf, bytes, size);
-    return ASTARTE_RESULT_OK;
-}
-
-static void byte_array_destroy(astarte_bson_serializer_t *bson)
-{
-    bson->capacity = 0;
-    bson->size = 0;
-    free(bson->buf);
-    bson->buf = NULL;
-}
-
-static astarte_result_t byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
-{
-    if (bson->size + needed_size > bson->capacity) {
-        size_t new_capacity = MAX(bson->capacity * 2, 64);
-        if (new_capacity < bson->capacity + needed_size) {
-            new_capacity = bson->capacity + needed_size;
-        }
-        void *new_buf = realloc(bson->buf, new_capacity);
-        if (!new_buf) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            return ASTARTE_RESULT_OUT_OF_MEMORY;
-        }
-        bson->capacity = new_capacity;
-        bson->buf = new_buf;
-    }
-    return ASTARTE_RESULT_OK;
-}
-
-static astarte_result_t byte_array_append_byte(astarte_bson_serializer_t *bson, uint8_t byte)
-{
-    astarte_result_t res = byte_array_grow(bson, sizeof(uint8_t));
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
-    }
-    bson->buf[bson->size] = byte;
-    bson->size++;
-    return ASTARTE_RESULT_OK;
-}
-
+/**
+ * @brief Serialize a input into an array of bytes in little endian.
+ *
+ * @param[in] input Input data.
+ * @param[out] out Output serialized data.
+ */
+static void uint32_to_bytes(uint32_t input, uint8_t out[static sizeof(uint32_t)]);
+/**
+ * @brief Serialize a input into an array of bytes in little endian.
+ *
+ * @param[in] input Input data.
+ * @param[out] out Output serialized data.
+ */
+static void int32_to_bytes(int32_t input, uint8_t out[static sizeof(int32_t)]);
+/**
+ * @brief Serialize a input into an array of bytes in little endian.
+ *
+ * @param[in] input Input data.
+ * @param[out] out Output serialized data.
+ */
+static void uint64_to_bytes(uint64_t input, uint8_t out[static sizeof(uint64_t)]);
+/**
+ * @brief Serialize a input into an array of bytes in little endian.
+ *
+ * @param[in] input Input data.
+ * @param[out] out Output serialized data.
+ */
+static void int64_to_bytes(int64_t input, uint8_t out[static sizeof(int64_t)]);
+/**
+ * @brief Serialize a input into an array of bytes in little endian.
+ *
+ * @param[in] input Input data.
+ * @param[out] out Output serialized data.
+ */
+static void double_to_bytes(double input, uint8_t out[static sizeof(double)]);
+/**
+ * @brief Initialize a byte array.
+ *
+ * @param[out] bson The bson struct where to store the byte array.
+ * @param[in] bytes The initial data in the byte array.
+ * @param[in] size Size of @p bytes in bytes.
+ * @return #ASTARTE_RESULT_OK on success, an error otherwise.
+ */
+static astarte_result_t byte_array_init(astarte_bson_serializer_t *bson, void *bytes, size_t size);
+/**
+ * @brief Destroy (free) a byte array.
+ *
+ * @param[in] bson The bson struct where the byte array is stored.
+ */
+static void byte_array_destroy(astarte_bson_serializer_t *bson);
+/**
+ * @brief Expand (realloc) a byte array.
+ *
+ * @param[in,out] bson The bson struct where the byte array is stored.
+ * @param[in] needed_size New required size for the array.
+ * @return #ASTARTE_RESULT_OK on success, an error otherwise.
+ */
+static astarte_result_t byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size);
+/**
+ * @brief Append a byte in the byte array.
+ *
+ * @param[in,out] bson The bson struct where the byte array is stored.
+ * @param[in] byte Byte to append.
+ * @return #ASTARTE_RESULT_OK on success, an error otherwise.
+ */
+static astarte_result_t byte_array_append_byte(astarte_bson_serializer_t *bson, uint8_t byte);
+/**
+ * @brief Append a byte array to the byte array.
+ *
+ * @param[in,out] bson The bson struct where the byte array is stored.
+ * @param[in] bytes The byte array to append.
+ * @param[in] count The size of @p bytes in bytes.
+ * @return #ASTARTE_RESULT_OK on success, an error otherwise.
+ */
 static astarte_result_t byte_array_append(
-    astarte_bson_serializer_t *bson, const void *bytes, size_t count)
-{
-    astarte_result_t res = byte_array_grow(bson, count);
-    if (res != ASTARTE_RESULT_OK) {
-        return res;
-    }
-    memcpy(bson->buf + bson->size, bytes, count);
-    bson->size += count;
-    return ASTARTE_RESULT_OK;
-}
-
+    astarte_bson_serializer_t *bson, const void *bytes, size_t count);
+/**
+ * @brief Replace a portion of data in a byte array.
+ *
+ * @param[in,out] bson The bson struct where the byte array is stored.
+ * @param[in] pos The position within the byte array where the replacing should start.
+ * @param[in] bytes The new content to use.
+ * @param[in] count The size of @p bytes in bytes.
+ * @return #ASTARTE_RESULT_OK on success, an error otherwise.
+ */
 static void byte_array_replace(
-    astarte_bson_serializer_t *bson, unsigned int pos, size_t count, const uint8_t *bytes)
-{
-    memcpy(bson->buf + pos, bytes, count);
-}
+    astarte_bson_serializer_t *bson, unsigned int pos, const uint8_t *bytes, size_t count);
+
+/************************************************
+ * Global functions definitions         *
+ ***********************************************/
 
 astarte_result_t astarte_bson_serializer_init(astarte_bson_serializer_t *bson)
 {
@@ -180,7 +174,7 @@ astarte_result_t astarte_bson_serializer_append_end_of_document(astarte_bson_ser
     uint8_t size_buf[4] = { 0 };
     uint32_to_bytes(bson->size, size_buf);
 
-    byte_array_replace(bson, 0, sizeof(int32_t), size_buf);
+    byte_array_replace(bson, 0, size_buf, sizeof(int32_t));
     return ASTARTE_RESULT_OK;
 }
 
@@ -415,4 +409,114 @@ astarte_result_t astarte_bson_serializer_append_binary_array(astarte_bson_serial
     astarte_bson_serializer_destroy(&array_ser);
 
     return ares;
+}
+
+/************************************************
+ * Static functions definitions         *
+ ***********************************************/
+
+static void uint32_to_bytes(uint32_t input, uint8_t out[static sizeof(uint32_t)])
+{
+    uint32_t tmp = sys_cpu_to_le32(input);
+    memcpy(out, &tmp, sizeof(tmp));
+}
+
+static void int32_to_bytes(int32_t input, uint8_t out[static sizeof(int32_t)])
+{
+    uint32_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(int32_t));
+    uint32_t tmp = sys_cpu_to_le32(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
+}
+
+static void uint64_to_bytes(uint64_t input, uint8_t out[static sizeof(uint64_t)])
+{
+    uint64_t tmp = sys_cpu_to_le64(input);
+    memcpy(out, &tmp, sizeof(tmp));
+}
+
+static void int64_to_bytes(int64_t input, uint8_t out[static sizeof(int64_t)])
+{
+    int64_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(int64_t));
+    int64_t tmp = sys_cpu_to_le64(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
+}
+
+static void double_to_bytes(double input, uint8_t out[static sizeof(double)])
+{
+    uint64_t raw_bits = 0;
+    memcpy(&raw_bits, &input, sizeof(double));
+    uint64_t tmp = sys_cpu_to_le64(raw_bits);
+    memcpy(out, &tmp, sizeof(tmp));
+}
+
+static astarte_result_t byte_array_init(astarte_bson_serializer_t *bson, void *bytes, size_t size)
+{
+    bson->capacity = size;
+    bson->size = size;
+    bson->buf = malloc(size);
+
+    if (!bson->buf) {
+        ASTARTE_LOG_ERR("Cannot allocate memory for BSON payload (size: %zu)!", size);
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
+
+    memcpy(bson->buf, bytes, size);
+    return ASTARTE_RESULT_OK;
+}
+
+static void byte_array_destroy(astarte_bson_serializer_t *bson)
+{
+    bson->capacity = 0;
+    bson->size = 0;
+    free(bson->buf);
+    bson->buf = NULL;
+}
+
+static astarte_result_t byte_array_grow(astarte_bson_serializer_t *bson, size_t needed_size)
+{
+    if (bson->size + needed_size > bson->capacity) {
+        size_t new_capacity = MAX(bson->capacity * 2, 64);
+        if (new_capacity < bson->capacity + needed_size) {
+            new_capacity = bson->capacity + needed_size;
+        }
+        void *new_buf = realloc(bson->buf, new_capacity);
+        if (!new_buf) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
+        }
+        bson->capacity = new_capacity;
+        bson->buf = new_buf;
+    }
+    return ASTARTE_RESULT_OK;
+}
+
+static astarte_result_t byte_array_append_byte(astarte_bson_serializer_t *bson, uint8_t byte)
+{
+    astarte_result_t res = byte_array_grow(bson, sizeof(uint8_t));
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
+    bson->buf[bson->size] = byte;
+    bson->size++;
+    return ASTARTE_RESULT_OK;
+}
+
+static astarte_result_t byte_array_append(
+    astarte_bson_serializer_t *bson, const void *bytes, size_t count)
+{
+    astarte_result_t res = byte_array_grow(bson, count);
+    if (res != ASTARTE_RESULT_OK) {
+        return res;
+    }
+    memcpy(bson->buf + bson->size, bytes, count);
+    bson->size += count;
+    return ASTARTE_RESULT_OK;
+}
+
+static void byte_array_replace(
+    astarte_bson_serializer_t *bson, unsigned int pos, const uint8_t *bytes, size_t count)
+{
+    memcpy(bson->buf + pos, bytes, count);
 }

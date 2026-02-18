@@ -10,13 +10,19 @@
 
 #include <zephyr/net/socket.h>
 
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/ecp.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/oid.h>
+#include <psa/crypto.h>
+
+// #include <mbedtls/ctr_drbg.h>
+// #include <mbedtls/ecp.h>
+// #include <mbedtls/entropy.h>
+// #include <mbedtls/oid.h>
+
 #include <mbedtls/pk.h>
-#include <mbedtls/x509_crt.h>
-#include <mbedtls/x509_csr.h>
+// #include <mbedtls/x509_crt.h>
+// #include <mbedtls/x509_csr.h>
+
+// #include "mbedtls/error.h"
+// #include "mbedtls/pem.h"
 
 #include "log.h"
 
@@ -29,6 +35,8 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG
 /************************************************
  *        Defines, constants and typedef        *
  ***********************************************/
+
+const size_t PSA_KEY_BITS = 256;
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -45,60 +53,100 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG
 astarte_result_t astarte_crypto_create_key(unsigned char *privkey_pem, size_t privkey_pem_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
-    if (privkey_pem_size < ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE) {
-        ASTARTE_LOG_ERR("Insufficient output buffer size for client private key.");
-        return ASTARTE_RESULT_INVALID_PARAM;
+//     if (privkey_pem_size < ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE) {
+//         ASTARTE_LOG_ERR("Insufficient output buffer size for client private key.");
+//         return ASTARTE_RESULT_INVALID_PARAM;
+//     }
+
+    // initialize PSA
+    psa_status_t psa_ret = psa_crypto_init();
+    if(psa_ret != PSA_SUCCESS) {
+        ASTARTE_LOG_ERR("psa_crypto_init returned %d", psa_ret);
+        return ASTARTE_RESULT_MBEDTLS_ERROR;
     }
 
-    mbedtls_pk_context key = { 0 };
-    mbedtls_entropy_context entropy = { 0 };
-    mbedtls_ctr_drbg_context ctr_drbg = { 0 };
-    const char *pers = "astarte_credentials_create_key";
+    mbedtls_svc_key_id_t *key_id = PSA_KEY_ID_NULL;
 
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-    mbedtls_pk_init(&key);
-    mbedtls_entropy_init(&entropy);
+//     mbedtls_pk_context key = { 0 };
+//     mbedtls_entropy_context entropy = { 0 };
+//     mbedtls_ctr_drbg_context ctr_drbg = { 0 };
+//     const char *pers = "astarte_credentials_create_key";
 
-    ASTARTE_LOG_DBG("Initializing entropy");
-    int ret = mbedtls_ctr_drbg_seed(
-        &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
-        goto exit;
-    }
+//     mbedtls_ctr_drbg_init(&ctr_drbg);
+//     mbedtls_pk_init(&key);
+
+//     // entropy initialization is automatically handled by PSA
+//     // mbedtls_entropy_init(&entropy);
+
+//     ASTARTE_LOG_DBG("Initializing entropy");
+//     int ret = mbedtls_ctr_drbg_seed(
+//         &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
+//         goto exit;
+//     }
 
     ASTARTE_LOG_DBG("Generating the EC key (using curve secp256r1)");
 
-    ret = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_pk_setup returned %d", ret);
+    psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+    psa_set_key_algorithm(&attributes, PSA_ECC_FAMILY_SECP_R1);
+    psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_MESSAGE | PSA_KEY_USAGE_EXPORT);
+    psa_set_key_type(&attributes, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_bits(&attributes, PSA_KEY_BITS);
+
+    psa_ret = psa_generate_key(&attributes, key_id);
+    if(psa_ret != PSA_SUCCESS) {
+        ASTARTE_LOG_ERR("psa_generate_key returned %d", psa_ret);
         goto exit;
     }
 
-    ret = mbedtls_ecp_gen_key(
-        MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(key), mbedtls_ctr_drbg_random, &ctr_drbg);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_ecp_gen_key returned %d", ret);
+//     ret = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_pk_setup returned %d", ret);
+//         goto exit;
+//     }
+
+//     ret = mbedtls_ecp_gen_key(
+//         MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(key), mbedtls_ctr_drbg_random, &ctr_drbg);
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_ecp_gen_key returned %d", ret);
+//         goto exit;
+//     }
+
+    mbedtls_pk_context *key_ctx;
+    mbedtls_pk_init(key_ctx);
+    int pk_ret = mbedtls_pk_copy_from_psa(*key_id, key_ctx);
+    if(pk_ret != 0){
+        ASTARTE_LOG_ERR("mbedtls_pk_copy_from_psa returned %d", pk_ret);
         goto exit;
     }
 
-    ASTARTE_LOG_DBG("Key succesfully generated");
+//     ASTARTE_LOG_DBG("Key succesfully generated");
 
-    ret = mbedtls_pk_write_key_pem(&key, privkey_pem, privkey_pem_size);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_pk_write_key_pem returned %d", ret);
-        goto exit;
-    }
+//     ret = mbedtls_pk_write_key_pem(&key, privkey_pem, privkey_pem_size);
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_pk_write_key_pem returned %d", ret);
+//         goto exit;
+//     }
 
-    ASTARTE_LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem);
+//     ASTARTE_LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem);
 
-    ares = ASTARTE_RESULT_OK;
+//     ares = ASTARTE_RESULT_OK;
 
 exit:
 
-    mbedtls_pk_free(&key);
-    mbedtls_ctr_drbg_free(&ctr_drbg);
-    mbedtls_entropy_free(&entropy);
+//     mbedtls_pk_free(&key);
+//     mbedtls_ctr_drbg_free(&ctr_drbg);
+//     mbedtls_entropy_free(&entropy);
+
+    if (*key_id != PSA_KEY_ID_NULL) {
+        psa_ret = psa_destroy_key(*key_id);
+        if (psa_ret != PSA_SUCCESS) {
+        ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+        }
+    }
+
+    mbedtls_pk_free(key_ctx);
 
     return ares;
 }
@@ -107,70 +155,70 @@ astarte_result_t astarte_crypto_create_csr(
     const unsigned char *privkey_pem, unsigned char *csr_pem, size_t csr_pem_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
-    if (csr_pem_size < ASTARTE_CRYPTO_CSR_BUFFER_SIZE) {
-        ASTARTE_LOG_ERR("Insufficient output buffer size for certificate signing request.");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
+//     if (csr_pem_size < ASTARTE_CRYPTO_CSR_BUFFER_SIZE) {
+//         ASTARTE_LOG_ERR("Insufficient output buffer size for certificate signing request.");
+//         return ASTARTE_RESULT_INVALID_PARAM;
+//     }
 
-    mbedtls_pk_context key = { 0 };
-    mbedtls_x509write_csr req = { 0 };
-    mbedtls_entropy_context entropy = { 0 };
-    mbedtls_ctr_drbg_context ctr_drbg = { 0 };
-    const char *pers = "astarte_credentials_create_csr";
+//     mbedtls_pk_context key = { 0 };
+//     mbedtls_x509write_csr req = { 0 };
+//     mbedtls_entropy_context entropy = { 0 };
+//     mbedtls_ctr_drbg_context ctr_drbg = { 0 };
+//     const char *pers = "astarte_credentials_create_csr";
 
-    mbedtls_x509write_csr_init(&req);
-    mbedtls_pk_init(&key);
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-    mbedtls_entropy_init(&entropy);
+//     mbedtls_x509write_csr_init(&req);
+//     mbedtls_pk_init(&key);
+//     mbedtls_ctr_drbg_init(&ctr_drbg);
+//     mbedtls_entropy_init(&entropy);
 
-    mbedtls_x509write_csr_set_md_alg(&req, MBEDTLS_MD_SHA256);
-    mbedtls_x509write_csr_set_ns_cert_type(&req, MBEDTLS_X509_NS_CERT_TYPE_SSL_CLIENT);
+//     mbedtls_x509write_csr_set_md_alg(&req, MBEDTLS_MD_SHA256);
+//     mbedtls_x509write_csr_set_ns_cert_type(&req, MBEDTLS_X509_NS_CERT_TYPE_SSL_CLIENT);
 
-    // We set the CN to a temporary value, it's just a placeholder since Pairing API will change it
-    int ret = mbedtls_x509write_csr_set_subject_name(&req, "CN=temporary");
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_x509write_csr_set_subject_name returned %d", ret);
-        goto exit;
-    }
+//     // We set the CN to a temporary value, it's just a placeholder since Pairing API will change it
+//     int ret = mbedtls_x509write_csr_set_subject_name(&req, "CN=temporary");
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_x509write_csr_set_subject_name returned %d", ret);
+//         goto exit;
+//     }
 
-    ASTARTE_LOG_DBG("Initializing entropy");
-    ret = mbedtls_ctr_drbg_seed(
-        &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
-        goto exit;
-    }
+//     ASTARTE_LOG_DBG("Initializing entropy");
+//     ret = mbedtls_ctr_drbg_seed(
+//         &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers));
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
+//         goto exit;
+//     }
 
-    ASTARTE_LOG_DBG("Creating the private key");
+//     ASTARTE_LOG_DBG("Creating the private key");
 
-    ret = mbedtls_pk_parse_key(
-        &key, privkey_pem, strlen(privkey_pem) + 1, NULL, 0, mbedtls_ctr_drbg_random, &ctr_drbg);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_pk_parse_key returned %d", ret);
-        goto exit;
-    }
+//     ret = mbedtls_pk_parse_key(
+//         &key, privkey_pem, strlen(privkey_pem) + 1, NULL, 0, mbedtls_ctr_drbg_random, &ctr_drbg);
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_pk_parse_key returned %d", ret);
+//         goto exit;
+//     }
 
-    mbedtls_x509write_csr_set_key(&req, &key);
+//     mbedtls_x509write_csr_set_key(&req, &key);
 
-    ret = mbedtls_x509write_csr_pem(
-        &req, csr_pem, csr_pem_size, mbedtls_ctr_drbg_random, &ctr_drbg);
-    if (ret != 0) {
-        ASTARTE_LOG_ERR("mbedtls_x509write_csr_pem returned %d", ret);
-        goto exit;
-    }
+//     ret = mbedtls_x509write_csr_pem(
+//         &req, csr_pem, csr_pem_size, mbedtls_ctr_drbg_random, &ctr_drbg);
+//     if (ret != 0) {
+//         ASTARTE_LOG_ERR("mbedtls_x509write_csr_pem returned %d", ret);
+//         goto exit;
+//     }
 
-    ASTARTE_LOG_DBG("CSR succesfully created.");
+//     ASTARTE_LOG_DBG("CSR succesfully created.");
 
-    ASTARTE_LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem);
+//     ASTARTE_LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem);
 
-    ares = ASTARTE_RESULT_OK;
+//     ares = ASTARTE_RESULT_OK;
 
-exit:
+// exit:
 
-    mbedtls_x509write_csr_free(&req);
-    mbedtls_pk_free(&key);
-    mbedtls_ctr_drbg_free(&ctr_drbg);
-    mbedtls_entropy_free(&entropy);
+//     mbedtls_x509write_csr_free(&req);
+//     mbedtls_pk_free(&key);
+//     mbedtls_ctr_drbg_free(&ctr_drbg);
+//     mbedtls_entropy_free(&entropy);
 
     return ares;
 }
@@ -179,38 +227,38 @@ astarte_result_t astarte_crypto_get_certificate_info(
     const char *cert_pem, char *cert_cn, size_t cert_cn_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
-    mbedtls_x509_crt crt = { 0 };
-    mbedtls_x509_crt_init(&crt);
+//     mbedtls_x509_crt crt = { 0 };
+//     mbedtls_x509_crt_init(&crt);
 
-    size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation
-    int ret = mbedtls_x509_crt_parse(&crt, (unsigned char *) cert_pem, cert_length);
-    if (ret < 0) {
-        ASTARTE_LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret);
-        goto exit;
-    }
+//     size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation
+//     int ret = mbedtls_x509_crt_parse(&crt, (unsigned char *) cert_pem, cert_length);
+//     if (ret < 0) {
+//         ASTARTE_LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret);
+//         goto exit;
+//     }
 
-    mbedtls_x509_name *subj_it = &crt.subject;
-    while (subj_it && (MBEDTLS_OID_CMP(MBEDTLS_OID_AT_CN, &subj_it->oid) != 0)) {
-        subj_it = subj_it->next;
-    }
+//     mbedtls_x509_name *subj_it = &crt.subject;
+//     while (subj_it && (MBEDTLS_OID_CMP(MBEDTLS_OID_AT_CN, &subj_it->oid) != 0)) {
+//         subj_it = subj_it->next;
+//     }
 
-    if (!subj_it) {
-        ASTARTE_LOG_ERR("CN not found in certificate");
-        ares = ASTARTE_RESULT_NOT_FOUND;
-        goto exit;
-    }
+//     if (!subj_it) {
+//         ASTARTE_LOG_ERR("CN not found in certificate");
+//         ares = ASTARTE_RESULT_NOT_FOUND;
+//         goto exit;
+//     }
 
-    ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
-    if ((ret < 0) || (ret >= cert_cn_size)) {
-        ASTARTE_LOG_ERR("Error encoding certificate common name");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
-    }
+//     ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
+//     if ((ret < 0) || (ret >= cert_cn_size)) {
+//         ASTARTE_LOG_ERR("Error encoding certificate common name");
+//         ares = ASTARTE_RESULT_INTERNAL_ERROR;
+//         goto exit;
+//     }
 
-    ares = ASTARTE_RESULT_OK;
+//     ares = ASTARTE_RESULT_OK;
 
-exit:
-    mbedtls_x509_crt_free(&crt);
+// exit:
+//     mbedtls_x509_crt_free(&crt);
 
     return ares;
 }

@@ -5,6 +5,8 @@
  */
 #include "tls_credentials.h"
 
+#include <psa/crypto.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/net/tls_credentials.h>
 
@@ -23,6 +25,10 @@ astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t
         TLS_CREDENTIAL_SERVER_CERTIFICATE, client_crt->crt_pem, strlen(client_crt->crt_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client crt to credentials %d.", tls_rc);
+        psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
+        if (psa_ret != PSA_SUCCESS) {
+            ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+        }
         memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
         memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;
@@ -34,6 +40,10 @@ astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t
         ASTARTE_LOG_ERR("Failed adding client private key to credentials %d.", tls_rc);
         tls_credential_delete(
             CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+        psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
+        if (psa_ret != PSA_SUCCESS) {
+            ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+        }
         memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
         memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;

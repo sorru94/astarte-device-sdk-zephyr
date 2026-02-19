@@ -72,6 +72,10 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
         device->http_timeout_ms, device->device_id, device->cred_secr, client_crt);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed getting the client TLS cert: %s.", astarte_result_to_name(ares));
+        psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
+        if (psa_ret != PSA_SUCCESS) {
+            ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+        }
         memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
         memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
         return ares;

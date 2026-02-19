@@ -295,14 +295,14 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     // Step 2: create a private key and a CSR
-    ares = astarte_crypto_create_key(client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
+    ares = astarte_crypto_create_key(client_crt);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
         return ares;
     }
 
     unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
-    ares = astarte_crypto_create_csr(client_crt->privkey_pem, csr_buf, sizeof(csr_buf));
+    ares = astarte_crypto_create_csr(&client_crt->privkey, csr_buf, sizeof(csr_buf));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
         return ares;

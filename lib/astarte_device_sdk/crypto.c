@@ -15,14 +15,6 @@
 #include <mbedtls/x509_csr.h>
 #include <psa/crypto.h>
 
-// #include <mbedtls/ctr_drbg.h>
-// #include <mbedtls/ecp.h>
-// #include <mbedtls/entropy.h>
-// #include <mbedtls/oid.h>
-
-// #include "mbedtls/error.h"
-// #include "mbedtls/pem.h"
-
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG_LEVEL);
@@ -35,8 +27,8 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_crypto, CONFIG_ASTARTE_DEVICE_SDK_CRYPTO_LOG
  *        Defines, constants and typedef        *
  ***********************************************/
 
-const size_t PSA_KEY_BITS = 256;
-const char* const CSR_SUBJECT_NAME = "CN=temporary";
+static const size_t psa_key_bits = 256;
+static const char *const csr_subject_name = "CN=temporary";
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -55,11 +47,11 @@ astarte_result_t astarte_crypto_create_key(astarte_tls_credentials_client_crt_t 
     astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
 
     mbedtls_svc_key_id_t key_id = PSA_KEY_ID_NULL;
-    mbedtls_pk_context key_ctx = {0};
+    mbedtls_pk_context key_ctx = { 0 };
 
     // initialize PSA
     psa_status_t psa_ret = psa_crypto_init();
-    if(psa_ret != PSA_SUCCESS) {
+    if (psa_ret != PSA_SUCCESS) {
         ASTARTE_LOG_ERR("psa_crypto_init returned %d", psa_ret);
         goto exit;
     }
@@ -68,12 +60,13 @@ astarte_result_t astarte_crypto_create_key(astarte_tls_credentials_client_crt_t 
 
     psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
     psa_set_key_algorithm(&attributes, PSA_ECC_FAMILY_SECP_R1);
-    psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_SIGN_MESSAGE | PSA_KEY_USAGE_EXPORT);
+    psa_set_key_usage_flags(
+        &attributes, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_SIGN_MESSAGE | PSA_KEY_USAGE_EXPORT);
     psa_set_key_type(&attributes, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
-    psa_set_key_bits(&attributes, PSA_KEY_BITS);
+    psa_set_key_bits(&attributes, psa_key_bits);
 
     psa_ret = psa_generate_key(&attributes, &key_id);
-    if(psa_ret != PSA_SUCCESS) {
+    if (psa_ret != PSA_SUCCESS) {
         ASTARTE_LOG_ERR("psa_generate_key returned %d", psa_ret);
         if (psa_destroy_key(key_id) != PSA_SUCCESS) {
             ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
@@ -86,14 +79,15 @@ astarte_result_t astarte_crypto_create_key(astarte_tls_credentials_client_crt_t 
 
     mbedtls_pk_init(&key_ctx);
     int pk_ret = mbedtls_pk_copy_from_psa(key_id, &key_ctx);
-    if(pk_ret != 0){
+    if (pk_ret != 0) {
         ASTARTE_LOG_ERR("mbedtls_pk_copy_from_psa returned %d", pk_ret);
         goto exit;
     }
 
     ASTARTE_LOG_DBG("PEM key succesfully generated");
 
-    pk_ret = mbedtls_pk_write_key_pem(&key_ctx, client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
+    pk_ret = mbedtls_pk_write_key_pem(
+        &key_ctx, client_crt->privkey_pem, ARRAY_SIZE(client_crt->privkey_pem));
     if (pk_ret != 0) {
         ASTARTE_LOG_ERR("mbedtls_pk_write_key_pem returned %d", pk_ret);
         goto exit;
@@ -119,18 +113,18 @@ astarte_result_t astarte_crypto_create_csr(
 
     // initialize PSA
     psa_status_t psa_ret = psa_crypto_init();
-    if(psa_ret != PSA_SUCCESS) {
+    if (psa_ret != PSA_SUCCESS) {
         ASTARTE_LOG_ERR("psa_crypto_init returned %d", psa_ret);
         return ASTARTE_RESULT_MBEDTLS_ERROR;
     }
 
-    mbedtls_pk_context key_ctx = {0};
+    mbedtls_pk_context key_ctx = { 0 };
     mbedtls_x509write_csr csr_ctx = { 0 };
     mbedtls_pk_init(&key_ctx);
     mbedtls_x509write_csr_init(&csr_ctx);
 
     int res = mbedtls_pk_copy_from_psa(*privkey, &key_ctx);
-    if(res != 0) {
+    if (res != 0) {
         ASTARTE_LOG_ERR("mbedtls_pk_copy_from_psa returned %d", res);
         goto exit;
     }
@@ -138,14 +132,14 @@ astarte_result_t astarte_crypto_create_csr(
     // configure the CSR
     mbedtls_x509write_csr_set_key(&csr_ctx, &key_ctx);
     mbedtls_x509write_csr_set_md_alg(&csr_ctx, MBEDTLS_MD_SHA256);
-    res = mbedtls_x509write_csr_set_subject_name(&csr_ctx, CSR_SUBJECT_NAME);
-    if(res != 0) {
+    res = mbedtls_x509write_csr_set_subject_name(&csr_ctx, csr_subject_name);
+    if (res != 0) {
         ASTARTE_LOG_ERR("mbedtls_x509write_csr_set_subject_name returned %d", res);
         goto exit;
     }
 
     res = mbedtls_x509write_csr_pem(&csr_ctx, csr_pem, csr_pem_size, NULL, NULL);
-    if(res != 0) {
+    if (res != 0) {
         ASTARTE_LOG_ERR("mbedtls_x509write_csr_pem returned %d", res);
         goto exit;
     }
@@ -162,45 +156,6 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_crypto_get_certificate_info(
-    const char *cert_pem, char *cert_cn, size_t cert_cn_size)
-{
-    astarte_result_t ares = ASTARTE_RESULT_MBEDTLS_ERROR;
-//     mbedtls_x509_crt crt = { 0 };
-//     mbedtls_x509_crt_init(&crt);
-
-//     size_t cert_length = strlen(cert_pem) + 1; // + 1 for NULL terminator, as per documentation
-//     int ret = mbedtls_x509_crt_parse(&crt, (unsigned char *) cert_pem, cert_length);
-//     if (ret < 0) {
-//         ASTARTE_LOG_ERR("mbedtls_x509_crt_parse_file returned %d", ret);
-//         goto exit;
-//     }
-
-//     mbedtls_x509_name *subj_it = &crt.subject;
-//     while (subj_it && (MBEDTLS_OID_CMP(MBEDTLS_OID_AT_CN, &subj_it->oid) != 0)) {
-//         subj_it = subj_it->next;
-//     }
-
-//     if (!subj_it) {
-//         ASTARTE_LOG_ERR("CN not found in certificate");
-//         ares = ASTARTE_RESULT_NOT_FOUND;
-//         goto exit;
-//     }
-
-//     ret = snprintf(cert_cn, cert_cn_size, "%.*s", subj_it->val.len, subj_it->val.p);
-//     if ((ret < 0) || (ret >= cert_cn_size)) {
-//         ASTARTE_LOG_ERR("Error encoding certificate common name");
-//         ares = ASTARTE_RESULT_INTERNAL_ERROR;
-//         goto exit;
-//     }
-
-//     ares = ASTARTE_RESULT_OK;
-
-// exit:
-//     mbedtls_x509_crt_free(&crt);
-
-    return ares;
-}
 /************************************************
  *         Static functions definitions         *
  ***********************************************/

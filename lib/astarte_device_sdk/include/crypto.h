@@ -44,17 +44,6 @@ astarte_result_t astarte_crypto_create_key(astarte_tls_credentials_client_crt_t 
 astarte_result_t astarte_crypto_create_csr(
     const mbedtls_svc_key_id_t *privkey, unsigned char *csr_pem, size_t csr_pem_size);
 
-/**
- * @brief Get the common name for a PEM certificate.
- *
- * @param[in] cert_pem Certificate in the PEM format.
- * @param[out] cert_cn Resulting common name.
- * @param[in] cert_cn_size Size of preallocated common name buffer
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
- */
-astarte_result_t astarte_crypto_get_certificate_info(
-    const char *cert_pem, char *cert_cn, size_t cert_cn_size);
-
 #ifdef __cplusplus
 }
 #endif

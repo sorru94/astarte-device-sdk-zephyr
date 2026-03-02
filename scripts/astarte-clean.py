@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""clean.py
+"""astarte-clean.py
 
 West extension that can be used to clean temporary build artifacts.
 
@@ -20,12 +20,12 @@ from colored import fore, stylize
 from west.commands import WestCommand
 
 
-class WestCommandClean(WestCommand):
+class WestCommandAstarteClean(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
         super().__init__(
-            "clean",
+            "astarte-clean",
             "Clean build artifacts",
             dedent("""Convenience wrapper to clean temporary build artifacts."""),
         )
@@ -51,7 +51,7 @@ class WestCommandClean(WestCommand):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west clean
+          $ west astarte-clean
 
         """
 

@@ -39,7 +39,7 @@ add_custom_target(astarte_generate_interfaces DEPENDS ${interfaces_output_files}
 add_custom_command(
   OUTPUT ${interfaces_output_files}
   COMMAND
-  west generate-interfaces
+  west astarte-interfaces
   -d ${output_directory}
   -p ${output_file_prefix}
   ${interfaces_dir}

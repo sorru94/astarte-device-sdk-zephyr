@@ -46,7 +46,7 @@ jobs:
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check format
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
-        run: west format --dry-run
+        run: west astarte-format --dry-run
   interfaces-generation:
     runs-on: ubuntu-latest
     concurrency:
@@ -73,7 +73,7 @@ jobs:
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: pip install -r $PWD/scripts/requirements.txt
       - name: Check if generated interfaces are up to date
-        run: west generate-interfaces -c ./${{ env.PROJECT_MANIFEST_FOLDER }}/samples/${{ env.SAMPLE_NAME }}/interfaces
+        run: west astarte-interfaces -c ./${{ env.PROJECT_MANIFEST_FOLDER }}/samples/${{ env.SAMPLE_NAME }}/interfaces
   code-checker:
     runs-on: ubuntu-latest
     concurrency:
@@ -107,7 +107,7 @@ jobs:
           pipx install codechecker
       - name: Run clang-tidy
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
-        run: west static --sample ${{ env.SAMPLE_NAME }}
+        run: west astarte-static --sample ${{ env.SAMPLE_NAME }}
   python-checks:
     runs-on: ubuntu-latest
     concurrency:

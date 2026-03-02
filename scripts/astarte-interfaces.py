@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""generate_interfaces.py
+"""astarte-interfaces.py
 
 West extension that can be used to generate interfaces definitions.
 
@@ -25,12 +25,12 @@ from west import log
 from west.commands import WestCommand
 
 
-class WestCommandGenerateInterfaces(WestCommand):
+class WestCommandAstarteInterfaces(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
         super().__init__(
-            "generate-interfaces",
+            "astarte-interfaces",
             "Generate interfaces header(s)",
             dedent("""Generates C interfaces definitions from .json definitions."""),
         )
@@ -78,7 +78,7 @@ class WestCommandGenerateInterfaces(WestCommand):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west generate-interfaces ...
+          $ west astarte-interfaces ...
 
         Parameters
         ----------

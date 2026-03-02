@@ -38,12 +38,12 @@ severity_colours = {
 }
 
 
-class WestCommandStatic(WestCommand):
+class WestCommandAstarteStatic(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
         super().__init__(
-            "static",
+            "astarte-static",
             "Run static analysis on the sources (clang-tidy)",
             dedent("""Convenience wrapper for performing static analysis on the sources.
                     This command runs CodeChecker which in turn runs clang-tidy.

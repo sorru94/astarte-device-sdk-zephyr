@@ -3,8 +3,28 @@
 # SPDX-License-Identifier: Apache-2.0
 
 west-commands:
-  - file: scripts/generate_interfaces.py
+  - file: scripts/astarte-docs.py
     commands:
-      - name: generate-interfaces
-        class: WestCommandGenerateInterfaces
+      - name: astarte-docs
+        class: WestCommandAstarteDocs
+        help: generate documentation (doxygen)
+  - file: scripts/astarte-clean.py
+    commands:
+      - name: astarte-clean
+        class: WestCommandAstarteClean
+        help: clean build artifacts
+  - file: scripts/astarte-format.py
+    commands:
+      - name: astarte-format
+        class: WestCommandAstarteFormat
+        help: format the source files (clang-format)
+  - file: scripts/astarte-static.py
+    commands:
+      - name: astarte-static
+        class: WestCommandAstarteStatic
+        help: run static analysis on the sources (clang-tidy)
+  - file: scripts/astarte-interfaces.py
+    commands:
+      - name: astarte-interfaces
+        class: WestCommandAstarteInterfaces
         help: Generates C interfaces definitions from .json definitions.

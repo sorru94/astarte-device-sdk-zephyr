@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""format.py
+"""astarte-format.py
 
 West extension that can be used to run  automatic source code formatting.
 
@@ -20,12 +20,12 @@ from colored import stylize, fg
 from west.commands import WestCommand
 
 
-class WestCommandFormat(WestCommand):
+class WestCommandAstarteFormat(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
         super().__init__(
-            "format",
+            "astarte-format",
             "Format the source files (clang-format)",
             dedent("""Convenience wrapper for formatting the source files."""),
         )
@@ -58,7 +58,7 @@ class WestCommandFormat(WestCommand):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west format
+          $ west astarte-format
 
         Parameters
         ----------

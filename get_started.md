@@ -289,7 +289,7 @@ directory. You can then convert them to a set of C files containing all the same
 running a `west` extension command.
 
 ```sh
-west generate-interfaces ./get_started_app/interfaces
+west astarte-interfaces ./get_started_app/interfaces
 ```
 
 This command will generate a source and header files. In order for zephyr to include them in the

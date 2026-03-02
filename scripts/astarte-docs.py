@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""docs.py
+"""astarte-docs.py
 
 West extension that can be used to build doxygen documentation for this project.
 
@@ -22,12 +22,12 @@ from colored import fore, stylize
 from west.commands import WestCommand
 
 
-class WestCommandDocs(WestCommand):
+class WestCommandAstarteDocs(WestCommand):
     """Extension of the WestCommand class, specific for this command."""
 
     def __init__(self):
         super().__init__(
-            "docs",
+            "astarte-docs",
             "Generate documentation (doxygen)",
             dedent("""Convenience wrapper to build documentation with doxygen."""),
         )
@@ -87,7 +87,7 @@ class WestCommandDocs(WestCommand):
         """
         Function called when the user runs the custom command, e.g.:
 
-          $ west docs
+          $ west astarte-docs
 
         Parameters
         ----------

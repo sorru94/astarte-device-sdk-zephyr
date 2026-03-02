@@ -152,7 +152,7 @@ and error-prone process.
 For this reason, an extension command for `west` has been created to facilitate this procedure.
 The `generate-interfaces` extension command accepts as input one or more JSON interface definitions
 and automatically generates the corresponding C source code.
-Run `west generate-interfaces --help` to learn about the generation options.
+Run `west astarte-interfaces --help` to learn about the generation options.
 
 #### Build time interface definitions generation
 
@@ -187,7 +187,7 @@ The generated interfaces are included in `e2e/src/runner.c`.
 
 The code in this module is formatted using `clang-format`.
 An extension command for `west` has been created to facilitate formatting.
-Run `west format --help` to learn about the formatting options.
+Run `west astarte-format --help` to learn about the formatting options.
 
 ### Static code analysis
 
@@ -204,7 +204,7 @@ pipx install codechecker
 
 An extension command for `west` has been created to facilitate running static analysis with
 `clang-tidy`.
-Run `west static --help` to read what this command performs.
+Run `west astarte-static --help` to read what this command performs.
 
 ### Build doxygen documentation
 
@@ -213,7 +213,7 @@ The dependencies for generating the doxygen documentation are:
 - `graphviz`
 
 An extension command for `west` has been created to facilitate generating the documentation.
-Run `west docs --help` for more information on how to generate the documentation.
+Run `west astarte-docs --help` for more information on how to generate the documentation.
 
 ## VS Code integration
 

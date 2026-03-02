@@ -50,7 +50,7 @@ BUILD_ASSERT(sizeof(JSON_NULL) == sizeof(JSON_NULL_REPLACEMENT),
 #define GET_BROKER_INFO_RESPONSE_MAX_SIZE (50 + ASTARTE_PAIRING_MAX_BROKER_URL_LEN)
 
 // Payload will be a json like: {"data":{"csr":"<CSR>"}}
-#define GET_CLIENT_CRT_PAYLOAD_MAX_SIZE (25 + ASTARTE_CRYPTO_CSR_BUFFER_SIZE)
+#define GET_CLIENT_CRT_PAYLOAD_MAX_SIZE (25 + ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE)
 // Correct response will be a json like: {"data":{"client_crt":"<CLIENT_CRT>"}}
 // The maximum size of the client certificate may vary depending on the server configuration.
 #define GET_CLIENT_CRT_RESPONSE_MAX_SIZE                                                           \
@@ -295,13 +295,14 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     // Step 2: create a private key and a CSR
-    ares = astarte_crypto_create_key(client_crt);
+    ares = astarte_crypto_create_key(
+        &client_crt->privkey, client_crt->privkey_pem, sizeof(client_crt->privkey_pem));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
         return ares;
     }
 
-    unsigned char csr_buf[ASTARTE_CRYPTO_CSR_BUFFER_SIZE];
+    unsigned char csr_buf[ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE];
     ares = astarte_crypto_create_csr(&client_crt->privkey, csr_buf, sizeof(csr_buf));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");

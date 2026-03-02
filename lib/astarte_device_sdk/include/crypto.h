@@ -28,10 +28,13 @@ extern "C" {
 /**
  * @brief Create a private key to be used in a CSR.
  *
- * @param client_crt structure where to store the computed private key.
+ * @param[out] key_id Pointer the the PSA private key.
+ * @param[out] privkey_pem Buffer where to store the computed private key, in the PEM format.
+ * @param[in] privkey_pem_size Size of preallocated private key buffer.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_crypto_create_key(astarte_tls_credentials_client_crt_t *client_crt);
+astarte_result_t astarte_crypto_create_key(
+    mbedtls_svc_key_id_t *key_id, unsigned char *privkey_pem, size_t privkey_pem_size);
 
 /**
  * @brief Create a CSR (certificate signing request).

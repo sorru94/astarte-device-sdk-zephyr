@@ -18,10 +18,10 @@
 #include "astarte_device_sdk/result.h"
 
 /** Buffer size for the TLS private key. */
-#define ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE 1024
+#define ASTARTE_TLS_CREDENTIALS_PRIVKEY_BUFFER_SIZE 1024
 
 /** Buffer size for the TLS certificate signing request (CSR). */
-#define ASTARTE_CRYPTO_CSR_BUFFER_SIZE 1024
+#define ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE 1024
 
 /** @brief Generic structure used to store a TLS client certificate and associated private key.
  *
@@ -33,7 +33,7 @@ typedef struct
     /** @brief Private key bound to the client certificate */
     mbedtls_svc_key_id_t privkey;
     /** @brief Buffer containing the private key bound to the client certificate (PEM format). */
-    char privkey_pem[ASTARTE_CRYPTO_PRIVKEY_BUFFER_SIZE];
+    char privkey_pem[ASTARTE_TLS_CREDENTIALS_PRIVKEY_BUFFER_SIZE];
     /** @brief Buffer containing the client certificate (PEM format). */
     char crt_pem[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_CLIENT_CRT_BUFFER_SIZE];
 } astarte_tls_credentials_client_crt_t;

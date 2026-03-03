@@ -45,6 +45,7 @@ astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t
         if (psa_ret != PSA_SUCCESS) {
             ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
         }
+        client_crt->privkey = PSA_KEY_ID_NULL;
         memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
         memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
         return ASTARTE_RESULT_TLS_ERROR;

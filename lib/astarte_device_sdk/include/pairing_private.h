@@ -54,6 +54,8 @@ astarte_result_t astarte_pairing_get_mqtt_broker_hostname_and_port(int32_t http_
 /**
  * @brief Fetch the client x509 certificate from Astarte.
  *
+ * Upon failure this function erases the client private key.
+ *
  * @warning This is often a very memory intensive operation.
  *
  * @param[in] timeout_ms Timeout to use for the HTTP operations in ms.

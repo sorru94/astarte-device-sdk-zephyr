@@ -286,12 +286,12 @@ astarte_result_t astarte_pairing_get_mqtt_broker_hostname_and_port(int32_t http_
 astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, const char *device_id,
     const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_result_t ares = ASTARTE_RESULT_INVALID_PARAM;
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
-        return ASTARTE_RESULT_INVALID_PARAM;
+        goto error;
     }
 
     // Step 2: create a private key and a CSR
@@ -299,14 +299,14 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         &client_crt->privkey, client_crt->privkey_pem, sizeof(client_crt->privkey_pem));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
-        return ares;
+        goto error;
     }
 
     unsigned char csr_buf[ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE];
     ares = astarte_crypto_create_csr(&client_crt->privkey, csr_buf, sizeof(csr_buf));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
-        return ares;
+        goto error;
     }
 
     // Step 3: get the client certificate from the server
@@ -315,13 +315,14 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
         ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        return ASTARTE_RESULT_INVALID_PARAM;
+        ares = ASTARTE_RESULT_INVALID_PARAM;
+        goto error;
     }
     const char *header_fields[] = { auth_header, NULL };
     char payload[GET_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
     ares = encode_get_client_certificate_payload(csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+        goto error;
     }
     char resp_buf[GET_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
 
@@ -330,19 +331,20 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_URL_SUFFIX, device_id);
     if (snprintf_rc != PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto error;
     }
 
     ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+        goto error;
     }
 
     // Step 4: process the result
     ares = parse_get_client_certificate_response(
         resp_buf, client_crt->crt_pem, ARRAY_SIZE(client_crt->crt_pem));
     if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+        goto error;
     }
 
     // Step 5: convert the received certificate to a valid PEM certificate
@@ -355,6 +357,18 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
 
     ASTARTE_LOG_DBG("Received client certificate: %s", client_crt->crt_pem);
     return ASTARTE_RESULT_OK;
+
+error:
+    // clear the credentials
+    psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
+    if (psa_ret != PSA_SUCCESS) {
+        ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+    }
+    client_crt->privkey = PSA_KEY_ID_NULL;
+    memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
+    memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
+
+    return ares;
 }
 
 astarte_result_t astarte_pairing_verify_client_certificate(

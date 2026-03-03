@@ -44,7 +44,7 @@ void sample_property_set_transmission(astarte_device_handle_t device)
 
     astarte_data_t individuals[] = {
         astarte_data_from_binaryblob(
-            (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
+            (const void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data)),
         astarte_data_from_binaryblob_array((const void **) utils_binary_blobs_data,
             (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data)),
         astarte_data_from_boolean(utils_boolean_data),

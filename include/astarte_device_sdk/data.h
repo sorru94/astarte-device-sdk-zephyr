@@ -47,7 +47,7 @@ ASTARTE_UTIL_DEFINE_ARRAY(astarte_data_integerarray_t, int32_t);
 /** @private Astarte long integer array type. Do not inspect its content directly. */
 ASTARTE_UTIL_DEFINE_ARRAY(astarte_data_longintegerarray_t, int64_t);
 /** @private Astarte string array type. Do not inspect its content directly. */
-ASTARTE_UTIL_DEFINE_ARRAY(astarte_data_stringarray_t, const char *);
+ASTARTE_UTIL_DEFINE_ARRAY(astarte_data_stringarray_t, char *);
 
 /** @private Union grouping all the Astarte data types. Do not inspect its content directly. */
 typedef union
@@ -90,38 +90,6 @@ typedef union
  * @details This struct is a tagged enum and represents every possible type that can be sent to
  * Astarte individually. This struct should be initialized only by using one of the defined
  * `astarte_data_from_*` methods.
- *
- * See the following initialization methods:
- *  - #astarte_data_from_binaryblob
- *  - #astarte_data_from_boolean
- *  - #astarte_data_from_double
- *  - #astarte_data_from_datetime
- *  - #astarte_data_from_integer
- *  - #astarte_data_from_longinteger
- *  - #astarte_data_from_string
- *  - #astarte_data_from_binaryblob_array
- *  - #astarte_data_from_boolean_array
- *  - #astarte_data_from_datetime_array
- *  - #astarte_data_from_double_array
- *  - #astarte_data_from_integer_array
- *  - #astarte_data_from_longinteger_array
- *  - #astarte_data_from_string_array
- *
- * And the following getter methods:
- *  - #astarte_data_to_binaryblob
- *  - #astarte_data_to_boolean
- *  - #astarte_data_to_double
- *  - #astarte_data_to_datetime
- *  - #astarte_data_to_integer
- *  - #astarte_data_to_longinteger
- *  - #astarte_data_to_string
- *  - #astarte_data_to_binaryblob_array
- *  - #astarte_data_to_boolean_array
- *  - #astarte_data_to_datetime_array
- *  - #astarte_data_to_double_array
- *  - #astarte_data_to_integer_array
- *  - #astarte_data_to_longinteger_array
- *  - #astarte_data_to_string_array
  */
 typedef struct
 {
@@ -129,6 +97,8 @@ typedef struct
     astarte_data_param_t data;
     /** @brief Tag of the tagged enum */
     astarte_mapping_type_t tag;
+    /** @brief Flag indicating if the memory backing the data is owned and dynamically allocated */
+    bool is_owned;
 } astarte_data_t;
 
 #ifdef __cplusplus
@@ -142,7 +112,7 @@ extern "C" {
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the binaryblob input.
  */
-astarte_data_t astarte_data_from_binaryblob(void *binaryblob, size_t len);
+astarte_data_t astarte_data_from_binaryblob(const void *binaryblob, size_t len);
 /**
  * @brief Initialize an astarte data from the input boolean.
  *
@@ -204,7 +174,7 @@ astarte_data_t astarte_data_from_binaryblob_array(const void **blobs, size_t *si
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the boolean array input.
  */
-astarte_data_t astarte_data_from_boolean_array(bool *boolean_array, size_t len);
+astarte_data_t astarte_data_from_boolean_array(const bool *boolean_array, size_t len);
 /**
  * @brief Initialize an astarte data from the input datetime array.
  *
@@ -212,7 +182,7 @@ astarte_data_t astarte_data_from_boolean_array(bool *boolean_array, size_t len);
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the datetime array input.
  */
-astarte_data_t astarte_data_from_datetime_array(int64_t *datetime_array, size_t len);
+astarte_data_t astarte_data_from_datetime_array(const int64_t *datetime_array, size_t len);
 /**
  * @brief Initialize an astarte data from the input double array.
  *
@@ -220,7 +190,7 @@ astarte_data_t astarte_data_from_datetime_array(int64_t *datetime_array, size_t 
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the double array input.
  */
-astarte_data_t astarte_data_from_double_array(double *double_array, size_t len);
+astarte_data_t astarte_data_from_double_array(const double *double_array, size_t len);
 /**
  * @brief Initialize an astarte data from the input integer array.
  *
@@ -228,7 +198,7 @@ astarte_data_t astarte_data_from_double_array(double *double_array, size_t len);
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the integer array input.
  */
-astarte_data_t astarte_data_from_integer_array(int32_t *integer_array, size_t len);
+astarte_data_t astarte_data_from_integer_array(const int32_t *integer_array, size_t len);
 /**
  * @brief Initialize an astarte data from the input longinteger array.
  *
@@ -236,7 +206,7 @@ astarte_data_t astarte_data_from_integer_array(int32_t *integer_array, size_t le
  * @param[in] len The length of the input array.
  * @return The astarte data that wraps the longinteger array input.
  */
-astarte_data_t astarte_data_from_longinteger_array(int64_t *longinteger_array, size_t len);
+astarte_data_t astarte_data_from_longinteger_array(const int64_t *longinteger_array, size_t len);
 /**
  * @brief Initialize an astarte data from the input string array.
  *
@@ -262,7 +232,8 @@ astarte_mapping_type_t astarte_data_get_type(astarte_data_t data);
  * @param[out] len Size of extracted array.
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
-astarte_result_t astarte_data_to_binaryblob(astarte_data_t data, void **binaryblob, size_t *len);
+astarte_result_t astarte_data_to_binaryblob(
+    astarte_data_t data, const void **binaryblob, size_t *len);
 /**
  * @brief Convert Astarte data (of the boolean type) to a bool.
  *
@@ -332,7 +303,7 @@ astarte_result_t astarte_data_to_binaryblob_array(
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
 astarte_result_t astarte_data_to_boolean_array(
-    astarte_data_t data, bool **boolean_array, size_t *len);
+    astarte_data_t data, const bool **boolean_array, size_t *len);
 /**
  * @brief Convert Astarte data (of datetime array type) to an int64_t array.
  *
@@ -342,7 +313,7 @@ astarte_result_t astarte_data_to_boolean_array(
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
 astarte_result_t astarte_data_to_datetime_array(
-    astarte_data_t data, int64_t **datetime_array, size_t *len);
+    astarte_data_t data, const int64_t **datetime_array, size_t *len);
 /**
  * @brief Convert Astarte data (of double array type) to a double array.
  *
@@ -352,7 +323,7 @@ astarte_result_t astarte_data_to_datetime_array(
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
 astarte_result_t astarte_data_to_double_array(
-    astarte_data_t data, double **double_array, size_t *len);
+    astarte_data_t data, const double **double_array, size_t *len);
 /**
  * @brief Convert Astarte data (of integer array type) to an int32_t array.
  *
@@ -362,7 +333,7 @@ astarte_result_t astarte_data_to_double_array(
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
 astarte_result_t astarte_data_to_integer_array(
-    astarte_data_t data, int32_t **integer_array, size_t *len);
+    astarte_data_t data, const int32_t **integer_array, size_t *len);
 /**
  * @brief Convert Astarte data (of longinteger array type) to an int64_t array.
  *
@@ -372,7 +343,7 @@ astarte_result_t astarte_data_to_integer_array(
  * @return ASTARTE_RESULT_OK if the conversion was successful, an error otherwise.
  */
 astarte_result_t astarte_data_to_longinteger_array(
-    astarte_data_t data, int64_t **longinteger_array, size_t *len);
+    astarte_data_t data, const int64_t **longinteger_array, size_t *len);
 /**
  * @brief Convert Astarte data (of string type) to a const char* array.
  *

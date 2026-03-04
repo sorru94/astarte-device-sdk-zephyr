@@ -10,7 +10,8 @@
 #include <stdlib.h>
 
 #include "bson_types.h"
-#include "data_private.h"
+#include "data_deserialize.h"
+#include "data_serialize.h"
 #include "interface_private.h"
 
 #include "log.h"
@@ -50,7 +51,7 @@ astarte_result_t astarte_object_entries_serialize(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     for (size_t i = 0; i < entries_length; i++) {
-        ares = astarte_data_serialize(bson, entries[i].path, entries[i].data);
+        ares = data_serialize(bson, entries[i].path, entries[i].data);
         if (ares != ASTARTE_RESULT_OK) {
             break;
         }
@@ -108,8 +109,7 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
         if (ares != ASTARTE_RESULT_OK) {
             goto failure;
         }
-        ares = astarte_data_deserialize(
-            inner_elem, mapping->type, &(tmp_entries[deserialize_idx].data));
+        ares = data_deserialize(inner_elem, mapping->type, &(tmp_entries[deserialize_idx].data));
         if (ares != ASTARTE_RESULT_OK) {
             goto failure;
         }
@@ -128,7 +128,7 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
 
 failure:
     for (size_t j = 0; j < deserialize_idx; j++) {
-        astarte_data_destroy_deserialized(tmp_entries[j].data);
+        data_destroy_deserialized(tmp_entries[j].data);
     }
     free(tmp_entries);
 
@@ -139,7 +139,7 @@ void astarte_object_entries_destroy_deserialized(
     astarte_object_entry_t *entries, size_t entries_length)
 {
     for (size_t i = 0; i < entries_length; i++) {
-        astarte_data_destroy_deserialized(entries[i].data);
+        data_destroy_deserialized(entries[i].data);
     }
     free(entries);
 }

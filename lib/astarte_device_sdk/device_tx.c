@@ -10,7 +10,7 @@
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "device_caching.h"
 #endif
-#include "data_private.h"
+#include "data_serialize.h"
 #include "object_private.h"
 
 #include "log.h"
@@ -86,7 +86,7 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
         goto exit;
     }
-    ares = astarte_data_serialize(&bson, "v", data);
+    ares = data_serialize(&bson, "v", data);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }

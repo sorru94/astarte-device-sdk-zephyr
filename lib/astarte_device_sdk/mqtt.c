@@ -607,8 +607,14 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
         }
 
         // Poll the socket (unlocking the mutex)
-        struct zsock_pollfd socket_fd
-            = { .fd = astarte_mqtt->client.transport.tls.sock, .events = ZSOCK_POLLIN };
+        struct zsock_pollfd socket_fd = {
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
+            .fd = astarte_mqtt->client.transport.tcp.sock,
+#else
+            .fd = astarte_mqtt->client.transport.tls.sock,
+#endif
+            .events = ZSOCK_POLLIN
+        };
         int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
         int32_t timeout = MIN(astarte_mqtt->poll_timeout_ms, keepalive);
         mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
@@ -767,14 +773,10 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
 
     // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = calloc(topic_len + 1, sizeof(char));
-    if (!topic) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return;
-    }
+    char topic[topic_len + 1];
     memcpy(topic, publish.message.topic.topic.utf8, topic_len);
+    topic[topic_len] = '\0';
     astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
-    free(topic);
 }
 static void handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)
 {

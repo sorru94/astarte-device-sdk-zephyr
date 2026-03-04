@@ -68,7 +68,7 @@ void utils_log_object_entry_array(idata_object_entry_array *obj);
 void utils_log_astarte_data(astarte_data_t data);
 
 bool astarte_object_equal(idata_object_entry_array *left, idata_object_entry_array *right);
-bool astarte_data_equal(astarte_data_t *left, astarte_data_t *right);
+bool astarte_data_equal(const astarte_data_t *left, const astarte_data_t *right);
 
 // should be called at the start of the application to avoid user input before
 // the shell is actually ready and the device connected

@@ -77,12 +77,12 @@ int cmd_expect_individual_handler(const struct shell *sh, size_t argc, char **ar
 
     // should get freed even if no errors occur because it is not stored anywhere and it's not
     // needed
-    free(individual_value.buf);
+    free((void *) individual_value.buf);
     return 0;
 
 cleanup:
     free(path);
-    free(individual_value.buf);
+    free((void *) individual_value.buf);
     data_destroy_deserialized(data);
     return 1;
 }
@@ -124,7 +124,7 @@ int cmd_expect_object_handler(const struct shell *sh, size_t argc, char **argv)
 
 cleanup:
     free(path);
-    free(object_bytes.buf);
+    free((void *) object_bytes.buf);
     astarte_object_entries_destroy_deserialized(entries, entries_length);
     return 1;
 }
@@ -159,12 +159,12 @@ int cmd_expect_property_set_handler(const struct shell *sh, size_t argc, char **
 
     // should get freed even if no errors occur because it is not stored anywhere and it's not
     // needed
-    free(property_value.buf);
+    free((void *) property_value.buf);
     return 0;
 
 cleanup:
     free(path);
-    free(property_value.buf);
+    free((void *) property_value.buf);
     data_destroy_deserialized(data);
     return 1;
 }
@@ -230,7 +230,7 @@ int cmd_send_individual_handler(const struct shell *sh, size_t argc, char **argv
 
 cleanup:
     data_destroy_deserialized(data);
-    free(individual_value.buf);
+    free((void *) individual_value.buf);
     free(path);
 
     return return_code;
@@ -274,7 +274,7 @@ int cmd_send_object_handler(const struct shell *sh, size_t argc, char **argv)
 
 cleanup:
     astarte_object_entries_destroy_deserialized(entries, entries_length);
-    free(object_bytes.buf);
+    free((void *) object_bytes.buf);
     free(path);
 
     return return_code;
@@ -308,7 +308,7 @@ int cmd_send_property_set_handler(const struct shell *sh, size_t argc, char **ar
 
 cleanup:
     data_destroy_deserialized(data);
-    free(property_value.buf);
+    free((void *) property_value.buf);
     free(path);
 
     return return_code;

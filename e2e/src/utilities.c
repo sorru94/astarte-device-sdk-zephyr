@@ -50,13 +50,15 @@ LOG_MODULE_REGISTER(utilities, CONFIG_UTILITIES_LOG_LEVEL); // NOLINT
  *         Static functions declaration         *
  ***********************************************/
 
-static bool cmp_string_array(astarte_data_stringarray_t *left, astarte_data_stringarray_t *right);
+static bool cmp_string_array(
+    const astarte_data_stringarray_t *left, const astarte_data_stringarray_t *right);
 static bool cmp_binaryblob_array(
-    astarte_data_binaryblobarray_t *left, astarte_data_binaryblobarray_t *right);
-static astarte_data_t *get_object_entry_data(idata_object_entry_array *entries, const char *key);
+    const astarte_data_binaryblobarray_t *left, const astarte_data_binaryblobarray_t *right);
+static const astarte_data_t *get_object_entry_data(
+    idata_object_entry_array *entries, const char *key);
 // shell bypass callback
 static void shell_bypass_halt(const struct shell *shell, uint8_t *data, size_t len);
-static void utils_log_astarte_object(astarte_object_entry_t *entries, size_t entries_length);
+static void utils_log_astarte_object(const astarte_object_entry_t *entries, size_t entries_length);
 static size_t utils_datetime_to_string(
     int64_t datetime, char out_string[const DATETIME_MAX_BUF_SIZE]);
 
@@ -105,9 +107,9 @@ bool astarte_object_equal(idata_object_entry_array *left, idata_object_entry_arr
 
     for (size_t i = 0; i < left->len; ++i) {
         const char *left_key = left->buf[i].path;
-        astarte_data_t *left_value = &left->buf[i].data;
+        const astarte_data_t *left_value = &left->buf[i].data;
 
-        astarte_data_t *right_value = get_object_entry_data(right, left_key);
+        const astarte_data_t *right_value = get_object_entry_data(right, left_key);
         // check that the value exist in the right object
         if (!right_value) {
             result = false;
@@ -137,7 +139,7 @@ exit:
     return result;
 }
 
-bool astarte_data_equal(astarte_data_t *left, astarte_data_t *right)
+bool astarte_data_equal(const astarte_data_t *left, const astarte_data_t *right)
 {
     if (left->tag != right->tag) {
         return false;
@@ -221,7 +223,7 @@ void utils_log_astarte_data(astarte_data_t data)
 
     switch (astarte_data_get_type(data)) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-            void *blob = NULL;
+            const void *blob = NULL;
             size_t blob_len = 0;
             (void) astarte_data_to_binaryblob(data, &blob, &blob_len);
             LOG_HEXDUMP_INF(blob, blob_len, "Astarte binaryblob:"); // NOLINT
@@ -243,7 +245,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
             LOG_INF("Astarte booleanarray:"); // NOLINT
-            bool *bools = NULL;
+            const bool *bools = NULL;
             size_t bools_len = 0;
             (void) astarte_data_to_boolean_array(data, &bools, &bools_len);
             for (size_t i = 0; i < bools_len; i++) {
@@ -261,7 +263,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
             LOG_INF("Astarte datetimearray:"); // NOLINT
-            int64_t *datetimes = NULL;
+            const int64_t *datetimes = NULL;
             size_t datetimes_len = 0;
             (void) astarte_data_to_datetime_array(data, &datetimes, &datetimes_len);
             for (size_t i = 0; i < datetimes_len; i++) {
@@ -279,7 +281,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
             LOG_INF("Astarte doublearray:"); // NOLINT
-            double *doubles = NULL;
+            const double *doubles = NULL;
             size_t doubles_len = 0;
             (void) astarte_data_to_double_array(data, &doubles, &doubles_len);
             for (size_t i = 0; i < doubles_len; i++) {
@@ -293,7 +295,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
             LOG_INF("Astarte integerarray:"); // NOLINT
-            int32_t *integers = NULL;
+            const int32_t *integers = NULL;
             size_t integers_len = 0;
             (void) astarte_data_to_integer_array(data, &integers, &integers_len);
             for (size_t i = 0; i < integers_len; i++) {
@@ -307,7 +309,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
             LOG_INF("Astarte longintegerarray:"); // NOLINT
-            int64_t *longintegers = NULL;
+            const int64_t *longintegers = NULL;
             size_t longintegers_len = 0;
             (void) astarte_data_to_longinteger_array(data, &longintegers, &longintegers_len);
             for (size_t i = 0; i < longintegers_len; i++) {
@@ -338,7 +340,8 @@ void utils_log_astarte_data(astarte_data_t data)
  *         Static functions definitions         *
  ***********************************************/
 
-static bool cmp_string_array(astarte_data_stringarray_t *left, astarte_data_stringarray_t *right)
+static bool cmp_string_array(
+    const astarte_data_stringarray_t *left, const astarte_data_stringarray_t *right)
 {
     if (left->len != right->len) {
         return false;
@@ -354,7 +357,7 @@ static bool cmp_string_array(astarte_data_stringarray_t *left, astarte_data_stri
 }
 
 static bool cmp_binaryblob_array(
-    astarte_data_binaryblobarray_t *left, astarte_data_binaryblobarray_t *right)
+    const astarte_data_binaryblobarray_t *left, const astarte_data_binaryblobarray_t *right)
 {
     if (left->count != right->count) {
         return false;
@@ -372,7 +375,8 @@ static bool cmp_binaryblob_array(
     return true;
 }
 
-static astarte_data_t *get_object_entry_data(idata_object_entry_array *entries, const char *key)
+static const astarte_data_t *get_object_entry_data(
+    idata_object_entry_array *entries, const char *key)
 {
     for (size_t i = 0; i < entries->len; ++i) {
         if (strcmp(key, entries->buf[i].path) == 0) {
@@ -390,7 +394,7 @@ static void shell_bypass_halt(const struct shell *shell, uint8_t *data, size_t l
     CHECK_HALT(len > 0 || data[0] != 10, "Shell commands are being ignored blocking execution");
 }
 
-static void utils_log_astarte_object(astarte_object_entry_t *entries, size_t entries_length)
+static void utils_log_astarte_object(const astarte_object_entry_t *entries, size_t entries_length)
 {
     LOG_INF("Astarte object:"); // NOLINT
 

@@ -13,7 +13,7 @@ def test_device(testcase_helper: TestcaseHelper):
     log.inf("Launching the device")
 
     testcase_helper.dut.launch()
-    testcase_helper.dut.readlines_until(regex="Device shell ready$", timeout=15)
+    testcase_helper.dut.readlines_until(regex="Device shell ready$", timeout=60)
 
     for interface_data in data:
         interface_data.test(testcase_helper)

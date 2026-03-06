@@ -197,10 +197,10 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
 
 failure:
 
-#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
-    astarte_device_caching_destroy(&handle->caching);
-#endif
     if (handle) {
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+        astarte_device_caching_destroy(&handle->caching);
+#endif
         introspection_free(handle->introspection);
     }
     free(handle);

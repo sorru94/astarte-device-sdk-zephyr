@@ -54,7 +54,7 @@ void utils_log_astarte_data(astarte_data_t data)
 
     switch (astarte_data_get_type(data)) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-            void *blob = NULL;
+            const void *blob = NULL;
             size_t blob_len = 0;
             (void) astarte_data_to_binaryblob(data, &blob, &blob_len);
             LOG_HEXDUMP_INF(blob, blob_len, "Astarte binaryblob:"); // NOLINT
@@ -76,7 +76,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
             LOG_INF("Astarte booleanarray:"); // NOLINT
-            bool *bools = NULL;
+            const bool *bools = NULL;
             size_t bools_len = 0;
             (void) astarte_data_to_boolean_array(data, &bools, &bools_len);
             for (size_t i = 0; i < bools_len; i++) {
@@ -94,7 +94,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
             LOG_INF("Astarte datetimearray:"); // NOLINT
-            int64_t *datetimes = NULL;
+            const int64_t *datetimes = NULL;
             size_t datetimes_len = 0;
             (void) astarte_data_to_datetime_array(data, &datetimes, &datetimes_len);
             for (size_t i = 0; i < datetimes_len; i++) {
@@ -112,7 +112,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
             LOG_INF("Astarte doublearray:"); // NOLINT
-            double *doubles = NULL;
+            const double *doubles = NULL;
             size_t doubles_len = 0;
             (void) astarte_data_to_double_array(data, &doubles, &doubles_len);
             for (size_t i = 0; i < doubles_len; i++) {
@@ -126,7 +126,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
             LOG_INF("Astarte integerarray:"); // NOLINT
-            int32_t *integers = NULL;
+            const int32_t *integers = NULL;
             size_t integers_len = 0;
             (void) astarte_data_to_integer_array(data, &integers, &integers_len);
             for (size_t i = 0; i < integers_len; i++) {
@@ -140,7 +140,7 @@ void utils_log_astarte_data(astarte_data_t data)
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
             LOG_INF("Astarte longintegerarray:"); // NOLINT
-            int64_t *longintegers = NULL;
+            const int64_t *longintegers = NULL;
             size_t longintegers_len = 0;
             (void) astarte_data_to_longinteger_array(data, &longintegers, &longintegers_len);
             for (size_t i = 0; i < longintegers_len; i++) {

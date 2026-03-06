@@ -19,7 +19,7 @@
 #include <zephyr/toolchain.h>
 
 #include <astarte_device_sdk/interface.h>
-#include <data_private.h>
+#include <data_deserialize.h>
 #include <object_private.h>
 
 #include "utilities.h"
@@ -285,21 +285,22 @@ int idata_peek_object(
 void free_individual(idata_individual_t individual)
 {
     free((char *) individual.path);
-    astarte_data_destroy_deserialized(individual.data);
+    data_destroy_deserialized(individual.data);
 }
 
 void free_object(idata_object_t object)
 {
     free((char *) object.path);
-    free(object.object_bytes.buf);
-    astarte_object_entries_destroy_deserialized(object.entries.buf, object.entries.len);
+    free((void *) object.object_bytes.buf);
+    astarte_object_entries_destroy_deserialized(
+        (astarte_object_entry_t *) object.entries.buf, object.entries.len);
 }
 
 void free_property(idata_property_t property)
 {
     // unsets do not store an individual value
     if (!property.unset) {
-        astarte_data_destroy_deserialized(property.data);
+        data_destroy_deserialized(property.data);
     }
 
     free((char *) property.path);

@@ -14,7 +14,7 @@
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "device_caching.h"
 #endif
-#include "data_private.h"
+#include "data_deserialize.h"
 #include "interface_private.h"
 #include "object_private.h"
 
@@ -412,7 +412,7 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
             return;
         }
         astarte_data_t data_deserialized = { 0 };
-        ares = astarte_data_deserialize(v_elem, mapping->type, &data_deserialized);
+        ares = data_deserialize(v_elem, mapping->type, &data_deserialized);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface_name, path);
@@ -424,7 +424,7 @@ static void on_data_message(astarte_device_handle_t device, const char *interfac
         } else {
             on_datastream_individual(device, base_event, data_deserialized);
         }
-        astarte_data_destroy_deserialized(data_deserialized);
+        data_destroy_deserialized(data_deserialized);
     } else {
         astarte_object_entry_t *entries = NULL;
         size_t entries_length = 0;

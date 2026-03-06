@@ -28,7 +28,7 @@
 #define ASTARTE_UTIL_DEFINE_ARRAY(NAME, TYPE)                                                      \
     typedef struct                                                                                 \
     {                                                                                              \
-        TYPE *buf;                                                                                 \
+        const TYPE *buf;                                                                           \
         size_t len;                                                                                \
     } NAME;
 // NOLINTEND(bugprone-macro-parentheses)

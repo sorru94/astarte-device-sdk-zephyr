@@ -10,6 +10,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- The `astarte_data_from_*` functions that take the input data as pointers have had their signature
+  modified. The new signature accepts constant pointers in place of standard pointers. This makes
+  it clearer that the functions do not modify the original user supplied data.
+- The `astarte_data_to_*` functions that return the extracted data as a pointer have had their
+  signature modified. The new signature uses constant pointers for the output parameter.
+  This makes it clearer that the output data should not be directly modified by the user.
+
 ## [0.9.0] - 2025-07-22
 ### Added
 - Support for Zephyr 4.2.0.

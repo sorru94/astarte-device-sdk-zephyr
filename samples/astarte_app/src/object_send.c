@@ -25,7 +25,7 @@ void sample_object_transmission(astarte_device_handle_t device)
     astarte_object_entry_t entries[] = {
         astarte_object_entry_new("binaryblob_endpoint",
             astarte_data_from_binaryblob(
-                (void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data))),
+                (const void *) utils_binary_blob_data, ARRAY_SIZE(utils_binary_blob_data))),
         astarte_object_entry_new("binaryblobarray_endpoint",
             astarte_data_from_binaryblob_array((const void **) utils_binary_blobs_data,
                 (size_t *) utils_binary_blobs_sizes_data, ARRAY_SIZE(utils_binary_blobs_data))),

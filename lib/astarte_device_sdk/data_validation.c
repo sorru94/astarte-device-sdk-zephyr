@@ -6,10 +6,10 @@
 #include "data_validation.h"
 
 #include "interface_private.h"
-#include "log.h"
 #include "mapping_private.h"
 
-ASTARTE_LOG_MODULE_DECLARE(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
+#include "log.h"
+ASTARTE_LOG_MODULE_REGISTER(data_validation, CONFIG_ASTARTE_DEVICE_SDK_DATA_VALIDATION_LOG_LEVEL);
 
 /************************************************
  *         Global functions definitions         *

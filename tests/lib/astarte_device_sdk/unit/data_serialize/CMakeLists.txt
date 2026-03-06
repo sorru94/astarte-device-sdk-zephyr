@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr COMPONENTS unittest REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(astarte_device_sdk_unit_object)
+project(astarte_device_sdk_unit_data)
 
 target_include_directories(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/include
@@ -16,12 +16,7 @@ target_include_directories(testbinary PRIVATE
 target_compile_options(testbinary PRIVATE -include zephyr/ztest.h)
 
 target_sources(testbinary PRIVATE
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/interface.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/data.c
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/data_serialize.c
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/data_deserialize.c
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/mapping.c
-    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/bson_deserializer.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/bson_serializer.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/result.c
 )

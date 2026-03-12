@@ -49,9 +49,6 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
  *       Checks over configuration values       *
  ***********************************************/
 
-#if !defined(CONFIG_ARCH_POSIX)
-#error "The e2e test needs to run on the native_sim board"
-#endif
 BUILD_ASSERT(
     sizeof(CONFIG_DEVICE_ID) == ASTARTE_DEVICE_ID_LEN + 1, "Missing device ID in e2e tets");
 BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN + 1,
@@ -61,7 +58,7 @@ BUILD_ASSERT(sizeof(CONFIG_CREDENTIAL_SECRET) == ASTARTE_PAIRING_CRED_SECR_LEN +
  *   Constants, static variables and defines    *
  ***********************************************/
 
-#define ETH_THREAD_STACK_SIZE 1024
+#define ETH_THREAD_STACK_SIZE 4096
 K_THREAD_STACK_DEFINE(eth_thread_stack_area, ETH_THREAD_STACK_SIZE);
 static struct k_thread eth_thread_data;
 enum eth_thread_flags

@@ -6,12 +6,10 @@ tests:
   astarte_device_sdk.e2e:
     filter: CONFIG_SERIAL and dt_chosen_enabled("zephyr,shell-uart")
     harness: pytest
-    extra_configs:
-      - arch:posix:CONFIG_NATIVE_UART_0_ON_STDINOUT=y
     harness_config:
       pytest_dut_scope: "session"
     timeout: 300
-    platform_allow: [native_sim]
+    platform_allow: [qemu_x86, native_sim]
     integration_platforms: [native_sim]
     tags:
       - e2e

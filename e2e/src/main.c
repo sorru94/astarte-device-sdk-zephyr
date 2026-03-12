@@ -137,7 +137,9 @@ static void eth_thread_entry_point(void *unused1, void *unused2, void *unused3)
     while (!atomic_test_bit(&device_thread_flags, ETH_THREAD_TERMINATION_FLAG)) {
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_ETH_POLL_PERIOD_MS));
 
-        eth_poll();
+        if (eth_poll() != 0) {
+            LOG_ERR("Failed polling Ethernet."); // NOLINT
+        }
 
         k_sleep(sys_timepoint_timeout(timepoint));
     }

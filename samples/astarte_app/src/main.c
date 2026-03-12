@@ -204,7 +204,10 @@ int main(void)
     while (!atomic_test_bit(&device_thread_flags, THREAD_FLAGS_TX_COMPLETE)) {
 #ifndef CONFIG_WIFI
         // Ensure the connectivity is still present
-        eth_poll();
+        if (eth_poll() != 0) {
+            LOG_ERR("Failed polling Ethernet."); // NOLINT
+            return -1;
+        }
 #endif
         k_sleep(K_MSEC(THREAD_SLEEP_MS));
     }

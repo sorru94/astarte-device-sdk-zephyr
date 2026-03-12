@@ -21,6 +21,6 @@ int eth_connect(void);
  *
  * @note This function will block when connectivity is not present.
  */
-void eth_poll(void);
+int eth_poll(void);
 
 #endif /* ETH_H */

@@ -26,6 +26,7 @@ static struct net_mgmt_event_callback ipv4_cb;
 static struct net_mgmt_event_callback l4_cb;
 
 static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
+static K_SEM_DEFINE(iface_up, 0, 1);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
@@ -87,10 +88,12 @@ static void status_mgmt_event_handler(
     switch (mgmt_event) {
         case NET_EVENT_IF_DOWN:
             LOG_DBG("Network event: NET_EVENT_IF_DOWN."); // NOLINT
+            k_sem_take(&iface_up, K_NO_WAIT);
             break;
 
         case NET_EVENT_IF_UP:
             LOG_DBG("Network event: NET_EVENT_IF_UP."); // NOLINT
+            k_sem_give(&iface_up);
             break;
 
         case NET_EVENT_IF_ADMIN_DOWN:
@@ -383,17 +386,12 @@ int eth_connect(void)
     enum net_if_oper_state iface_oper_state = net_if_oper_state(iface);
     LOG_INF("Ethernet network interface operational state: %d.", iface_oper_state); // NOLINT
 
-    LOG_INF("Waiting for Ethernet interface to be operational."); // NOLINT
-
-    // Timeout bounds (e.g. 50 * 200ms = 10s wait) so the thread doesn't hang if unplugged.
-    const int max_retries = 50;
-    int retries = max_retries;
-    while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
-        if (--retries == 0) {
+    if (iface_oper_state != NET_IF_OPER_UP) {
+        LOG_INF("Waiting for Ethernet interface to be operational..."); // NOLINT
+        if (k_sem_take(&iface_up, K_SECONDS(10)) != 0) {
             LOG_ERR("Timeout waiting for Ethernet carrier."); // NOLINT
             return -1;
         }
-        k_sleep(K_MSEC(200));
     }
 
 #ifdef CONFIG_NET_DHCPV4

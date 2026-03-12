@@ -9,6 +9,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/ethernet_mgmt.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/version.h>
 
 #include <zephyr/logging/log.h>
@@ -25,8 +26,12 @@ static struct net_mgmt_event_callback ipv6_cb;
 static struct net_mgmt_event_callback ipv4_cb;
 static struct net_mgmt_event_callback l4_cb;
 
-static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
-static K_SEM_DEFINE(iface_up, 0, 1);
+enum eth_flags
+{
+    IPV4_ADDRESS_OBTAINED = 1U,
+    IFACE_UP,
+};
+static atomic_t eth_flags;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
@@ -88,12 +93,12 @@ static void status_mgmt_event_handler(
     switch (mgmt_event) {
         case NET_EVENT_IF_DOWN:
             LOG_DBG("Network event: NET_EVENT_IF_DOWN."); // NOLINT
-            k_sem_take(&iface_up, K_NO_WAIT);
+            atomic_clear_bit(&eth_flags, IFACE_UP);
             break;
 
         case NET_EVENT_IF_UP:
             LOG_DBG("Network event: NET_EVENT_IF_UP."); // NOLINT
-            k_sem_give(&iface_up);
+            atomic_set_bit(&eth_flags, IFACE_UP);
             break;
 
         case NET_EVENT_IF_ADMIN_DOWN:
@@ -232,13 +237,12 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_ADDR_ADD:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_ADD."); // NOLINT
-            k_sem_give(&ipv4_address_obtained);
+            atomic_set_bit(&eth_flags, IPV4_ADDRESS_OBTAINED);
             break;
 
         case NET_EVENT_IPV4_ADDR_DEL:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
-            // Take the semaphore with K_NO_WAIT so we clear the 'obtained' state
-            k_sem_take(&ipv4_address_obtained, K_NO_WAIT);
+            atomic_clear_bit(&eth_flags, IPV4_ADDRESS_OBTAINED);
             break;
 
         case NET_EVENT_IPV4_MADDR_ADD:
@@ -388,9 +392,8 @@ int eth_connect(void)
 
     if (iface_oper_state != NET_IF_OPER_UP) {
         LOG_INF("Waiting for Ethernet interface to be operational..."); // NOLINT
-        if (k_sem_take(&iface_up, K_SECONDS(10)) != 0) {
-            LOG_ERR("Timeout waiting for Ethernet carrier."); // NOLINT
-            return -1;
+        while (!atomic_test_bit(&eth_flags, IFACE_UP)) {
+            k_sleep(K_MSEC(200));
         }
     }
 
@@ -398,27 +401,22 @@ int eth_connect(void)
     net_dhcpv4_start(iface);
 
     LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-
-    if (k_sem_take(&ipv4_address_obtained, K_SECONDS(15)) != 0) {
-        LOG_ERR("Timeout waiting for DHCP.");
-        return -1;
+    while (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
+        k_sleep(K_MSEC(200));
     }
 #endif
-
-    k_sleep(K_MSEC(500));
 
     LOG_INF("Ready..."); // NOLINT
 
     return 0;
 }
 
-void eth_poll(void)
+int eth_poll(void)
 {
     struct net_if *iface = net_if_get_first_by_type(&NET_L2_GET_NAME(ETHERNET));
     if (!iface) {
         LOG_ERR("Ethernet interface non existant."); // NOLINT
-        k_sleep(K_SECONDS(1)); // Throttle if repeatedly called
-        return;
+        return -1;
     }
 
     // Check if connected, warn once to prevent spam
@@ -428,24 +426,22 @@ void eth_poll(void)
             LOG_WRN("Ethernet interface is non operational. Waiting..."); // NOLINT
             warned = true;
         }
-        k_sleep(K_SECONDS(1));
+        k_sleep(K_MSEC(200));
     }
 
 // Restart DHCP if required.
 #ifdef CONFIG_NET_DHCPV4
-    if (k_sem_count_get(&ipv4_address_obtained) == 0) {
+    if (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
         LOG_WRN("Missing IPv4 address."); // NOLINT
         net_dhcpv4_restart(iface);
-        LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
 
-        // Block until address is acquired or timeout
-        if (k_sem_take(&ipv4_address_obtained, K_SECONDS(15)) != 0) {
-            LOG_WRN("Timeout waiting for DHCP in poll cycle."); // NOLINT
-        } else {
-            LOG_INF("Ready..."); // NOLINT
+        LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
+        while (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
+            k_sleep(K_MSEC(200));
         }
+        LOG_INF("Ready..."); // NOLINT
     }
 #endif
 
-    k_sleep(K_MSEC(500));
+    return 0;
 }

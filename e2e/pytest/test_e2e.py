@@ -2,21 +2,33 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from west import log
-
-from conftest import TestcaseHelper
-from data import data
 import time
+import logging
+
+from configuration import Configuration
+from data import data
+
+logger = logging.getLogger(__name__)
+
+SHELL_IS_READY = "dvcshellcmd Device shell ready$"
+SHELL_IS_CLOSING = "dvcshellcmd Device shell closing$"
+SHELL_CMD_DISCONNECT = "dvcshellcmd_disconnect"
 
 
-def test_device(testcase_helper: TestcaseHelper):
-    log.inf("Launching the device")
+def test_device(end_to_end_configuration: Configuration):
+    logger.info("Launching the device")
 
-    testcase_helper.dut.launch()
-    testcase_helper.dut.readlines_until(regex="Device shell ready$", timeout=60)
+    end_to_end_configuration.dut.launch()
+    end_to_end_configuration.dut.readlines_until(SHELL_IS_READY, timeout=60)
 
-    for interface_data in data:
-        interface_data.test(testcase_helper)
+    # Wait a couple of seconds
+    time.sleep(1)
 
-    testcase_helper.shell.exec_command("disconnect")
-    testcase_helper.dut.readlines_until("Disconnected, closing shell$", timeout=5)
+    for interface in data:
+        interface.execute_tests(end_to_end_configuration)
+
+    # Wait a couple of seconds
+    time.sleep(1)
+
+    end_to_end_configuration.shell.exec_command(SHELL_CMD_DISCONNECT)
+    end_to_end_configuration.dut.readlines_until(SHELL_IS_CLOSING, timeout=60)

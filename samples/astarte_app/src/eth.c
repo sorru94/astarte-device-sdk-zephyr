@@ -26,6 +26,7 @@ static struct net_mgmt_event_callback ipv4_cb;
 static struct net_mgmt_event_callback l4_cb;
 
 static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
+static K_SEM_DEFINE(iface_up, 0, 1);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
@@ -87,10 +88,12 @@ static void status_mgmt_event_handler(
     switch (mgmt_event) {
         case NET_EVENT_IF_DOWN:
             LOG_DBG("Network event: NET_EVENT_IF_DOWN."); // NOLINT
+            k_sem_take(&iface_up, K_NO_WAIT);
             break;
 
         case NET_EVENT_IF_UP:
             LOG_DBG("Network event: NET_EVENT_IF_UP."); // NOLINT
+            k_sem_give(&iface_up);
             break;
 
         case NET_EVENT_IF_ADMIN_DOWN:
@@ -234,6 +237,7 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_ADDR_DEL:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
+            // Take the semaphore with K_NO_WAIT so we clear the 'obtained' state
             k_sem_take(&ipv4_address_obtained, K_NO_WAIT);
             break;
 
@@ -367,31 +371,37 @@ int eth_connect(void)
     net_mgmt_add_event_callback(&ipv4_cb);
     net_mgmt_add_event_callback(&l4_cb);
 
-    struct net_if *iface = net_if_get_default();
+    // Guaranteed to be Ethernet, not Loopback or Wi-Fi
+    struct net_if *iface = net_if_get_first_by_type(&NET_L2_GET_NAME(ETHERNET));
     if (!iface) {
-        LOG_ERR("Default interface non existant."); // NOLINT
+        LOG_ERR("Ethernet interface non existant."); // NOLINT
         return -1;
     }
 
     const struct device *dev = net_if_get_device(iface);
-    LOG_INF("Default network interface device name: %s.", dev->name); // NOLINT
+    LOG_INF("Ethernet network interface device name: %s.", dev->name); // NOLINT
     struct ethernet_context *eth_ctx = net_if_l2_data(iface);
     LOG_INF("Ethernet carrier: %s.", eth_ctx->is_net_carrier_up ? "UP" : "DOWN"); // NOLINT
     LOG_INF("Ethernet context is initialized: %s.", eth_ctx->is_init ? "YES" : "NO"); // NOLINT
     enum net_if_oper_state iface_oper_state = net_if_oper_state(iface);
-    LOG_INF("Default network interface operational state: %d.", iface_oper_state); // NOLINT
+    LOG_INF("Ethernet network interface operational state: %d.", iface_oper_state); // NOLINT
 
-    LOG_INF("Waiting for Ethernet interface to be operational."); // NOLINT
-    while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
-        k_sleep(K_MSEC(200));
+    if (iface_oper_state != NET_IF_OPER_UP) {
+        LOG_INF("Waiting for Ethernet interface to be operational..."); // NOLINT
+        if (k_sem_take(&iface_up, K_SECONDS(10)) != 0) {
+            LOG_ERR("Timeout waiting for Ethernet carrier."); // NOLINT
+            return -1;
+        }
     }
 
 #ifdef CONFIG_NET_DHCPV4
     net_dhcpv4_start(iface);
 
     LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-    while (k_sem_count_get(&ipv4_address_obtained) == 0) {
-        k_sleep(K_MSEC(200));
+
+    if (k_sem_take(&ipv4_address_obtained, K_SECONDS(15)) != 0) {
+        LOG_ERR("Timeout waiting for DHCP.");
+        return -1;
     }
 #endif
 
@@ -404,15 +414,20 @@ int eth_connect(void)
 
 void eth_poll(void)
 {
-    struct net_if *iface = net_if_get_default();
+    struct net_if *iface = net_if_get_first_by_type(&NET_L2_GET_NAME(ETHERNET));
     if (!iface) {
-        LOG_ERR("Default interface non existant."); // NOLINT
+        LOG_ERR("Ethernet interface non existant."); // NOLINT
+        k_sleep(K_SECONDS(1)); // Throttle if repeatedly called
         return;
     }
 
-    // Check if connected
+    // Check if connected, warn once to prevent spam
+    bool warned = false;
     while (net_if_oper_state(iface) != NET_IF_OPER_UP) {
-        LOG_WRN("Ethernet interface is non operational."); // NOLINT
+        if (!warned) {
+            LOG_WRN("Ethernet interface is non operational. Waiting..."); // NOLINT
+            warned = true;
+        }
         k_sleep(K_SECONDS(1));
     }
 
@@ -422,10 +437,13 @@ void eth_poll(void)
         LOG_WRN("Missing IPv4 address."); // NOLINT
         net_dhcpv4_restart(iface);
         LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-        while (k_sem_count_get(&ipv4_address_obtained) == 0) {
-            k_sleep(K_MSEC(200));
+
+        // Block until address is acquired or timeout
+        if (k_sem_take(&ipv4_address_obtained, K_SECONDS(15)) != 0) {
+            LOG_WRN("Timeout waiting for DHCP in poll cycle."); // NOLINT
+        } else {
+            LOG_INF("Ready..."); // NOLINT
         }
-        LOG_INF("Ready..."); // NOLINT
     }
 #endif
 

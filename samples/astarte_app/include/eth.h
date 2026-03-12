@@ -7,9 +7,6 @@
 #ifndef ETH_H
 #define ETH_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 /**
  * @brief Blocking function to connect the device to internet.
  *

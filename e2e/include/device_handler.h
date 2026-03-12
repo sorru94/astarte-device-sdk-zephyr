@@ -4,29 +4,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef E2EDEVICE_HANDLERS_H
-#define E2EDEVICE_HANDLERS_H
-
-/**
- * @file device_handler.h
- * @brief Handle device object and threads, these function should be called by one thread only
- */
+#ifndef DEVICE_HANDLER_H
+#define DEVICE_HANDLER_H
 
 #include <astarte_device_sdk/device.h>
 
-// Used only as a token to avoid
-typedef void *test_device_handle_t;
+#include "utilities.h"
 
-void device_setup(astarte_device_config_t config);
-astarte_device_handle_t get_device();
-// these functions read device_thread_flags and wait appropriately
-// flag DEVICE_CONNECTED
-void wait_for_connection();
-void wait_for_disconnection();
-// these functions write device_thread_flags
-// flag THREAD_TERMINATION
-void set_termination();
+void setup_device();
 void free_device();
-// --
+void wait_for_device_connection();
+void disconnect_device();
+void wait_for_device_disconnection();
+uint64_t perfect_hash_device_interface(const char *interface_name, size_t len);
 
-#endif /* E2ESHELL_HANDLERS_H */
+int device_send_individual(
+    const char *interface_name, const char *path, astarte_data_t data, optional_int64_t timestamp);
+int device_send_object(const char *interface_name, const char *path,
+    astarte_object_entry_t *entries, size_t entries_len, optional_int64_t timestamp);
+int device_set_property(const char *interface_name, const char *path, astarte_data_t data);
+int device_unset_property(const char *interface_name, const char *path);
+
+#endif /* DEVICE_HANDLER_H */

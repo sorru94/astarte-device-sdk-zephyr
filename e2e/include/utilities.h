@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef E2EUTILITIES_H
-#define E2EUTILITIES_H
+#ifndef UTILITIES_H
+#define UTILITIES_H
 
 #include <stdint.h>
 
@@ -17,14 +17,9 @@
 #include <astarte_device_sdk/object.h>
 #include <astarte_device_sdk/util.h>
 
-/**
- * @file e2eutilities.h
- * @brief Utilities needed in e2e tests
- */
-
 #define CHECK_HALT(expr, ...)                                                                      \
     if (expr) {                                                                                    \
-        LOG_ERR(__VA_ARGS__); /* NOLINT */                                                         \
+        LOG_ERR(__VA_ARGS__);                                                                      \
         k_fatal_halt(-1);                                                                          \
     }
 
@@ -32,7 +27,7 @@
 
 #define CHECK_RET_1(expr, ...)                                                                     \
     if (expr) {                                                                                    \
-        __VA_OPT__(LOG_ERR(__VA_ARGS__)); /* NOLINT */                                             \
+        __VA_OPT__(LOG_ERR(__VA_ARGS__));                                                          \
         return 1;                                                                                  \
     }
 
@@ -40,40 +35,28 @@
 
 #define CHECK_GOTO(expr, label, ...)                                                               \
     if (expr) {                                                                                    \
-        LOG_ERR(__VA_ARGS__); /* NOLINT */                                                         \
+        LOG_ERR(__VA_ARGS__);                                                                      \
         goto label;                                                                                \
     }
 
 #define CHECK_ASTARTE_OK_GOTO(expr, label, ...)                                                    \
     CHECK_GOTO(expr != ASTARTE_RESULT_OK, label, __VA_ARGS__)
 
-// Timestamp option used to store a valid timestamp value and its presence
+typedef struct
+{
+    const uint8_t *buf;
+    size_t len;
+} byte_array_t;
+
 typedef struct
 {
     int64_t value;
     bool present;
-} idata_timestamp_option_t;
+} optional_int64_t;
 
-ASTARTE_UTIL_DEFINE_ARRAY(idata_byte_array, uint8_t);
+bool astarte_data_are_equal(const astarte_data_t *left, const astarte_data_t *right);
+bool astarte_objects_are_equal(const astarte_object_entry_t *left_entries,
+    size_t left_entries_length, const astarte_object_entry_t *right_entries,
+    size_t right_entries_length);
 
-ASTARTE_UTIL_DEFINE_ARRAY(idata_object_entry_array, astarte_object_entry_t);
-
-void utils_log_timestamp(idata_timestamp_option_t *timestamp);
-void utils_log_object_entry_array(idata_object_entry_array *obj);
-/**
- * @brief Pretty print to the log output an Astarte data.
- *
- * @param[in] data The data to log
- */
-void utils_log_astarte_data(astarte_data_t data);
-
-bool astarte_object_equal(idata_object_entry_array *left, idata_object_entry_array *right);
-bool astarte_data_equal(const astarte_data_t *left, const astarte_data_t *right);
-
-// should be called at the start of the application to avoid user input before
-// the shell is actually ready and the device connected
-void block_shell_commands();
-// lifts the block on the shell commands
-void unblock_shell_commands();
-
-#endif /* E2EUTILITIES_H */
+#endif /* UTILITIES_H */

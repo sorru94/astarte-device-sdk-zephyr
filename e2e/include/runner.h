@@ -4,12 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef E2ERUNNER_H
-#define E2ERUNNER_H
+#ifndef RUNNER_H
+#define RUNNER_H
 
-// run the e2e test on all test devices
-// must be called only once, it takes ownership of a semaphore so it will block until the first call
-// exits
-void run_e2e_test();
+// Run the end to end test, this function will block untill the test has been completed
+void run_end_to_end_test();
 
-#endif /* E2ERUNNER_H */
+#endif /* RUNNER_H */

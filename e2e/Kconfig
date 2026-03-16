@@ -106,9 +106,9 @@ module-str = Log level for e2e runner and command handler
 module-help = Sets log level for e2e runner and command handler
 source "subsys/logging/Kconfig.template.log_config"
 
-module = IDATA
-module-str = Log level for e2e idata functions
-module-help = Sets log level for e2e idata functions
+module = DATA
+module-str = Log level for e2e data functions
+module-help = Sets log level for e2e data functions
 source "subsys/logging/Kconfig.template.log_config"
 
 module = UTILITIES

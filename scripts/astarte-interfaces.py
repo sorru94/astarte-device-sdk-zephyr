@@ -108,6 +108,8 @@ interface_header_template = Template(r"""/**
  * and are automatically generated from the json interfaces definitions.
  */
 
+// clang-format off
+
 // NOLINTNEXTLINE This guard is clear enough.
 #ifndef ${output_filename_cap}_H
 #define ${output_filename_cap}_H
@@ -129,6 +131,8 @@ interface_source_template = Template(r"""/**
  *
  * @warning Do not modify this file manually.
  */
+
+// clang-format off
 
 #include "${output_filename}.h"
 

@@ -54,8 +54,13 @@ jobs:
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |
           west --version
-          west blobs fetch hal_nxp
-          west blobs fetch hal_espressif
+          if [ "${{ matrix.sample-variant.zephyr-version }}" == "reference" ]; then
+            west blobs fetch -a hal_nxp
+            west blobs fetch -a hal_espressif
+          else
+            west blobs fetch hal_nxp
+            west blobs fetch hal_espressif
+          fi
       - name: Build sample
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |

@@ -21,8 +21,9 @@ manifest:
         # strictly needed by the application.
         name-allowlist:
           - cmsis
-          - hal_stm32
           - hal_nxp
+          - hal_espressif
+          - hal_stm32
           - mbedtls
           - picolibc
           - littlefs

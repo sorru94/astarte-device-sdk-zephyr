@@ -12,7 +12,7 @@
 #include "device_private.h"
 #include "device_rx.h"
 #include "device_tx.h"
-#include "pairing_private.h"
+#include "pairing/core.h"
 #include "tls_credentials.h"
 
 #include "log.h"

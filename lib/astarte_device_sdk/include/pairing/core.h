@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PAIRING_PRIVATE_H
-#define PAIRING_PRIVATE_H
+#ifndef PAIRING_CORE_H
+#define PAIRING_CORE_H
 
 /**
- * @file pairing_private.h
- * @brief Private pairing APIs for new Astarte devices
+ * @file pairing/core.h
+ * @brief Core pairing APIs for new Astarte devices
  */
 
 #include "astarte_device_sdk/astarte.h"
@@ -85,4 +85,4 @@ astarte_result_t astarte_pairing_verify_client_certificate(
 }
 #endif
 
-#endif /* PAIRING_PRIVATE_H */
+#endif /* PAIRING_CORE_H */

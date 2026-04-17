@@ -1,6 +1,8 @@
 +*/include/astarte_device_sdk/*.h
 +*/lib/astarte_device_sdk/include/*.h
++*/lib/astarte_device_sdk/include/*/*.h
 +*/lib/astarte_device_sdk/*.c
++*/lib/astarte_device_sdk/*/*.c
 +*/samples/*/include/*.h
 +*/samples/*/src/*.c
 +*/samples/astarte_app/interfaces/generated_interfaces.h

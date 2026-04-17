@@ -270,7 +270,9 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     char *tmp = NULL;
     while ((tmp = strstr(client_crt->crt_pem, "\\n")) != NULL) {
         tmp[0] = '\n';
-        tmp[1] = '\n';
+        // Shift the remaining part of the string left by 1 character
+        size_t len = strlen(tmp + 2);
+        memmove(tmp + 1, tmp + 2, len + 1);
     }
 
     ASTARTE_LOG_DBG("Received client certificate: %s", client_crt->crt_pem);

@@ -69,7 +69,7 @@ class WestCommandAstarteFormat(WestCommand):
         library_path = Path(self.manifest.repo_abspath)
         patterns = [
             "include/**/*.h",
-            "lib/**/include/*.h",
+            "lib/**/include/**/*.h",
             "lib/**/*.c",
             "samples/**/include/*.h",
             "samples/**/src/*.c",

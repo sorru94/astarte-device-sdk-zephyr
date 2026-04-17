@@ -712,9 +712,10 @@ static void handle_publish_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_publi
 
     while (received < message_size) {
         char *pkt = discarded ? msg_buffer : &msg_buffer[received];
+        size_t capacity = discarded ? CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE
+                                    : (CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE - received);
 
-        ret = mqtt_read_publish_payload_blocking(
-            &astarte_mqtt->client, pkt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE);
+        ret = mqtt_read_publish_payload_blocking(&astarte_mqtt->client, pkt, capacity);
         if (ret < 0) {
             ASTARTE_LOG_ERR("Error reading payload of PUBLISH packet %s", strerror(ret));
             return;

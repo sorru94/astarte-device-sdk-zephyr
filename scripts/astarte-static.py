@@ -68,7 +68,7 @@ class WestCommandAstarteStatic(WestCommand):
             The argument parser for this command.
         """
         parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
-        default_pristine = "auto"
+        default_pristine = "always"
         parser.add_argument(
             "-p",
             "--pristine",
@@ -101,7 +101,7 @@ class WestCommandAstarteStatic(WestCommand):
 
         if has_cc_reports or has_size_reports:
             self._print_summary(summary)
-            sys.exit(1)
+            self.die("Static analysis completed with issues.")
 
         self.inf(stylize("No issue detected.", fore("green")))
 
@@ -121,10 +121,11 @@ class WestCommandAstarteStatic(WestCommand):
         codechecker_analyze_opts = [
             "--analyzers",
             "clang-tidy",
+            "--no-missing-checker-error",
             "--analyzer-config",
             "clang-tidy:take-config-from-directory=true",
             "--ignore",
-            "$PWD/skipfile.txt",
+            f"{library_path}/skipfile.txt",
         ]
         codechecker_exports = ["json", args.export] if args.export else ["json"]
 
@@ -132,14 +133,19 @@ class WestCommandAstarteStatic(WestCommand):
             "west build",
             f"-p {args.pristine}",
             "-b native_sim",
-            f"$PWD/samples/{sample_name} --",
+            f"{library_path}/samples/{sample_name} --",
             "-DZEPHYR_SCA_VARIANT=codechecker",
             f'-DCODECHECKER_EXPORT={",".join(codechecker_exports)}',
             f'-DCODECHECKER_ANALYZE_OPTS="{";".join(codechecker_analyze_opts)}"',
         ]
 
         self.inf(stylize(" ".join(cmd), fg("cyan")))
-        subprocess.run(" ".join(cmd), shell=True, cwd=library_path, timeout=180, check=True)
+        try:
+            subprocess.run(" ".join(cmd), shell=True, cwd=library_path, timeout=180, check=True)
+        except subprocess.CalledProcessError as e:
+            self.die(f"CodeChecker analysis failed. Command exited with code {e.returncode}.")
+        except subprocess.TimeoutExpired:
+            self.die("CodeChecker analysis timed out after 180 seconds.")
 
     def _process_codechecker_results(self, library_path, summary):
         """
@@ -159,14 +165,18 @@ class WestCommandAstarteStatic(WestCommand):
         """
         result_file = library_path / "build/sca/codechecker/codechecker.json"
         if not result_file.exists():
-            return False
+            self.die("CodeChecker analysis failed: codechecker.json was not generated.")
 
         has_reports = False
-        with open(result_file, "r", encoding="utf-8") as rf:
-            reports = json.load(rf).get("reports", [])
-            for report in reports:
-                has_reports = True
-                self._report_issue(report, summary)
+        try:
+            with open(result_file, "r", encoding="utf-8") as rf:
+                reports = json.load(rf).get("reports", [])
+                for report in reports:
+                    has_reports = True
+                    self._report_issue(report, summary)
+        except json.JSONDecodeError:
+            self.die("CodeChecker analysis failed: codechecker.json is corrupted or invalid JSON.")
+
         return has_reports
 
     def _report_issue(self, report, summary):

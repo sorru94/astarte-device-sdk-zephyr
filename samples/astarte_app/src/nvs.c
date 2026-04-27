@@ -7,9 +7,15 @@
 #include "nvs.h"
 
 #include <zephyr/drivers/flash.h>
-#include <zephyr/fs/nvs.h>
 #include <zephyr/kernel.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/version.h>
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
+#include <zephyr/fs/nvs.h>
+#endif
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(nvs, CONFIG_APP_LOG_LEVEL); // NOLINT
@@ -23,8 +29,13 @@ static struct nvs_fs file_system;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 #define NVS_PARTITION storage_partition
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#define NVS_PARTITION_DEVICE PARTITION_DEVICE(NVS_PARTITION)
+#define NVS_PARTITION_OFFSET PARTITION_OFFSET(NVS_PARTITION)
+#else
 #define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)
 #define NVS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(NVS_PARTITION)
+#endif
 
 #define NVS_SECTOR_COUNT 3U
 

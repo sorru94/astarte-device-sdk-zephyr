@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include <zephyr/net/socket.h>
+#include <zephyr/version.h>
 
 #include <mbedtls/pk.h>
 #include <mbedtls/x509_crt.h>
@@ -146,7 +147,11 @@ astarte_result_t astarte_crypto_create_csr(
         goto exit;
     }
 
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+    res = mbedtls_x509write_csr_pem(&csr_ctx, csr_pem, csr_pem_size);
+#else
     res = mbedtls_x509write_csr_pem(&csr_ctx, csr_pem, csr_pem_size, NULL, NULL);
+#endif
     if (res != 0) {
         ASTARTE_LOG_ERR("mbedtls_x509write_csr_pem returned %d", res);
         goto exit;

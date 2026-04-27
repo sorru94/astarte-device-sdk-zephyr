@@ -11,10 +11,16 @@
 #include <string.h>
 
 #include <zephyr/drivers/flash.h>
-#include <zephyr/fs/nvs.h>
 #include <zephyr/kernel.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/mutex.h>
+#include <zephyr/version.h>
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
+#include <zephyr/fs/nvs.h>
+#endif
 
 #include "log.h"
 

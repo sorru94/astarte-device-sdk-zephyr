@@ -30,8 +30,8 @@ struct astarte_device_sdk_device_caching_fixture
 static void *device_caching_test_setup(void)
 {
     struct flash_pages_info fp_info;
-    const struct device *device = FIXED_PARTITION_DEVICE(astarte_partition);
-    off_t offset = FIXED_PARTITION_OFFSET(astarte_partition);
+    const struct device *device = PARTITION_DEVICE(astarte_partition);
+    off_t offset = PARTITION_OFFSET(astarte_partition);
     zassert(device_is_ready(device), "Flash device is not ready.");
     zassert_equal(flash_get_page_info_by_offs(device, offset, &fp_info), 0, "Can't get page info.");
 
@@ -44,9 +44,9 @@ static void *device_caching_test_setup(void)
         &fixture->introspection, &org_astarteplatform_zephyr_examples_DeviceProperty);
     (void) introspection_add(
         &fixture->introspection, &org_astarteplatform_zephyr_examples_ServerProperty);
-    fixture->flash_device = FIXED_PARTITION_DEVICE(astarte_partition);
-    fixture->flash_offset = FIXED_PARTITION_OFFSET(astarte_partition);
-    fixture->flash_sector_count = FIXED_PARTITION_SIZE(astarte_partition) / fp_info.size;
+    fixture->flash_device = PARTITION_DEVICE(astarte_partition);
+    fixture->flash_offset = PARTITION_OFFSET(astarte_partition);
+    fixture->flash_sector_count = PARTITION_SIZE(astarte_partition) / fp_info.size;
     fixture->flash_sector_size = fp_info.size;
     k_mutex_init(&fixture->test_mutex);
 

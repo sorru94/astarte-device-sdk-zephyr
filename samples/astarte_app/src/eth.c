@@ -10,7 +10,6 @@
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/ethernet_mgmt.h>
 #include <zephyr/sys/atomic.h>
-#include <zephyr/version.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(eth, CONFIG_APP_LOG_LEVEL); // NOLINT
@@ -38,13 +37,8 @@ static atomic_t eth_flags;
  *       Callbacks declaration/definition       *
  ***********************************************/
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static void eth_mgmt_event_handler(
     struct net_mgmt_event_callback *event_cb, uint64_t mgmt_event, struct net_if *iface)
-#else
-static void eth_mgmt_event_handler(
-    struct net_mgmt_event_callback *event_cb, uint32_t mgmt_event, struct net_if *iface)
-#endif
 {
     (void) event_cb;
     (void) iface;
@@ -68,23 +62,14 @@ static void eth_mgmt_event_handler(
             break;
 
         default:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
             LOG_DBG("Status network event: %lld.", mgmt_event); // NOLINT
-#else
-            LOG_DBG("Status network event: %d.", mgmt_event); // NOLINT
-#endif
             break;
     }
     // NOLINTEND(hicpp-signed-bitwise)
 }
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static void status_mgmt_event_handler(
     struct net_mgmt_event_callback *event_cb, uint64_t mgmt_event, struct net_if *iface)
-#else
-static void status_mgmt_event_handler(
-    struct net_mgmt_event_callback *event_cb, uint32_t mgmt_event, struct net_if *iface)
-#endif
 {
     (void) event_cb;
     (void) iface;
@@ -110,23 +95,14 @@ static void status_mgmt_event_handler(
             break;
 
         default:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
             LOG_DBG("Status network event: %lld.", mgmt_event); // NOLINT
-#else
-            LOG_DBG("Status network event: %d.", mgmt_event); // NOLINT
-#endif
             break;
     }
     // NOLINTEND(hicpp-signed-bitwise)
 }
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static void ipv6_mgmt_event_handler(
     struct net_mgmt_event_callback *event_cb, uint64_t mgmt_event, struct net_if *iface)
-#else
-static void ipv6_mgmt_event_handler(
-    struct net_mgmt_event_callback *event_cb, uint32_t mgmt_event, struct net_if *iface)
-#endif
 {
     (void) event_cb;
     (void) iface;
@@ -211,23 +187,14 @@ static void ipv6_mgmt_event_handler(
             break;
 
         default:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
             LOG_DBG("IPv6 network event: %lld.", mgmt_event); // NOLINT
-#else
-            LOG_DBG("IPv6 network event: %d.", mgmt_event); // NOLINT
-#endif
             break;
     }
     // NOLINTEND(hicpp-signed-bitwise)
 }
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static void ipv4_mgmt_event_handler(
     struct net_mgmt_event_callback *event_cb, uint64_t mgmt_event, struct net_if *iface)
-#else
-static void ipv4_mgmt_event_handler(
-    struct net_mgmt_event_callback *event_cb, uint32_t mgmt_event, struct net_if *iface)
-#endif
 {
     (void) event_cb;
     (void) iface;
@@ -282,23 +249,14 @@ static void ipv4_mgmt_event_handler(
             break;
 
         default:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
             LOG_DBG("Network event: %lld.", mgmt_event); // NOLINT
-#else
-            LOG_DBG("Network event: %d.", mgmt_event); // NOLINT
-#endif
             break;
     }
     // NOLINTEND(hicpp-signed-bitwise)
 }
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static void l4_mgmt_event_handler(
     struct net_mgmt_event_callback *event_cb, uint64_t mgmt_event, struct net_if *iface)
-#else
-static void l4_mgmt_event_handler(
-    struct net_mgmt_event_callback *event_cb, uint32_t mgmt_event, struct net_if *iface)
-#endif
 {
     (void) event_cb;
     (void) iface;
@@ -327,11 +285,7 @@ static void l4_mgmt_event_handler(
             break;
 
         default:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
             LOG_DBG("Network event: %lld.", mgmt_event); // NOLINT
-#else
-            LOG_DBG("Network event: %d.", mgmt_event); // NOLINT
-#endif
             break;
     }
     // NOLINTEND(hicpp-signed-bitwise)

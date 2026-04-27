@@ -10,7 +10,6 @@
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/http/status.h>
 #include <zephyr/net/socket.h>
-#include <zephyr/version.h>
 
 #ifndef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP
 #include <zephyr/net/tls_credentials.h>
@@ -51,13 +50,8 @@ BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME) != 1, "Missing hostname 
  *       Callbacks declaration/definition       *
  ***********************************************/
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
 static int http_response_cb(
     struct http_response *rsp, enum http_final_call final_data, void *user_data)
-#else
-static void http_response_cb(
-    struct http_response *rsp, enum http_final_call final_data, void *user_data)
-#endif
 {
     int res = 0;
     struct http_req_ctx *ctx = (struct http_req_ctx *) user_data;
@@ -96,11 +90,7 @@ static void http_response_cb(
     }
 
 exit:
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 2)
     return res;
-#else
-    (void) res;
-#endif
 }
 
 /************************************************

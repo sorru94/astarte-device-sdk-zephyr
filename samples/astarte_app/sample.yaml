@@ -24,9 +24,9 @@ tests:
     extra_args: EXTRA_CONF_FILE="prj-wifi.conf"
     integration_platforms:
       - frdm_rw612
-  sample.lts:
+  sample.msv:
     build_only: true
-    extra_args: CONF_FILE="zephyr-lts.conf"
+    extra_args: CONF_FILE="prj-zephyr-msv.conf"
     integration_platforms:
-      - mimxrt1064_evk
+      - frdm_rw612
       - stm32h573i_dk

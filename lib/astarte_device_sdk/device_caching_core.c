@@ -9,8 +9,14 @@
 #include <string.h>
 
 #include <zephyr/drivers/flash.h>
-#include <zephyr/fs/nvs.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/version.h>
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
+#include <zephyr/fs/nvs.h>
+#endif
 
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CACHING_LOG_LEVEL);
@@ -23,9 +29,16 @@ ASTARTE_LOG_MODULE_REGISTER(device_caching, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_CAC
 #if !FIXED_PARTITION_EXISTS(NVS_PARTITION)
 #error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
 #endif // FIXED_PARTITION_EXISTS(NVS_PARTITION)
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#define NVS_PARTITION_DEVICE PARTITION_DEVICE(NVS_PARTITION)
+#define NVS_PARTITION_OFFSET PARTITION_OFFSET(NVS_PARTITION)
+#define NVS_PARTITION_SIZE PARTITION_SIZE(NVS_PARTITION)
+#else
 #define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)
 #define NVS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(NVS_PARTITION)
 #define NVS_PARTITION_SIZE FIXED_PARTITION_SIZE(NVS_PARTITION)
+#endif
 
 #define SYNCHRONIZATION_NAMESPACE "synchronization_namespace"
 #define INTROSPECTION_NAMESPACE "introspection_namespace"

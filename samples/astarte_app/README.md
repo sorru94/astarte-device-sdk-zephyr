@@ -119,7 +119,7 @@ west build -b <your_board_name> samples/astarte_app -- -DEXTRA_CONF_FILE="prj-wi
 ```
 **Zephyr LTS Build:** If using the LTS version of Zephyr, add the LTS config file:
 ```bash
-west build -b <your_board_name> samples/astarte_app -- -DCONF_FILE="zephyr-lts.conf"
+west build -b <your_board_name> samples/astarte_app -- -DCONF_FILE="prj-zephyr-msv.conf"
 ```
 **Native Sim (Net-tools):** If using native_sim, set up the host interface first:
 ```bash

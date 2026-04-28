@@ -8,7 +8,14 @@
 #define KV_STORAGE_NVS_H
 
 #include "astarte_device_sdk/result.h"
+
+#include <zephyr/version.h>
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
 #include <zephyr/fs/nvs.h>
+#endif
 
 /** @brief Offsets for the NVS IDs of components of a key-value pair */
 #define NVS_ID_OFFSET_NAMESPACE 0U

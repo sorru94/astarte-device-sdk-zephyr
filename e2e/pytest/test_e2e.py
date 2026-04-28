@@ -19,7 +19,7 @@ def test_device(end_to_end_configuration: Configuration):
     logger.info("Launching the device")
 
     end_to_end_configuration.dut.launch()
-    end_to_end_configuration.dut.readlines_until(SHELL_IS_READY, timeout=60)
+    end_to_end_configuration.dut.readlines_until(regex=SHELL_IS_READY, timeout=60)
 
     # Wait a couple of seconds
     time.sleep(1)
@@ -31,4 +31,4 @@ def test_device(end_to_end_configuration: Configuration):
     time.sleep(1)
 
     end_to_end_configuration.shell.exec_command(SHELL_CMD_DISCONNECT)
-    end_to_end_configuration.dut.readlines_until(SHELL_IS_CLOSING, timeout=60)
+    end_to_end_configuration.dut.readlines_until(regex=SHELL_IS_CLOSING, timeout=60)

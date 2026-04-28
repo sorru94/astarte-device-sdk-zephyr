@@ -52,7 +52,13 @@
  * - Iterating through all the stored key-value pairs.
  */
 
+#include <zephyr/version.h>
+
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
 #include <zephyr/fs/nvs.h>
+#endif
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"

@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Refactored internal MbedTLS usage to leverage the [PSA crypto API](https://docs.zephyrproject.org/latest/services/crypto/psa_crypto.html). This introduces no public API changes but requires the PSA Crypto API to be enabled in the project's Kconfig options.
 - Changed the default value of `CONFIG_GET_CONFIG_FROM_FLASH` to `n` for the `frdm_rw612` board in the sample application.
 
+### Removed
+- Support for Zephyr versions older than 4.3.x, including 3.7.x (LTS3).
+
 ### Fixed
 - Corrected the storage partition size for the `frdm_rw612` board sample.
 - Optimized persistent storage write operations to significantly reduce overhead, resolving associated write failures.

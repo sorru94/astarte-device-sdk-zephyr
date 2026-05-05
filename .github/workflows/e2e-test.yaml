@@ -23,7 +23,7 @@ jobs:
         id: astarte
         uses: astarte-platform/astarte-cluster-action@v1
         with:
-          astarte_version: "1.2.1"
+          astarte_version: "1.3.0-rc.2"
 
       - name: Checkout
         uses: actions/checkout@v6

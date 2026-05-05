@@ -19,6 +19,8 @@
  * @{
  */
 
+#include <zephyr/sys/uuid.h>
+
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
 
@@ -28,10 +30,10 @@
  * @details The Astarte device IDs are 128 bit identifiers. Their string representation is a base 64
  * (RFC 4648 sec. 5) URL and filename safe encoding.
  */
-#define ASTARTE_DEVICE_ID_LEN 22
+#define ASTARTE_DEVICE_ID_LEN (UUID_BASE64URL_LEN - 1)
 
 /** @brief Size in bytes for the namespace used to generate a deterministic device IDs. */
-#define ASTARTE_DEVICE_ID_NAMESPACE_SIZE 16
+#define ASTARTE_DEVICE_ID_NAMESPACE_SIZE UUID_SIZE
 
 #ifdef __cplusplus
 extern "C" {

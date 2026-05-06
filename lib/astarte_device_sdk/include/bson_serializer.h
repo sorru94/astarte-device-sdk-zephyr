@@ -12,6 +12,7 @@
  * @brief Astarte BSON serializer functions.
  */
 
+#include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
 
 /** @brief Data struct for a serializer instance. */

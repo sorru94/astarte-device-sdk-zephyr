@@ -284,6 +284,8 @@ static astarte_result_t astarte_http_do_request(enum http_method method, int32_t
     req.recv_buf = recv_buf;
     req.recv_buf_len = sizeof(recv_buf);
 
+    ASTARTE_LOG_ERR("REQUEST: '%s', '%s', '%s'", req.host, req.url, req.port);
+
     // Pass context struct as the user_data parameter
     int http_rc = http_client_req(sock, &req, timeout_ms, ctx);
     if ((http_rc < 0) || !ctx->request_ok) {

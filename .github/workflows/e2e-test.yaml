@@ -79,7 +79,6 @@ jobs:
           CONFIG_DNS_SERVER1="192.0.2.2:53"
           END
           # Write the Astarte certificate
-          echo "$CREDENTIAL_SECRET"
           cat "$ASTARTE_ACTION_CERT" > ./certificate/api-eu1-astarte-cloud.pem
 
       - name: Install net-setup dependencies

@@ -26,7 +26,7 @@ from west.commands import WestCommand
 
 # Allowed number of lines for each .c and .h files.
 # Add the comment '// NOLINENUMBERLINT' in one of such files to exclude the file from this check.
-FILE_LINES_LIMIT = 1000
+FILE_LINES_LIMIT = 500
 
 severity_colours = {
     "UNSPECIFIED": fore("dark_gray"),
@@ -299,11 +299,17 @@ def calculate_file_sizes(library_path: Path):
         A list of pairs, with the first element is the path to the file and the second element is
         the number of lines of the file.
     """
-    search_patterns = [("lib", "*/*.c"), ("include", "*/*.h"), ("lib", "*/include/*.h")]
+    search_patterns = [
+        "lib/*/*.c",
+        "lib/*/*/*.c",
+        "lib/*/include/*.h",
+        "lib/*/include/*/*.h",
+        "include/*/*.h",
+    ]
 
     files = []
-    for base, pattern in search_patterns:
-        files.extend(library_path.joinpath(base).glob(pattern))
+    for pattern in search_patterns:
+        files.extend(library_path.glob(pattern))
 
     file_lengths = []
     for file in files:

@@ -10,6 +10,8 @@
 #include "device_caching.h"
 #include "device_tx.h"
 #endif
+#include "mqtt/core.h"
+#include "mqtt/pubsub.h"
 
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(

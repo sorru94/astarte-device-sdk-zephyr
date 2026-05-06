@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef MQTT_H
-#define MQTT_H
+#ifndef MQTT_CORE_H
+#define MQTT_CORE_H
 
 /**
- * @file mqtt.h
+ * @file mqtt/core.h
  * @brief Wrapper for the MQTT client.
  */
 
@@ -203,32 +203,6 @@ bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt);
 astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt);
 
 /**
- * @brief Subscribe the client to an MQTT topic.
- *
- * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @param[in] topic Topic to use for the subscription.
- * @param[in] max_qos Maximum QoS level at which the server can send application messages.
- * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
- * message delivered callback to wait for delivery of messages.
- */
-void astarte_mqtt_subscribe(
-    astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id);
-
-/**
- * @brief Publish data to an MQTT topic.
- *
- * @param[inout] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @param[in] topic Topic to use for the publish.
- * @param[in] data Buffer of data to publish.
- * @param[in] data_size Size of the buffer of data to publish in Bytes.
- * @param[in] qos QoS to be used for the publish.
- * @param[out] out_message_id Stores the message ID used. Can be used in combination with the
- * message delivered callback to wait for delivery of messages.
- */
-void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
-    size_t data_size, int qos, uint16_t *out_message_id);
-
-/**
  * @brief Poll the MQTT client.
  *
  * @note This function will also take care of keeping the connection active in case of a long period
@@ -239,23 +213,8 @@ void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void 
  */
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt);
 
-/**
- * @brief Check if the MQTT client has any outgoing messages with QoS > 0 pending an acknoledgment.
- *
- * @param[in] astarte_mqtt Handle to the Astarte MQTT client instance.
- * @return True if messages are pending, false otherwise.
- */
-bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt);
-
-/**
- * @brief Clear all MQTT messages that are waiting to be acknoledged.
- *
- * @param[in] astarte_mqtt Handle to the Astarte MQTT client instance.
- */
-void astarte_mqtt_clear_all_pending(astarte_mqtt_t *astarte_mqtt);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif // MQTT_H
+#endif // MQTT_CORE_H

@@ -21,7 +21,7 @@
 #endif
 #include "backoff.h"
 #include "introspection.h"
-#include "mqtt.h"
+#include "mqtt/core.h"
 #include "tls_credentials.h"
 
 /** @brief Generic prefix to be used for all MQTT topics. */

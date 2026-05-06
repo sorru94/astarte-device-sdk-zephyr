@@ -11,6 +11,8 @@
 #include "device_caching.h"
 #endif
 #include "data_serialize.h"
+#include "mqtt/core.h"
+#include "mqtt/pubsub.h"
 #include "object_private.h"
 
 #include "log.h"

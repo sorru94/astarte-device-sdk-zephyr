@@ -12,6 +12,8 @@
 #include "device_private.h"
 #include "device_rx.h"
 #include "device_tx.h"
+#include "mqtt/core.h"
+#include "mqtt/pubsub.h"
 #include "pairing/core.h"
 #include "tls_credentials.h"
 

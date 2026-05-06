@@ -17,6 +17,8 @@
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(data_deserialize, CONFIG_ASTARTE_DEVICE_SDK_DATA_DESERIALIZE_LOG_LEVEL);
 
+// NOLINENUMBERLINT
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/

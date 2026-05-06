@@ -16,7 +16,7 @@
 #include "astarte_device_sdk/result.h"
 
 #include "crypto.h"
-#include "mqtt.h"
+#include "mqtt/core.h"
 #include "tls_credentials.h"
 
 /** @brief Maximum length for the MQTT broker URL in chars.

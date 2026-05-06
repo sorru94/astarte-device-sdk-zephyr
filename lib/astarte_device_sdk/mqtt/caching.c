@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "mqtt_caching.h"
+#include "mqtt/caching.h"
 
 #include "log.h"
 
@@ -19,14 +19,14 @@ struct mqtt_caching_map_entry
     /** @brief End of validity for this map entry. */
     k_timepoint_t end_of_validity;
     /** @brief MQTT cached message */
-    mqtt_caching_message_t message;
+    astarte_mqtt_caching_message_t message;
 };
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
 
-uint16_t mqtt_caching_get_available_message_id(struct sys_hashmap *map)
+uint16_t astarte_mqtt_caching_get_available_message_id(struct sys_hashmap *map)
 {
     // The message ID, also known as packet ID, can't be zero (MQTT Version 3.1.1 section 2.3.1).
     static uint16_t last_message_id = 0U;
@@ -41,8 +41,8 @@ uint16_t mqtt_caching_get_available_message_id(struct sys_hashmap *map)
     return last_message_id;
 }
 
-void mqtt_caching_insert_message(
-    struct sys_hashmap *map, uint16_t identifier, mqtt_caching_message_t message)
+void astarte_mqtt_caching_insert_message(
+    struct sys_hashmap *map, uint16_t identifier, astarte_mqtt_caching_message_t message)
 {
     char *topic_cpy = NULL;
     uint8_t *data_cpy = NULL;
@@ -99,13 +99,13 @@ error:
     free(map_entry);
 }
 
-bool mqtt_caching_find_message(struct sys_hashmap *map, uint16_t message_id)
+bool astarte_mqtt_caching_find_message(struct sys_hashmap *map, uint16_t message_id)
 {
     return sys_hashmap_contains_key(map, message_id);
 }
 
-void mqtt_caching_check_message_expiry(struct sys_hashmap *map, astarte_mqtt_t *astarte_mqtt,
-    mqtt_caching_retransmit_cbk_t retransmit_cbk)
+void astarte_mqtt_caching_check_message_expiry(struct sys_hashmap *map,
+    astarte_mqtt_t *astarte_mqtt, astarte_mqtt_caching_retransmit_cbk_t retransmit_cbk)
 {
     // Loop over all the messages in the hashmap
     struct sys_hashmap_iterator iter = { 0 };
@@ -126,7 +126,7 @@ void mqtt_caching_check_message_expiry(struct sys_hashmap *map, astarte_mqtt_t *
     }
 }
 
-void mqtt_caching_update_message_expiry(struct sys_hashmap *map, uint16_t message_id)
+void astarte_mqtt_caching_update_message_expiry(struct sys_hashmap *map, uint16_t message_id)
 {
     ASTARTE_LOG_DBG("Updating message expiration in hashmap, id: %d.", message_id);
 
@@ -142,7 +142,7 @@ void mqtt_caching_update_message_expiry(struct sys_hashmap *map, uint16_t messag
     }
 }
 
-void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
+void astarte_mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
 {
     ASTARTE_LOG_DBG("Removing message from hashmap (%d)", message_id);
 
@@ -158,7 +158,7 @@ void mqtt_caching_remove_message(struct sys_hashmap *map, uint16_t message_id)
     }
 }
 
-void mqtt_caching_clear_messages(struct sys_hashmap *map)
+void astarte_mqtt_caching_clear_messages(struct sys_hashmap *map)
 {
     ASTARTE_LOG_DBG("Removing all messages from hashmap.");
 

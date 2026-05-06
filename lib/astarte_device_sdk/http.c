@@ -288,6 +288,7 @@ static astarte_result_t astarte_http_do_request(enum http_method method, int32_t
     int http_rc = http_client_req(sock, &req, timeout_ms, ctx);
     if ((http_rc < 0) || !ctx->request_ok) {
         ASTARTE_LOG_ERR("HTTP request failed: %d", http_rc);
+        ASTARTE_LOG_ERR("Content: %s", (char *) recv_buf);
         zsock_close(sock);
         return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }

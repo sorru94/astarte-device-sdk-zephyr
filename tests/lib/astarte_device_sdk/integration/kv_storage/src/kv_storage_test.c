@@ -12,7 +12,7 @@
 
 #include "astarte_device_sdk/result.h"
 
-#include "kv_storage.h"
+#include "storage/key_value.h"
 
 /**
  * NOTE: The tests in this file have been placed al in a single ZTEST to avoid issues with

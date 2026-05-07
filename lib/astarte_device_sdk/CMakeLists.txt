@@ -5,7 +5,7 @@
 zephyr_library()
 zephyr_library_include_directories(include)
 
-FILE(GLOB lib_sources *.c pairing/*.c mqtt/*.c)
+FILE(GLOB lib_sources *.c mqtt/*.c pairing/*.c storage/*.c)
 if(NOT CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE)
     LIST(REMOVE_ITEM lib_sources ${CMAKE_CURRENT_LIST_DIR}/device_caching_core.c)
     LIST(REMOVE_ITEM lib_sources ${CMAKE_CURRENT_LIST_DIR}/device_caching_intro.c)

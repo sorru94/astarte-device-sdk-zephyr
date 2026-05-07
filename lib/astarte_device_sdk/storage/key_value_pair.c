@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "kv_storage_nvs.h"
+#include "storage/key_value_pair.h"
 
 #include <stdlib.h>
 #include <string.h>

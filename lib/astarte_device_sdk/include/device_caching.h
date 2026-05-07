@@ -17,7 +17,7 @@
 #include "astarte_device_sdk/result.h"
 
 #include "introspection.h"
-#include "kv_storage.h"
+#include "storage/key_value.h"
 
 /**
  * @brief Handle containing the persistent state for device caching.

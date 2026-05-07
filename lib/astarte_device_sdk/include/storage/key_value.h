@@ -8,7 +8,7 @@
 #define KV_STORAGE_H
 
 /**
- * @file kv_storage.h
+ * @file storage/key_value.h
  * @brief Key-value persistent storage implementation, with namespacing. Uses NVS as backend.
  *
  * @details

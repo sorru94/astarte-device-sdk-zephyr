@@ -100,9 +100,15 @@ typedef enum
     /** @brief Error while reading/writing an NVS entry. */
     ASTARTE_RESULT_NVS_ERROR = 34,
     /** @brief Astarte key-value storage is full. */
-    ASTARTE_RESULT_KV_STORAGE_FULL = 35,
+    ASTARTE_RESULT_KEY_VALUE_FULL = 35,
     /** @brief An outdated introspection has been found in cache. */
-    ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION = 36
+    ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION = 36,
+    /** @brief Negative result for compare functions. */
+    ASTARTE_RESULT_MISMATCH = 37,
+    /** @brief Recovery of corrupted key-value storage failed. */
+    ASTARTE_RESULT_KEY_VALUE_RECOVERY_FAILED = 38,
+    /** @brief Found key-value storage from an incompatible version. */
+    ASTARTE_RESULT_KEY_VALUE_INCOMPATIBLE_VERSION = 39
 } astarte_result_t;
 
 #ifdef __cplusplus

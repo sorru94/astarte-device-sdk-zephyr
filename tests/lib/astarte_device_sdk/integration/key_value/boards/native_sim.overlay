@@ -10,9 +10,9 @@
 			label = "astarte";
 			reg = <0x00100000 DT_SIZE_K(128)>;
 		};
-		kv_partition: partition@120000 {
-			label = "kv_storage";
-			reg = <0x00120000 DT_SIZE_K(128)>;
+		key_value_partition: partition@120000 {
+			label = "key_value";
+			reg = <0x00120000 DT_SIZE_K(16)>;
 		};
 	};
 };

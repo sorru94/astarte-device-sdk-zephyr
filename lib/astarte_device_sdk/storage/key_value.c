@@ -5,22 +5,13 @@
  */
 
 #include "storage/key_value.h"
-#include "storage/key_value_entry.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <zephyr/drivers/flash.h>
-#include <zephyr/kernel.h>
-#include <zephyr/storage/flash_map.h>
+#include <zephyr/fs/fs.h>
 #include <zephyr/sys/mutex.h>
-#include <zephyr/version.h>
-
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
-#include <zephyr/kvss/nvs.h>
-#else
-#include <zephyr/fs/nvs.h>
-#endif
 
 #include "log.h"
 
@@ -30,106 +21,146 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_kv_storage, CONFIG_ASTARTE_DEVICE_SDK_KV_STO
  *        Defines, constants and typedef        *
  ***********************************************/
 
-// This mutex will be shared by all instances of this driver.
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static SYS_MUTEX_DEFINE(astarte_storage_key_value_mutex);
+
+/************************************************
+ *         Static functions declaration         *
+ ***********************************************/
+
+/**
+ * @brief Helper to build absolute string paths joining a base directory and a filename
+ */
+static char *build_path_alloc(const char *base_path, const char *key);
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_storage_key_value_open(
-    astarte_storage_key_value_cfg_t config, struct nvs_fs *nvs_fs)
+astarte_result_t astarte_storage_key_value_open(struct fs_mount_t *fs)
 {
-    struct flash_pages_info fp_info = { 0 };
-
-    if (!device_is_ready(config.flash_device)) {
-        ASTARTE_LOG_ERR("Flash device %s not ready.", config.flash_device->name);
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    if (!fs) {
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    int flash_rc = flash_get_page_info_by_offs(config.flash_device, config.flash_offset, &fp_info);
-    if (flash_rc) {
-        ASTARTE_LOG_ERR("Unable to get page info: %d.", flash_rc);
+    int ret = fs_mount(fs);
+    if (ret && ret != -EALREADY) {
+        ASTARTE_LOG_ERR("File system mount error: %d.", ret);
         return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-
-    uint16_t flash_sector_count = (uint16_t) (config.flash_partition_size / fp_info.size);
-
-    memset(nvs_fs, 0, sizeof(struct nvs_fs));
-    nvs_fs->flash_device = config.flash_device;
-    nvs_fs->offset = config.flash_offset;
-    nvs_fs->sector_size = fp_info.size;
-    nvs_fs->sector_count = flash_sector_count;
-
-    int nvs_rc = nvs_mount(nvs_fs);
-    if (nvs_rc) {
-        ASTARTE_LOG_ERR("NVS mount error: %s (%d).", strerror(-nvs_rc), nvs_rc);
-        return ASTARTE_RESULT_NVS_ERROR;
     }
 
     return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_storage_key_value_new(
-    struct nvs_fs *nvs_fs, const char *namespace, astarte_storage_key_value_t *kv_storage)
+    struct fs_mount_t *fs, const char *namespace, astarte_storage_key_value_t *kv_storage)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *namespace_cpy = NULL;
-    size_t namespace_cpy_size = strlen(namespace) + 1;
+    char *base_path = NULL;
+    char *owned_namespace = NULL;
 
-    namespace_cpy = calloc(namespace_cpy_size, sizeof(char));
-    if (!namespace_cpy) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+    if (!fs || !namespace || !kv_storage) {
+        ares = ASTARTE_RESULT_INVALID_PARAM;
+        goto error;
+    }
+
+    // Duplicate the namespace string
+    size_t owned_namespace_size = strlen(namespace) + 1;
+    owned_namespace = calloc(owned_namespace_size, sizeof(char));
+    if (!owned_namespace) {
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto error;
     }
-    strncpy(namespace_cpy, namespace, namespace_cpy_size);
+    memcpy(owned_namespace, namespace, owned_namespace_size);
 
-    kv_storage->namespace = namespace_cpy;
-    kv_storage->nvs_fs = nvs_fs;
+    // Compute the base path
+    size_t base_path_size = strlen(fs->mnt_point) + 1 + strlen(namespace) + 1;
+    base_path = calloc(base_path_size, sizeof(char));
+    if (!base_path) {
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto error;
+    }
+    // TODO: evaluate the return
+    snprintf(base_path, base_path_size, "%s/%s", fs->mnt_point, namespace);
+
+    // Ensure the namespace directory exists
+    struct fs_dirent entry;
+    int res = fs_stat(base_path, &entry);
+    if (res == -ENOENT) {
+        res = fs_mkdir(base_path);
+        if (res && res != -EEXIST) {
+            ASTARTE_LOG_ERR("Failed to create namespace directory: %d", res);
+            ares = ASTARTE_RESULT_INTERNAL_ERROR;
+            goto error;
+        }
+    }
+
+    // Populate the storage struct
+    kv_storage->fs = fs;
+    kv_storage->base_path = base_path;
+    kv_storage->namespace = owned_namespace;
 
     return ASTARTE_RESULT_OK;
 
 error:
-    free(namespace_cpy);
-    kv_storage->namespace = NULL;
+    free(base_path);
+    free(owned_namespace);
     return ares;
 }
 
 void astarte_storage_key_value_destroy(astarte_storage_key_value_t *kv_storage)
 {
-    free(kv_storage->namespace);
-    kv_storage->namespace = NULL;
+    if (kv_storage) {
+        free(kv_storage->base_path);
+        free(kv_storage->namespace);
+        memset(kv_storage, 0, sizeof(astarte_storage_key_value_t));
+    }
 }
 
 astarte_result_t astarte_storage_key_value_insert(
     astarte_storage_key_value_t *kv_storage, const char *key, const void *value, size_t value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint16_t entry_id = 0;
+    char *path = NULL;
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
 
-    ares = astarte_storage_key_value_entry_find_or_alloc(
-        kv_storage->nvs_fs, kv_storage->namespace, key, &entry_id, true);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Key finding/allocation failed %s.", astarte_result_to_name(ares));
+    if (!kv_storage || !key || !value) {
+        ares = ASTARTE_RESULT_INVALID_PARAM;
         goto exit;
     }
 
-    ares = astarte_storage_key_value_entry_write(
-        kv_storage->nvs_fs, entry_id, kv_storage->namespace, key, value, value_size);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Insert failed %s.", astarte_result_to_name(ares));
+    path = build_path_alloc(kv_storage->base_path, key);
+    if (!path) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto exit;
+    }
+
+    // Unlink first to truncate the file safely before overwriting with VFS limits
+    fs_unlink(path);
+
+    struct fs_file_t file;
+    fs_file_t_init(&file);
+
+    int ret = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
+    if (ret != 0) {
+        ASTARTE_LOG_ERR("Failed to open file for writing: %d", ret);
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto exit;
+    }
+
+    ssize_t written = fs_write(&file, value, value_size);
+    fs_close(&file);
+
+    if (written < 0 || (size_t) written != value_size) {
+        ASTARTE_LOG_ERR("Write failure. Expected %zu, wrote %zd", value_size, written);
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
 exit:
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    free(path);
+
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
 
     return ares;
 }
@@ -138,30 +169,61 @@ astarte_result_t astarte_storage_key_value_find(
     astarte_storage_key_value_t *kv_storage, const char *key, void *value, size_t *value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint16_t entry_id = 0;
+    char *path = NULL;
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
 
-    ares = astarte_storage_key_value_entry_find_or_alloc(
-        kv_storage->nvs_fs, kv_storage->namespace, key, &entry_id, false);
-    if (ares != ASTARTE_RESULT_OK) {
-        // No error logs as this could be a not found case, which is not necessarily an error
+    if (!kv_storage || !key || !value) {
+        ares = ASTARTE_RESULT_INVALID_PARAM;
         goto exit;
     }
 
-    ares = astarte_storage_key_value_entry_read_value(
-        kv_storage->nvs_fs, entry_id, value, value_size);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Get value of key-value storage failed %s.", astarte_result_to_name(ares));
+    path = build_path_alloc(kv_storage->base_path, key);
+    if (!path) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto exit;
     }
 
-exit:
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    struct fs_dirent entry;
+    int ret = fs_stat(path, &entry);
+    if (ret != 0 || entry.type != FS_DIR_ENTRY_FILE) {
+        ares = ASTARTE_RESULT_NOT_FOUND;
+        goto exit;
+    }
 
+    if (value == NULL) {
+        *value_size = entry.size;
+        goto exit;
+    }
+
+    if (*value_size < entry.size) {
+        *value_size = entry.size;
+        ares = ASTARTE_RESULT_INVALID_PARAM;
+        goto exit;
+    }
+
+    struct fs_file_t file;
+    fs_file_t_init(&file);
+    ret = fs_open(&file, path, FS_O_READ);
+    if (ret != 0) {
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto exit;
+    }
+
+    ssize_t read_bytes = fs_read(&file, value, entry.size);
+    fs_close(&file);
+    if (read_bytes != entry.size) {
+        ASTARTE_LOG_ERR("Read failure. Expected %zu, read %zd", entry.size, read_bytes);
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto exit;
+    }
+
+    *value_size = entry.size;
+
+exit:
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
+    free(path);
     return ares;
 }
 
@@ -169,81 +231,75 @@ astarte_result_t astarte_storage_key_value_delete(
     astarte_storage_key_value_t *kv_storage, const char *key)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint16_t entry_id = 0;
+    char *path = NULL;
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
 
-    ares = astarte_storage_key_value_entry_find_or_alloc(
-        kv_storage->nvs_fs, kv_storage->namespace, key, &entry_id, false);
-    if (ares != ASTARTE_RESULT_OK) {
-        // No error logs as this could be a not found case, which is not necessarily an error
+    if (!kv_storage || !key) {
+        ares = ASTARTE_RESULT_INVALID_PARAM;
         goto exit;
     }
 
-    ares = astarte_storage_key_value_entry_delete(kv_storage->nvs_fs, entry_id);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("NVS Delete Error: %s.", astarte_result_to_name(ares));
+    path = build_path_alloc(kv_storage->base_path, key);
+    if (!path) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto exit;
+    }
+
+    int ret = fs_unlink(path);
+    if ((ret != 0) && (ret != -ENOENT)) {
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
 exit:
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
-
+    free(path);
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
     return ares;
 }
 
 astarte_result_t astarte_storage_key_value_iterator_init(
     astarte_storage_key_value_t *kv_storage, astarte_storage_key_value_iter_t *iter)
 {
-    // ID 0 is a reserved starting point for the linked list iterator
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
+
+    fs_dir_t_init(&iter->dir);
+    int ret = fs_opendir(&iter->dir, kv_storage->base_path);
+
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
+
+    if (ret != 0) {
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    iter->has_current = false;
     iter->kv_storage = kv_storage;
-    iter->current_id = 0;
-    iter->prev_id = 0;
+
     return astarte_storage_key_value_iterator_next(iter);
 }
 
 astarte_result_t astarte_storage_key_value_iterator_next(astarte_storage_key_value_iter_t *iter)
 {
     astarte_result_t ares = ASTARTE_RESULT_NOT_FOUND;
-    bool matches = false;
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
 
-    uint16_t curr_id = iter->current_id;
-
+    iter->has_current = false;
     while (true) {
-        uint16_t next_id = 0;
-        ares = astarte_storage_key_value_entry_get_next_id(
-            iter->kv_storage->nvs_fs, curr_id, &next_id);
-
-        if (ares != ASTARTE_RESULT_OK || next_id == 0) {
-            ASTARTE_LOG_DBG("Iterator reached the end.");
-            ares = ASTARTE_RESULT_NOT_FOUND;
+        int ret = fs_readdir(&iter->dir, &iter->current_dirent);
+        if (ret != 0 || iter->current_dirent.name[0] == 0) {
+            // End of directory or an I/O error
             break;
         }
 
-        ares = astarte_storage_key_value_entry_check_namespace(
-            iter->kv_storage->nvs_fs, next_id, iter->kv_storage->namespace, &matches);
-
-        if (ares == ASTARTE_RESULT_OK && matches) {
-            // Cache the previous entry ID for deletion operations
-            iter->prev_id = curr_id;
-            iter->current_id = next_id;
-            goto exit;
+        if (iter->current_dirent.type == FS_DIR_ENTRY_FILE) {
+            iter->has_current = true;
+            ares = ASTARTE_RESULT_OK;
+            break;
         }
-
-        curr_id = next_id;
     }
 
-exit:
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
 
     return ares;
 }
@@ -251,111 +307,80 @@ exit:
 astarte_result_t astarte_storage_key_value_iterator_get(
     astarte_storage_key_value_iter_t *iter, void *key, size_t *key_size)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
+    if (!iter->has_current) {
+        return ASTARTE_RESULT_NOT_FOUND;
+    }
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    size_t len = strlen(iter->current_dirent.name);
 
-    ares = astarte_storage_key_value_entry_read_key(
-        iter->kv_storage->nvs_fs, iter->current_id, (char *) key, key_size);
+    // If the key ptr is NULL, simply write out the length
+    if (key == NULL) {
+        *key_size = len + 1;
+        return ASTARTE_RESULT_OK;
+    }
 
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    if (*key_size < len + 1) {
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
 
-    return ares;
+    memcpy(key, iter->current_dirent.name, len + 1);
+    *key_size = len + 1;
+
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_storage_key_value_iterator_delete(astarte_storage_key_value_iter_t *iter)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
+    if (!iter->has_current) {
+        return ASTARTE_RESULT_NOT_FOUND;
+    }
 
-    if (!iter || iter->current_id == 0) {
+    char *path = build_path_alloc(iter->kv_storage->base_path, iter->current_dirent.name);
+    if (!path) {
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
+
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
+    int rc = fs_unlink(path);
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
+
+    free(path);
+
+    if (rc != 0 && rc != -ENOENT) {
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
+    iter->has_current = false;
+    return ASTARTE_RESULT_OK;
+}
+
+astarte_result_t astarte_storage_key_value_iterator_destroy(astarte_storage_key_value_iter_t *iter)
+{
+    if (!iter) {
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    int mutex_rc = sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    sys_mutex_lock(&astarte_storage_key_value_mutex, K_FOREVER);
+    int ret = fs_closedir(&iter->dir);
+    iter->has_current = false;
+    sys_mutex_unlock(&astarte_storage_key_value_mutex);
 
-    // Peek ahead to find the next matching element in the same namespace
-    uint16_t next_matching_id = 0;
-    uint16_t peek_curr_id = iter->current_id;
-    bool has_next = false;
+    return (ret == 0) ? ASTARTE_RESULT_OK : ASTARTE_RESULT_INTERNAL_ERROR;
+}
 
-    while (true) {
-        uint16_t n_id = 0;
-        ares = astarte_storage_key_value_entry_get_next_id(
-            iter->kv_storage->nvs_fs, peek_curr_id, &n_id);
+/************************************************
+ *         Static functions definitions         *
+ ***********************************************/
 
-        if (ares != ASTARTE_RESULT_OK || n_id == 0) {
-            break;
-        }
-
-        bool matches = false;
-        ares = astarte_storage_key_value_entry_check_namespace(
-            iter->kv_storage->nvs_fs, n_id, iter->kv_storage->namespace, &matches);
-
-        if (ares == ASTARTE_RESULT_OK && matches) {
-            next_matching_id = n_id;
-            has_next = true;
-            break;
-        }
-        peek_curr_id = n_id;
+static char *build_path_alloc(const char *base_path, const char *key)
+{
+    char *path = NULL;
+    size_t path_size = strlen(base_path) + 1 + strlen(key) + 1;
+    path = calloc(path_size, sizeof(char));
+    if (!path) {
+        return NULL;
     }
-
-    // Save the key of the next matching element so we can re-find it if it shifts
-    char *next_key = NULL;
-    size_t next_key_size = 0;
-    if (has_next) {
-        if (astarte_storage_key_value_entry_read_key(
-                iter->kv_storage->nvs_fs, next_matching_id, NULL, &next_key_size)
-            == ASTARTE_RESULT_OK) {
-            next_key = calloc(next_key_size, sizeof(char));
-            if (next_key) {
-                astarte_storage_key_value_entry_read_key(
-                    iter->kv_storage->nvs_fs, next_matching_id, next_key, &next_key_size);
-            }
-        }
-    }
-
-    // Physically delete the current entry and heal the NVS global linked-list
-    ares = astarte_storage_key_value_entry_delete(iter->kv_storage->nvs_fs, iter->current_id);
-
-    // Resynchronize the iterator state using get_prev_id
-    if (ares == ASTARTE_RESULT_OK) {
-        if (!has_next || !next_key) {
-            // We just deleted the very last element in this namespace.
-            iter->current_id = 0;
-        } else {
-            // Find the post-shift valid NVS ID of the next matching element
-            uint16_t valid_next_matching_id = 0;
-            if (astarte_storage_key_value_entry_find_or_alloc(iter->kv_storage->nvs_fs,
-                    iter->kv_storage->namespace, next_key, &valid_next_matching_id, false)
-                == ASTARTE_RESULT_OK) {
-
-                // Retrieve the logically previous node using our new O(1) function!
-                uint16_t new_prev_id = 0;
-                astarte_storage_key_value_entry_get_prev_id(
-                    iter->kv_storage->nvs_fs, valid_next_matching_id, &new_prev_id);
-
-                iter->current_id = new_prev_id;
-            } else {
-                iter->current_id = 0;
-            }
-        }
-    } else {
-        ASTARTE_LOG_ERR("Iterator delete error: %s.", astarte_result_to_name(ares));
-    }
-
-    if (next_key) {
-        free(next_key);
-    }
-
-    mutex_rc = sys_mutex_unlock(&astarte_storage_key_value_mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
-
-    return ares;
+    // TODO: evaluate the return
+    snprintf(path, path_size, "%s/%s", base_path, key);
+    return path;
 }

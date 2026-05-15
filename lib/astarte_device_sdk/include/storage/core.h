@@ -17,6 +17,13 @@
 
 #include "storage/key_value.h"
 
+#include <zephyr/version.h>
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#include <zephyr/kvss/nvs.h>
+#else
+#include <zephyr/fs/nvs.h>
+#endif
+
 /**
  * @brief Handle containing the persistent state for device storage.
  * @details This struct holds the context for the three NVS namespaces used by the storage.

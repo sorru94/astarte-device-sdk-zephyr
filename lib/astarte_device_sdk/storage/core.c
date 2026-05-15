@@ -56,14 +56,13 @@ ASTARTE_LOG_MODULE_REGISTER(device_storage, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_STO
  * Erases the flash partition if the major or minor versions differ and saves the new one.
  *
  * @param[inout] handle Pointer to the storage handle data.
- * @param[in] kv_cfg Configuration struct to optionally remount NVS.
  * @param[in] major Major version number.
  * @param[in] minor Minor version number.
  * @param[in] patch Patch version number.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-static astarte_result_t check_and_update_version(astarte_storage_data_t *handle,
-    const astarte_storage_key_value_cfg_t *kv_cfg, uint8_t major, uint8_t minor, uint8_t patch);
+static astarte_result_t check_and_update_version(
+    astarte_storage_data_t *handle, uint8_t major, uint8_t minor, uint8_t patch);
 
 /************************************************
  *         Global functions definitions         *
@@ -82,19 +81,14 @@ astarte_result_t astarte_storage_init(
     memset(handle, 0, sizeof(astarte_storage_data_t));
 
     // Open the key value storage flash partition
-    astarte_storage_key_value_cfg_t kv_astarte_storage_cfg = {
-        .flash_device = NVS_PARTITION_DEVICE,
-        .flash_offset = NVS_PARTITION_OFFSET,
-        .flash_partition_size = NVS_PARTITION_SIZE,
-    };
-    ares = astarte_storage_key_value_open(kv_astarte_storage_cfg, &handle->nvs_fs);
+    ares = astarte_storage_key_value_open(&handle->nvs_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error opening cache: %s.", astarte_result_to_name(ares));
         return ares;
     }
 
     // Check & update storage version
-    ares = check_and_update_version(handle, &kv_astarte_storage_cfg, major, minor, patch);
+    ares = check_and_update_version(handle, major, minor, patch);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -145,8 +139,8 @@ void astarte_storage_destroy(astarte_storage_data_t *handle)
  *         Static functions definitions         *
  ***********************************************/
 
-static astarte_result_t check_and_update_version(astarte_storage_data_t *handle,
-    const astarte_storage_key_value_cfg_t *kv_cfg, uint8_t major, uint8_t minor, uint8_t patch)
+static astarte_result_t check_and_update_version(
+    astarte_storage_data_t *handle, uint8_t major, uint8_t minor, uint8_t patch)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_storage_key_value_t version_storage = { 0 };
@@ -193,7 +187,7 @@ static astarte_result_t check_and_update_version(astarte_storage_data_t *handle,
         }
 
         // Remount NVS after wiping the physical flash partition
-        ares = astarte_storage_key_value_open(*kv_cfg, &handle->nvs_fs);
+        ares = astarte_storage_key_value_open(&handle->nvs_fs);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Error reopening cache after erase: %s.", astarte_result_to_name(ares));
             goto exit;

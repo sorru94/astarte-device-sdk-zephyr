@@ -56,6 +56,8 @@ struct header
 
 static astarte_result_t shift_back_single_entry(
     struct nvs_fs *nvs_fs, uint16_t idx, uint16_t hole_id, bool *shift_performed);
+static astarte_result_t update_shifted_entry_neighbors(
+    struct nvs_fs *nvs_fs, const struct header *header, uint16_t hole_id);
 static astarte_result_t delete_and_unlink_single_entry(struct nvs_fs *nvs_fs, uint16_t idx);
 // If the entry already exists takes the next and previous IDs already stored.
 // If it doesn't exist, these will be set to link the new entry at the end of the list.
@@ -477,46 +479,9 @@ static astarte_result_t shift_back_single_entry(
         }
 
         // Update linked list pointers of the physically moved entry's neighbors
-        if (header.fixed_header.prev_id != 0) {
-            ares = update_entry_next_id(nvs_fs, header.fixed_header.prev_id, hole_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in updating next ID for entry with ID %d", idx);
-                goto exit;
-            }
-        } else {
-            uint16_t head_id = 0;
-            uint16_t tail_id = 0;
-            ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
-                goto exit;
-            }
-            ares = write_head_and_tail_ids(nvs_fs, hole_id, tail_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in writing head and tail IDs");
-                goto exit;
-            }
-        }
-
-        if (header.fixed_header.next_id != 0) {
-            ares = update_entry_prev_id(nvs_fs, header.fixed_header.next_id, hole_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in updating prev ID for entry with ID %d", idx);
-                goto exit;
-            }
-        } else {
-            uint16_t head_id = 0;
-            uint16_t tail_id = 0;
-            ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
-                goto exit;
-            }
-            ares = write_head_and_tail_ids(nvs_fs, head_id, hole_id);
-            if (ares != ASTARTE_RESULT_OK) {
-                ASTARTE_LOG_ERR("Failed in writing head and tail IDs");
-                goto exit;
-            }
+        ares = update_shifted_entry_neighbors(nvs_fs, &header, hole_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            goto exit;
         }
 
         // Clean up the entry from its old position
@@ -535,6 +500,56 @@ exit:
     free(raw_entry);
     free_header(&header);
     return ares;
+}
+
+static astarte_result_t update_shifted_entry_neighbors(
+    struct nvs_fs *nvs_fs, const struct header *header, uint16_t hole_id)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    uint16_t head_id = 0;
+    uint16_t tail_id = 0;
+
+    // Update previous neighbor or Head
+    if (header->fixed_header.prev_id != 0) {
+        ares = update_entry_next_id(nvs_fs, header->fixed_header.prev_id, hole_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in updating next ID for prev entry");
+            return ares;
+        }
+    } else {
+        ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
+            return ares;
+        }
+        ares = write_head_and_tail_ids(nvs_fs, hole_id, tail_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in writing head and tail IDs");
+            return ares;
+        }
+    }
+
+    // Update next neighbor or Tail
+    if (header->fixed_header.next_id != 0) {
+        ares = update_entry_prev_id(nvs_fs, header->fixed_header.next_id, hole_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in updating prev ID for next entry");
+            return ares;
+        }
+    } else {
+        ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
+            return ares;
+        }
+        ares = write_head_and_tail_ids(nvs_fs, head_id, hole_id);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed in writing head and tail IDs");
+            return ares;
+        }
+    }
+
+    return ASTARTE_RESULT_OK;
 }
 
 static astarte_result_t delete_and_unlink_single_entry(struct nvs_fs *nvs_fs, uint16_t idx)

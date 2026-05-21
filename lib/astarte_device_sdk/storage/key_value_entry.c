@@ -44,10 +44,10 @@ struct fixed_header
 
 struct header
 {
-    const uint8_t *raw_header;
     struct fixed_header fixed_header;
-    const char *namespace;
-    const char *key;
+    char *namespace;
+    char *key;
+    bool dynamically_allocated;
 };
 
 /************************************************
@@ -61,7 +61,6 @@ static astarte_result_t delete_and_unlink_single_entry(struct nvs_fs *nvs_fs, ui
 // If it doesn't exist, these will be set to link the new entry at the end of the list.
 static astarte_result_t compute_entry_next_and_prev_ids(
     struct nvs_fs *nvs_fs, uint16_t idx, uint16_t *next_id, uint16_t *prev_id);
-
 static uint8_t *serialize_entry(
     struct header header, const void *value, size_t value_size, size_t *serialized_entry_size);
 static astarte_result_t check_entry_match(
@@ -71,53 +70,13 @@ static astarte_result_t read_header(
 static void free_header(struct header *header);
 static astarte_result_t read_fixed_header(
     struct nvs_fs *nvs_fs, uint16_t idx, struct fixed_header *fixed_header, size_t *raw_size);
-
-/**
- * @brief Deterministically generates a starting ID for the linear probing hash map.
- *
- * @param[in] namespace Target namespace string.
- * @param[in] key Target key string.
- * @return 16-bit hash value to be used as starting ID for probing.
- */
 static uint16_t generate_hash(const char *namespace, const char *key);
-
-/**
- * @brief Reads the head and tail IDs of the global linked list.
- *
- * @param[inout] nvs_fs NVS file system.
- * @param[out] head_id New head ID to store.
- * @param[out] tail_id New tail ID to store.
- */
 static astarte_result_t read_head_and_tail_ids(
     struct nvs_fs *nvs_fs, uint16_t *head_id, uint16_t *tail_id);
-/**
- * @brief Writes the head and tail IDs of the global linked list.
- *
- * @param[inout] nvs_fs NVS file system.
- * @param[in] head_id New head ID to store.
- * @param[in] tail_id New tail ID to store.
- * @return ASTARTE_RESULT_OK or error code.
- */
 static astarte_result_t write_head_and_tail_ids(
     struct nvs_fs *nvs_fs, uint16_t head_id, uint16_t tail_id);
-/**
- * @brief Updates the next ID pointer of a specific entry in the linked list.
- *
- * @param[inout] nvs_fs NVS file system.
- * @param[in] idx NVS ID of the entry to update.
- * @param[in] new_next New next ID to set.
- * @return ASTARTE_RESULT_OK or error code.
- */
 static astarte_result_t update_entry_next_id(
     struct nvs_fs *nvs_fs, uint16_t idx, uint16_t new_next);
-/**
- * @brief Updates the previous ID pointer of a specific entry in the linked list.
- *
- * @param[inout] nvs_fs NVS file system.
- * @param[in] idx NVS ID of the entry to update.
- * @param[in] new_prev New previous ID to set.
- * @return ASTARTE_RESULT_OK or error code.
- */
 static astarte_result_t update_entry_prev_id(
     struct nvs_fs *nvs_fs, uint16_t idx, uint16_t new_prev);
 
@@ -188,15 +147,15 @@ astarte_result_t astarte_storage_key_value_entry_write(struct nvs_fs *nvs_fs, ui
 
     // Serialize the entry with the computed next and previous IDs
     struct header header = {
-        .raw_header = NULL,
         .fixed_header = {
             .namespace_len = strlen(namespace),
             .key_len = strlen(key),
             .next_id = next_id,
             .prev_id = prev_id,
         },
-        .namespace = namespace,
-        .key = key,
+        .namespace = (char *) namespace,
+        .key = (char *) key,
+        .dynamically_allocated = false,
     };
     raw_entry = serialize_entry(header, value, value_size, &raw_entry_size);
     if (!raw_entry) {
@@ -218,7 +177,7 @@ astarte_result_t astarte_storage_key_value_entry_write(struct nvs_fs *nvs_fs, ui
         uint16_t tail_id = 0;
         ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
         if (ares != ASTARTE_RESULT_OK) {
-            return ares;
+            goto exit;
         }
 
         if (tail_id != 0) {
@@ -230,7 +189,7 @@ astarte_result_t astarte_storage_key_value_entry_write(struct nvs_fs *nvs_fs, ui
         tail_id = idx;
         ares = write_head_and_tail_ids(nvs_fs, head_id, tail_id);
         if (ares != ASTARTE_RESULT_OK) {
-            return ares;
+            goto exit;
         }
     }
 
@@ -427,7 +386,8 @@ astarte_result_t astarte_storage_key_value_entry_get_next_id(
     }
 
     struct fixed_header fixed_header = { 0 };
-    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header);
+    size_t raw_entry_size = 0;
+    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -446,7 +406,8 @@ astarte_result_t astarte_storage_key_value_entry_get_prev_id(
     }
 
     struct fixed_header fixed_header = { 0 };
-    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header);
+    size_t raw_entry_size = 0;
+    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -523,8 +484,8 @@ static astarte_result_t shift_back_single_entry(
                 goto exit;
             }
         } else {
-            head_id = 0;
-            tail_id = 0;
+            uint16_t head_id = 0;
+            uint16_t tail_id = 0;
             ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
             if (ares != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
@@ -544,8 +505,8 @@ static astarte_result_t shift_back_single_entry(
                 goto exit;
             }
         } else {
-            head_id = 0;
-            tail_id = 0;
+            uint16_t head_id = 0;
+            uint16_t tail_id = 0;
             ares = read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
             if (ares != ASTARTE_RESULT_OK) {
                 ASTARTE_LOG_ERR("Failed in reading head and tail IDs");
@@ -582,7 +543,8 @@ static astarte_result_t delete_and_unlink_single_entry(struct nvs_fs *nvs_fs, ui
 
     // Fetch next and previous entries as well as head and tail
     struct fixed_header fixed_header = { 0 };
-    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header);
+    size_t raw_entry_size = 0;
+    ares = read_fixed_header(nvs_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -727,7 +689,7 @@ static uint8_t *serialize_entry(
     }
     // NOLINTEND(bugprone-not-null-terminated-result)
 
-    *raw_entry_size = entry_size;
+    *serialized_entry_size = entry_size;
     return entry;
 }
 
@@ -750,7 +712,7 @@ static astarte_result_t check_entry_match(
     }
     int nsp_cmp = strncmp(header.namespace, namespace, fixed_header.namespace_len);
     int key_cmp = strncmp(header.key, key, fixed_header.key_len);
-    if (nsp_cmp == 0 && key_cmp == 0) {
+    if (nsp_cmp != 0 || key_cmp != 0) {
         ares = ASTARTE_RESULT_MISMATCH;
         goto exit;
     }
@@ -764,10 +726,13 @@ static astarte_result_t read_header(
     struct nvs_fs *nvs_fs, uint16_t idx, struct header *header, size_t *raw_size)
 {
     uint8_t *raw_header = NULL;
+    char *namespace = NULL;
+    char *key = NULL;
     struct fixed_header fixed_header = { 0 };
-    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header);
+    size_t raw_entry_size = 0;
+    astarte_result_t ares = read_fixed_header(nvs_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        goto error;
     }
 
     size_t raw_header_size = FIXED_HEADER_BYTES + fixed_header.namespace_len + fixed_header.key_len;
@@ -776,42 +741,60 @@ static astarte_result_t read_header(
     if (!raw_header) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        goto error;
     }
 
     ssize_t ret = nvs_read(nvs_fs, idx, raw_header, raw_header_size);
     if (ret < 0) {
         ares = ASTARTE_RESULT_NVS_ERROR;
-        goto exit;
+        goto error;
     }
 
-    // TODO: This will not work as the key and namespace are not null-terminated, a deep copy
-    // is needed
-    const char *namespace = (char *) raw_header + FIXED_HEADER_BYTES;
-    const char *key = namespace + fixed_header.namespace_len;
-
-    if ((strlen(namespace) != fixed_header.namespace_len)
-        || (strlen(key) != fixed_header.key_len)) {
-        ASTARTE_LOG_ERR("Error: Incomplete header at ID %d", idx);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+    // Duplicate the namespace
+    namespace = calloc(fixed_header.namespace_len + 1, sizeof(char));
+    if (!namespace) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto error;
     }
+    memcpy(namespace, raw_header + FIXED_HEADER_BYTES, fixed_header.namespace_len);
+    namespace[fixed_header.namespace_len] = '\0';
+    // Duplicate the key
+    key = calloc(fixed_header.key_len + 1, sizeof(char));
+    if (!key) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+        goto error;
+    }
+    memcpy(key, raw_header + FIXED_HEADER_BYTES + fixed_header.namespace_len, fixed_header.key_len);
+    key[fixed_header.key_len] = '\0';
 
     header->namespace = namespace;
     header->key = key;
     header->fixed_header = fixed_header;
+    header->dynamically_allocated = true;
     *raw_size = ret;
+
+    free(raw_header);
     return ares;
 
 error:
     free(raw_header);
+    free(namespace);
+    free(key);
     return ares;
 }
 
 static void free_header(struct header *header)
 {
-    free(header->raw_header);
-    header->raw_header = NULL;
+    if (!header->dynamically_allocated) {
+        return;
+    }
+
+    free(header->namespace);
+    header->namespace = NULL;
+    free(header->key);
+    header->key = NULL;
 }
 
 static astarte_result_t read_fixed_header(
@@ -858,7 +841,8 @@ static astarte_result_t update_entry_next_id(struct nvs_fs *nvs_fs, uint16_t idx
         goto exit;
     }
 
-    ((uint16_t *) raw_entry)[2] = new_next;
+    size_t next_id_offset = HEADER_NAMESPACE_LEN_BYTES + HEADER_KEY_LEN_BYTES;
+    memcpy(&raw_entry[next_id_offset], &new_next, sizeof(new_next));
 
     ret = nvs_write(nvs_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
@@ -892,7 +876,9 @@ static astarte_result_t update_entry_prev_id(struct nvs_fs *nvs_fs, uint16_t idx
         goto exit;
     }
 
-    ((uint16_t *) raw_entry)[3] = new_prev;
+    size_t prev_id_offset
+        = HEADER_NAMESPACE_LEN_BYTES + HEADER_KEY_LEN_BYTES + HEADER_NEXT_ID_BYTES;
+    memcpy(&raw_entry[prev_id_offset], &new_prev, sizeof(new_prev));
 
     ret = nvs_write(nvs_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {

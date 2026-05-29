@@ -14,10 +14,19 @@
 ASTARTE_LOG_MODULE_DECLARE(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALUE_LOG_LEVEL);
 
 /************************************************
+ *        Defines, constants and typedef        *
+ ***********************************************/
+
+#define OFFSET_NAMESPACE_LEN 0
+#define OFFSET_KEY_LEN (OFFSET_NAMESPACE_LEN + ASTARTE_KEY_VALUE_ENTRY_HEADER_NAMESPACE_LEN_BYTES)
+#define OFFSET_NEXT_ID (OFFSET_KEY_LEN + ASTARTE_KEY_VALUE_ENTRY_HEADER_KEY_LEN_BYTES)
+#define OFFSET_PREV_ID (OFFSET_NEXT_ID + ASTARTE_KEY_VALUE_ENTRY_HEADER_NEXT_ID_BYTES)
+
+/************************************************
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_key_value_entry_header_read(struct nvs_fs *nvs_fs, uint16_t idx,
+astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint32_t idx,
     struct astarte_key_value_entry_header *header, size_t *raw_size)
 {
     uint8_t *raw_header = NULL;
@@ -26,7 +35,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct nvs_fs *nvs_fs, uint
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
     size_t raw_entry_size = 0;
     astarte_result_t ares
-        = astarte_key_value_entry_header_read_fixed(nvs_fs, idx, &fixed_header, &raw_entry_size);
+        = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         goto error;
     }
@@ -41,9 +50,9 @@ astarte_result_t astarte_key_value_entry_header_read(struct nvs_fs *nvs_fs, uint
         goto error;
     }
 
-    ssize_t ret = nvs_read(nvs_fs, idx, raw_header, raw_header_size);
-    if (ret < 0) {
-        ares = ASTARTE_RESULT_NVS_ERROR;
+    ssize_t ret = zms_read(zms_fs, idx, raw_header, raw_header_size);
+    if (ret != raw_header_size) {
+        ares = ASTARTE_RESULT_ZMS_ERROR;
         goto error;
     }
 
@@ -73,7 +82,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct nvs_fs *nvs_fs, uint
     header->key = key;
     header->fixed_header = fixed_header;
     header->dynamically_allocated = true;
-    *raw_size = ret;
+    *raw_size = raw_entry_size;
 
     free(raw_header);
     return ares;
@@ -97,26 +106,35 @@ void astarte_key_value_entry_header_free(struct astarte_key_value_entry_header *
     header->key = NULL;
 }
 
-astarte_result_t astarte_key_value_entry_header_read_fixed(struct nvs_fs *nvs_fs, uint16_t idx,
+astarte_result_t astarte_key_value_entry_header_read_fixed(struct zms_fs *zms_fs, uint32_t idx,
     struct astarte_key_value_entry_header_fixed *fixed_header, size_t *raw_size)
 {
-    uint16_t raw_fixed_header[ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES / sizeof(uint16_t)]
-        = { 0 };
-    ssize_t ret = nvs_read(
-        nvs_fs, idx, raw_fixed_header, ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES);
+    uint8_t raw_fixed_header[ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES] = { 0 };
+    ssize_t ret = zms_read(
+        zms_fs, idx, raw_fixed_header, ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES);
     if (ret == -ENOENT) {
         return ASTARTE_RESULT_NOT_FOUND;
     }
-    if ((ret < 0) || (ret < ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES)) {
-        ASTARTE_LOG_ERR("Error reading header from NVS at ID %d, error: %d", idx, ret);
-        return ASTARTE_RESULT_NVS_ERROR;
+    if (ret != ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES) {
+        ASTARTE_LOG_ERR("Error reading header from ZMS at ID %d, error: %d", idx, ret);
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
-    fixed_header->namespace_len = raw_fixed_header[0];
-    fixed_header->key_len = raw_fixed_header[1];
-    fixed_header->next_id = raw_fixed_header[2];
-    fixed_header->prev_id = raw_fixed_header[3];
-    *raw_size = ret;
+    ret = zms_get_data_length(zms_fs, idx);
+    if (ret < 0) {
+        ASTARTE_LOG_ERR("Error reading full entry length from ZMS at ID %d, error: %d", idx, ret);
+        return ASTARTE_RESULT_ZMS_ERROR;
+    }
 
+    memcpy(&fixed_header->namespace_len, &raw_fixed_header[OFFSET_NAMESPACE_LEN],
+        ASTARTE_KEY_VALUE_ENTRY_HEADER_NAMESPACE_LEN_BYTES);
+    memcpy(&fixed_header->key_len, &raw_fixed_header[OFFSET_KEY_LEN],
+        ASTARTE_KEY_VALUE_ENTRY_HEADER_KEY_LEN_BYTES);
+    memcpy(&fixed_header->next_id, &raw_fixed_header[OFFSET_NEXT_ID],
+        ASTARTE_KEY_VALUE_ENTRY_HEADER_NEXT_ID_BYTES);
+    memcpy(&fixed_header->prev_id, &raw_fixed_header[OFFSET_PREV_ID],
+        ASTARTE_KEY_VALUE_ENTRY_HEADER_PREV_ID_BYTES);
+
+    *raw_size = ret;
     return ASTARTE_RESULT_OK;
 }

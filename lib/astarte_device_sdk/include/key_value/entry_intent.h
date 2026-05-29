@@ -18,9 +18,9 @@
 #include <zephyr/version.h>
 
 #if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
-#include <zephyr/kvss/nvs.h>
+#include <zephyr/kvss/zms.h>
 #else
-#include <zephyr/fs/nvs.h>
+#include <zephyr/fs/zms.h>
 #endif
 
 /** @brief Enum defining the current in-flight multi-step operation. */
@@ -38,47 +38,47 @@ typedef enum
     ASTARTE_KEY_VALUE_ENTRY_INTENT_SHIFTING = 4
 } astarte_key_value_entry_intent_state_t;
 
-/** @brief Data structure representing an in-flight NVS operation. */
+/** @brief Data structure representing an in-flight ZMS operation. */
 struct astarte_key_value_entry_intent
 {
     /** @brief The type of operation in progress. */
     uint8_t state;
-    /** @brief The primary NVS ID being modified (e.g., the new entry ID). */
-    uint16_t target_id;
+    /** @brief The primary ZMS ID being modified (e.g., the new entry ID). */
+    uint32_t target_id;
     /** @brief Auxiliary ID 1 (e.g., prev_id). */
-    uint16_t affected_id_1;
+    uint32_t affected_id_1;
     /** @brief Auxiliary ID 2 (e.g., next_id). */
-    uint16_t affected_id_2;
+    uint32_t affected_id_2;
 };
 
 /**
- * @brief Writes an intent block to NVS before beginning a multi-step operation.
+ * @brief Writes an intent block to ZMS before beginning a multi-step operation.
  *
- * @param[inout] nvs_fs NVS file system.
+ * @param[inout] zms_fs ZMS file system.
  * @param[in] state The operation state.
  * @param[in] target_id Primary ID involved in the operation.
  * @param[in] affected_id_1 First auxiliary ID.
  * @param[in] affected_id_2 Second auxiliary ID.
  * @return ASTARTE_RESULT_OK or error code.
  */
-astarte_result_t astarte_key_value_entry_intent_write(struct nvs_fs *nvs_fs,
-    astarte_key_value_entry_intent_state_t state, uint16_t target_id, uint16_t affected_id_1,
-    uint16_t affected_id_2);
+astarte_result_t astarte_key_value_entry_intent_write(struct zms_fs *zms_fs,
+    astarte_key_value_entry_intent_state_t state, uint32_t target_id, uint32_t affected_id_1,
+    uint32_t affected_id_2);
 
 /**
  * @brief Clears the current intent block, marking the operation as successful.
  *
- * @param[inout] nvs_fs NVS file system.
+ * @param[inout] zms_fs ZMS file system.
  * @return ASTARTE_RESULT_OK or error code.
  */
-astarte_result_t astarte_key_value_entry_intent_clear(struct nvs_fs *nvs_fs);
+astarte_result_t astarte_key_value_entry_intent_clear(struct zms_fs *zms_fs);
 
 /**
  * @brief Checks for and resolves any pending intents from a previous interrupted operation.
  *
- * @param[inout] nvs_fs NVS file system.
+ * @param[inout] zms_fs ZMS file system.
  * @return ASTARTE_RESULT_OK or error code.
  */
-astarte_result_t astarte_key_value_entry_intent_resolve(struct nvs_fs *nvs_fs);
+astarte_result_t astarte_key_value_entry_intent_resolve(struct zms_fs *zms_fs);
 
 #endif // KEY_VALUE_ENTRY_INTENT_H

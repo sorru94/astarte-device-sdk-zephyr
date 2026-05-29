@@ -19,12 +19,12 @@
 
 /**
  * @brief Handle containing the persistent state for device storage.
- * @details This struct holds the context for the three NVS namespaces used by the storage.
+ * @details This struct holds the context for the three ZMS namespaces used by the storage.
  */
 typedef struct
 {
-    /** @brief NVS file system handle shared between all storages */
-    struct nvs_fs nvs_fs;
+    /** @brief ZMS file system handle shared between all storages */
+    struct zms_fs zms_fs;
     /** @brief Key value storage handle for synchronization state */
     astarte_key_value_t sync_storage;
     /** @brief Key value storage handle for introspection data */
@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize the device storage and open all required NVS namespaces.
+ * @brief Initialize the device storage and open all required ZMS namespaces.
  * @param[in,out] handle Pointer to the handle structure to initialize.
  * @return ASTARTE_RESULT_OK if successful.
  */

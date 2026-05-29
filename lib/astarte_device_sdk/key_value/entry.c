@@ -22,33 +22,33 @@ ASTARTE_LOG_MODULE_DECLARE(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALU
 
 // TODO: This driver is weak to power losses in between writes.
 // Consider introducing a Intent Block with synchronous rollbacks to be more resilient over power
-// losses and NVS API failures in multi write operations.
+// losses and ZMS API failures in multi write operations.
 
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
 
-static astarte_result_t update_list_tail(struct nvs_fs *nvs_fs, uint16_t new_tail_id);
+static astarte_result_t update_list_tail(struct zms_fs *zms_fs, uint32_t new_tail_id);
 static uint8_t *serialize_entry(struct astarte_key_value_entry_header header, const void *value,
     size_t value_size, size_t *serialized_entry_size);
 // Possible return values: ASTARTE_RESULT_OUT_OF_MEMORY, ASTARTE_RESULT_NOT_FOUND,
-// ASTARTE_RESULT_NVS_ERROR, ASTARTE_RESULT_MISMATCH
+// ASTARTE_RESULT_ZMS_ERROR, ASTARTE_RESULT_MISMATCH
 static astarte_result_t check_entry_match(
-    struct nvs_fs *nvs_fs, uint16_t idx, const char *namespace, const char *key);
+    struct zms_fs *zms_fs, uint32_t idx, const char *namespace, const char *key);
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
 
 astarte_result_t astarte_key_value_entry_find_or_alloc(
-    struct nvs_fs *nvs_fs, const char *namespace, const char *key, uint16_t *idx, bool allocate)
+    struct zms_fs *zms_fs, const char *namespace, const char *key, uint32_t *idx, bool allocate)
 {
-    uint16_t start_id = astarte_key_value_entry_hash_generate(namespace, key);
-    uint16_t curr_id = start_id;
+    uint32_t start_id = astarte_key_value_entry_hash_generate(namespace, key);
+    uint32_t curr_id = start_id;
 
     do {
         // Check if the namespace and key match the stored values
-        astarte_result_t ares = check_entry_match(nvs_fs, curr_id, namespace, key);
+        astarte_result_t ares = check_entry_match(zms_fs, curr_id, namespace, key);
         if (ares == ASTARTE_RESULT_NOT_FOUND) {
             if (!allocate) {
                 ASTARTE_LOG_DBG("Key not found at ID %d", curr_id);
@@ -71,7 +71,7 @@ astarte_result_t astarte_key_value_entry_find_or_alloc(
         // The loop will continue to the next ID.
         curr_id++;
         if (curr_id > ASTARTE_KEY_VALUE_ENTRY_MAX_USABLE_ID) {
-            curr_id = 0;
+            curr_id = ASTARTE_KEY_VALUE_ENTRY_MIN_USABLE_ID;
         }
     } while (curr_id != start_id);
 
@@ -79,7 +79,7 @@ astarte_result_t astarte_key_value_entry_find_or_alloc(
     return ASTARTE_RESULT_KEY_VALUE_FULL;
 }
 
-astarte_result_t astarte_key_value_entry_write(struct nvs_fs *nvs_fs, uint16_t idx,
+astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t idx,
     const char *namespace, const char *key, const void *value, size_t value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -87,9 +87,9 @@ astarte_result_t astarte_key_value_entry_write(struct nvs_fs *nvs_fs, uint16_t i
     size_t raw_entry_size = 0;
 
     bool is_end_of_list = false;
-    uint16_t prev_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-    uint16_t next_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-    ares = astarte_key_value_entry_list_compute_next_and_prev_ids(nvs_fs, idx, &next_id, &prev_id);
+    uint32_t prev_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    uint32_t next_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    ares = astarte_key_value_entry_list_compute_next_and_prev_ids(zms_fs, idx, &next_id, &prev_id);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         is_end_of_list = true;
     } else if (ares != ASTARTE_RESULT_OK) {
@@ -121,22 +121,22 @@ astarte_result_t astarte_key_value_entry_write(struct nvs_fs *nvs_fs, uint16_t i
     astarte_key_value_entry_intent_state_t intent_state = is_end_of_list
         ? ASTARTE_KEY_VALUE_ENTRY_INTENT_INSERTING
         : ASTARTE_KEY_VALUE_ENTRY_INTENT_UPDATING;
-    ares = astarte_key_value_entry_intent_write(nvs_fs, intent_state, idx, prev_id, next_id);
+    ares = astarte_key_value_entry_intent_write(zms_fs, intent_state, idx, prev_id, next_id);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
 
-    // Write the serialized entry to NVS
-    ssize_t ret = nvs_write(nvs_fs, idx, raw_entry, raw_entry_size);
+    // Write the serialized entry to ZMS
+    ssize_t ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
-        ASTARTE_LOG_ERR("Error writing to NVS at ID %d, error: %d", idx, ret);
-        ares = ASTARTE_RESULT_NVS_ERROR;
+        ASTARTE_LOG_ERR("Error writing to ZMS at ID %d, error: %d", idx, ret);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
         goto exit;
     }
 
     // Update the previous tail to point to the new entry and update the head/tail IDs if needed
     if (is_end_of_list) {
-        ares = update_list_tail(nvs_fs, idx);
+        ares = update_list_tail(zms_fs, idx);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Error updating tail %d, error: %s", idx, astarte_result_to_name(ares));
             goto exit;
@@ -144,7 +144,7 @@ astarte_result_t astarte_key_value_entry_write(struct nvs_fs *nvs_fs, uint16_t i
     }
 
     // Clear intent block to signal successful multi-step transaction
-    ares = astarte_key_value_entry_intent_clear(nvs_fs);
+    ares = astarte_key_value_entry_intent_clear(zms_fs);
 
 exit:
     free(raw_entry);
@@ -152,7 +152,7 @@ exit:
 }
 
 astarte_result_t astarte_key_value_entry_read_value(
-    struct nvs_fs *nvs_fs, uint16_t idx, void *value, size_t *value_size)
+    struct zms_fs *zms_fs, uint32_t idx, void *value, size_t *value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     uint8_t *raw_entry = NULL;
@@ -160,7 +160,7 @@ astarte_result_t astarte_key_value_entry_read_value(
 
     // Read the fixed header
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
-    ares = astarte_key_value_entry_header_read_fixed(nvs_fs, idx, &fixed_header, &raw_entry_size);
+    ares = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -193,10 +193,10 @@ astarte_result_t astarte_key_value_entry_read_value(
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto exit;
     }
-    ssize_t ret = nvs_read(nvs_fs, idx, raw_entry, raw_entry_size);
-    if (ret < 0) {
-        ASTARTE_LOG_ERR("Error reading full payload from NVS at ID %d, error: %d", idx, ret);
-        ares = ASTARTE_RESULT_NVS_ERROR;
+    ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
+    if (ret != raw_entry_size) {
+        ASTARTE_LOG_ERR("Error reading full payload from ZMS at ID %d, error: %d", idx, ret);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
         goto exit;
     }
 
@@ -212,13 +212,13 @@ exit:
 }
 
 astarte_result_t astarte_key_value_entry_read_key(
-    struct nvs_fs *nvs_fs, uint16_t idx, char *key, size_t *key_size)
+    struct zms_fs *zms_fs, uint32_t idx, char *key, size_t *key_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     struct astarte_key_value_entry_header header = { 0 };
     size_t raw_entry_size = 0;
 
-    ares = astarte_key_value_entry_header_read(nvs_fs, idx, &header, &raw_entry_size);
+    ares = astarte_key_value_entry_header_read(zms_fs, idx, &header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -244,7 +244,7 @@ exit:
 }
 
 astarte_result_t astarte_key_value_entry_check_namespace(
-    struct nvs_fs *nvs_fs, uint16_t idx, const char *namespace, bool *matches)
+    struct zms_fs *zms_fs, uint32_t idx, const char *namespace, bool *matches)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     struct astarte_key_value_entry_header header = { 0 };
@@ -256,7 +256,7 @@ astarte_result_t astarte_key_value_entry_check_namespace(
         goto exit;
     }
 
-    ares = astarte_key_value_entry_header_read(nvs_fs, idx, &header, &raw_entry_size);
+    ares = astarte_key_value_entry_header_read(zms_fs, idx, &header, &raw_entry_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         ares = ASTARTE_RESULT_OK;
         *matches = false;
@@ -283,14 +283,14 @@ exit:
 }
 
 astarte_result_t astarte_key_value_entry_get_next_id(
-    struct nvs_fs *nvs_fs, uint16_t idx, uint16_t *next_id)
+    struct zms_fs *zms_fs, uint32_t idx, uint32_t *next_id)
 {
     // Calling this function with the NULL ID will make it return the ID of the head
     if (idx == ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
-        uint16_t head_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-        uint16_t tail_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+        uint32_t head_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+        uint32_t tail_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
         astarte_result_t rd_res
-            = astarte_key_value_entry_list_read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
+            = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
         if (rd_res != ASTARTE_RESULT_OK) {
             return rd_res;
         }
@@ -301,7 +301,7 @@ astarte_result_t astarte_key_value_entry_get_next_id(
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
     size_t raw_entry_size = 0;
     astarte_result_t ares
-        = astarte_key_value_entry_header_read_fixed(nvs_fs, idx, &fixed_header, &raw_entry_size);
+        = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -311,7 +311,7 @@ astarte_result_t astarte_key_value_entry_get_next_id(
 }
 
 astarte_result_t astarte_key_value_entry_get_prev_id(
-    struct nvs_fs *nvs_fs, uint16_t idx, uint16_t *prev_id)
+    struct zms_fs *zms_fs, uint32_t idx, uint32_t *prev_id)
 {
     // Calling this function with NULL ID will make it return the NULL ID
     if (idx == ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
@@ -322,7 +322,7 @@ astarte_result_t astarte_key_value_entry_get_prev_id(
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
     size_t raw_entry_size = 0;
     astarte_result_t ares
-        = astarte_key_value_entry_header_read_fixed(nvs_fs, idx, &fixed_header, &raw_entry_size);
+        = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
@@ -335,18 +335,18 @@ astarte_result_t astarte_key_value_entry_get_prev_id(
  *         Static functions definitions         *
  ***********************************************/
 
-static astarte_result_t update_list_tail(struct nvs_fs *nvs_fs, uint16_t new_tail_id)
+static astarte_result_t update_list_tail(struct zms_fs *zms_fs, uint32_t new_tail_id)
 {
-    uint16_t head_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-    uint16_t tail_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    uint32_t head_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    uint32_t tail_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
     astarte_result_t ares
-        = astarte_key_value_entry_list_read_head_and_tail_ids(nvs_fs, &head_id, &tail_id);
+        = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
 
     if (tail_id != ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
-        ares = astarte_key_value_entry_list_update_next_id(nvs_fs, tail_id, new_tail_id);
+        ares = astarte_key_value_entry_list_update_next_id(zms_fs, tail_id, new_tail_id);
         if (ares != ASTARTE_RESULT_OK) {
             return ares;
         }
@@ -354,7 +354,7 @@ static astarte_result_t update_list_tail(struct nvs_fs *nvs_fs, uint16_t new_tai
         head_id = new_tail_id;
     }
     tail_id = new_tail_id;
-    return astarte_key_value_entry_list_write_head_and_tail_ids(nvs_fs, head_id, tail_id);
+    return astarte_key_value_entry_list_write_head_and_tail_ids(zms_fs, head_id, tail_id);
 }
 
 static uint8_t *serialize_entry(struct astarte_key_value_entry_header header, const void *value,
@@ -402,13 +402,13 @@ static uint8_t *serialize_entry(struct astarte_key_value_entry_header header, co
 }
 
 static astarte_result_t check_entry_match(
-    struct nvs_fs *nvs_fs, uint16_t idx, const char *namespace, const char *key)
+    struct zms_fs *zms_fs, uint32_t idx, const char *namespace, const char *key)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     struct astarte_key_value_entry_header header = { 0 };
     size_t raw_size = 0;
 
-    ares = astarte_key_value_entry_header_read(nvs_fs, idx, &header, &raw_size);
+    ares = astarte_key_value_entry_header_read(zms_fs, idx, &header, &raw_size);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }

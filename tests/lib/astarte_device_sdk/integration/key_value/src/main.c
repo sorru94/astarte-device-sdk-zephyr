@@ -20,10 +20,10 @@
 #include "key_value/entry_hash.h"
 #include "key_value/entry_list.h"
 
-#define NVS_PARTITION key_value_partition
-#define NVS_PARTITION_DEVICE PARTITION_DEVICE(NVS_PARTITION)
-#define NVS_PARTITION_OFFSET PARTITION_OFFSET(NVS_PARTITION)
-#define NVS_PARTITION_SIZE PARTITION_SIZE(NVS_PARTITION)
+#define ZMS_PARTITION key_value_partition
+#define ZMS_PARTITION_DEVICE PARTITION_DEVICE(ZMS_PARTITION)
+#define ZMS_PARTITION_OFFSET PARTITION_OFFSET(ZMS_PARTITION)
+#define ZMS_PARTITION_SIZE PARTITION_SIZE(ZMS_PARTITION)
 
 struct astarte_device_sdk_key_value_fixture
 {
@@ -38,8 +38,8 @@ struct astarte_device_sdk_key_value_fixture
 static void *astarte_storage_key_value_test_setup(void)
 {
     struct flash_pages_info fp_info;
-    const struct device *device = NVS_PARTITION_DEVICE;
-    off_t offset = NVS_PARTITION_OFFSET;
+    const struct device *device = ZMS_PARTITION_DEVICE;
+    off_t offset = ZMS_PARTITION_OFFSET;
     zassert(device_is_ready(device), "Flash device is not ready.");
     zassert_equal(flash_get_page_info_by_offs(device, offset, &fp_info), 0, "Can't get page info.");
 
@@ -47,11 +47,11 @@ static void *astarte_storage_key_value_test_setup(void)
         = calloc(1, sizeof(struct astarte_device_sdk_key_value_fixture));
     zassert_not_null(fixture, "Failed allocating test fixture");
 
-    fixture->flash_device = NVS_PARTITION_DEVICE;
-    fixture->flash_offset = NVS_PARTITION_OFFSET;
-    fixture->flash_sector_count = NVS_PARTITION_SIZE / fp_info.size;
+    fixture->flash_device = ZMS_PARTITION_DEVICE;
+    fixture->flash_offset = ZMS_PARTITION_OFFSET;
+    fixture->flash_sector_count = ZMS_PARTITION_SIZE / fp_info.size;
     fixture->flash_sector_size = fp_info.size;
-    fixture->flash_partition_size = NVS_PARTITION_SIZE;
+    fixture->flash_partition_size = ZMS_PARTITION_SIZE;
     k_mutex_init(&fixture->test_mutex);
 
     return fixture;
@@ -64,14 +64,14 @@ static void astarte_storage_key_value_test_before(void *f)
 
     k_mutex_lock(&fixture->test_mutex, K_FOREVER);
 
-    struct nvs_fs nvs_fs = { 0 };
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs = { 0 };
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 }
 
 static void astarte_storage_key_value_test_after(void *f)
@@ -79,14 +79,14 @@ static void astarte_storage_key_value_test_after(void *f)
     struct astarte_device_sdk_key_value_fixture *fixture
         = (struct astarte_device_sdk_key_value_fixture *) f;
 
-    struct nvs_fs nvs_fs = { 0 };
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs = { 0 };
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 
     k_mutex_unlock(&fixture->test_mutex);
 }
@@ -107,9 +107,9 @@ ZTEST_SUITE(astarte_device_sdk_key_value, NULL, astarte_storage_key_value_test_s
 static void validate_collision(
     const char *namespace, const char *k1, const char *k2, const char *k3)
 {
-    uint16_t h1 = astarte_key_value_entry_hash_generate(namespace, k1);
-    uint16_t h2 = astarte_key_value_entry_hash_generate(namespace, k2);
-    uint16_t h3 = astarte_key_value_entry_hash_generate(namespace, k3);
+    uint32_t h1 = astarte_key_value_entry_hash_generate(namespace, k1);
+    uint32_t h2 = astarte_key_value_entry_hash_generate(namespace, k2);
+    uint32_t h3 = astarte_key_value_entry_hash_generate(namespace, k3);
 
     zassert_equal(h1, h2, "Collision validation failed: %s (%u) != %s (%u)", k1, h1, k2, h2);
     zassert_equal(h2, h3, "Collision validation failed: %s (%u) != %s (%u)", k2, h2, k3, h3);
@@ -118,7 +118,7 @@ static void validate_collision(
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_hash_collision_probing)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "collision_ns";
 
     astarte_key_value_cfg_t cfg = {
@@ -127,13 +127,13 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_hash_collision_probing)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    zassert_equal(astarte_key_value_open(cfg, &nvs_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&nvs_fs, namespace, &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, namespace, &key_value), ASTARTE_RESULT_OK);
 
-    // Hardcoded keys known to collide at Target Hash: 23088
-    const char *k1 = "key_1079";
-    const char *k2 = "key_4703";
-    const char *k3 = "key_21000";
+    // Hardcoded keys known to collide at Target Hash: 2432505520
+    const char *k1 = "key_2533606";
+    const char *k2 = "key_2796754";
+    const char *k3 = "key_3381429";
 
     // Validate the hardcoded keys still collide in this environment
     validate_collision(namespace, k1, k2, k3);
@@ -164,7 +164,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_hash_collision_probing)
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_storage_exhaustion)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
 
     astarte_key_value_cfg_t cfg = {
         .flash_device = fixture->flash_device,
@@ -172,14 +172,14 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_storage_exhaustion)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    zassert_equal(astarte_key_value_open(cfg, &nvs_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&nvs_fs, "exhaust_ns", &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, "exhaust_ns", &key_value), ASTARTE_RESULT_OK);
 
     char key[16];
     char val[] = "v";
     astarte_result_t res = ASTARTE_RESULT_OK;
 
-    // Fill until NVS or our logic returns FULL/ERROR
+    // Fill until ZMS or our logic returns FULL/ERROR
     for (uint32_t i = 0; i < UINT16_MAX * 2; i++) {
         snprintf(key, sizeof(key), "k%d", i);
         res = astarte_key_value_insert(&key_value, key, val, sizeof(val));
@@ -188,9 +188,9 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_storage_exhaustion)
         }
     }
 
-    // It should eventually fail either by NVS full or our KV storage full
+    // It should eventually fail either by ZMS full or our KV storage full
     zassert_not_equal(res, ASTARTE_RESULT_OK, "Storage should have exhausted");
-    zassert_true(res == ASTARTE_RESULT_KEY_VALUE_FULL || res == ASTARTE_RESULT_NVS_ERROR,
+    zassert_true(res == ASTARTE_RESULT_KEY_VALUE_FULL || res == ASTARTE_RESULT_ZMS_ERROR,
         "Unexpected error on exhaustion: %s", astarte_result_to_name(res));
 
     astarte_key_value_destroy(&key_value);
@@ -199,7 +199,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_storage_exhaustion)
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_linked_list_head_tail)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
 
     astarte_key_value_cfg_t cfg = {
         .flash_device = fixture->flash_device,
@@ -207,32 +207,32 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_linked_list_head_tail)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    zassert_equal(astarte_key_value_open(cfg, &nvs_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&nvs_fs, "ll_ns", &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, "ll_ns", &key_value), ASTARTE_RESULT_OK);
 
-    uint16_t head_id, tail_id;
+    uint32_t head_id, tail_id;
 
     // Initially empty
-    zassert_equal(astarte_key_value_entry_list_read_head_and_tail_ids(&nvs_fs, &head_id, &tail_id),
+    zassert_equal(astarte_key_value_entry_list_read_head_and_tail_ids(&zms_fs, &head_id, &tail_id),
         ASTARTE_RESULT_OK);
     zassert_equal(head_id, ASTARTE_KEY_VALUE_ENTRY_NULL_ID, "Empty head should be NULL");
 
     // Insert 1
     astarte_key_value_insert(&key_value, "k1", "v1", 3);
-    astarte_key_value_entry_list_read_head_and_tail_ids(&nvs_fs, &head_id, &tail_id);
+    astarte_key_value_entry_list_read_head_and_tail_ids(&zms_fs, &head_id, &tail_id);
     zassert_not_equal(head_id, ASTARTE_KEY_VALUE_ENTRY_NULL_ID, "Head should be set");
     zassert_equal(head_id, tail_id, "Head and tail should be identical for 1 element");
 
     // Insert 2
     astarte_key_value_insert(&key_value, "k2", "v2", 3);
-    uint16_t old_head = head_id;
-    astarte_key_value_entry_list_read_head_and_tail_ids(&nvs_fs, &head_id, &tail_id);
+    uint32_t old_head = head_id;
+    astarte_key_value_entry_list_read_head_and_tail_ids(&zms_fs, &head_id, &tail_id);
     zassert_equal(head_id, old_head, "Head should remain the first element");
     zassert_not_equal(head_id, tail_id, "Tail should now be different");
 
     // Delete head
     astarte_key_value_delete(&key_value, "k1");
-    astarte_key_value_entry_list_read_head_and_tail_ids(&nvs_fs, &head_id, &tail_id);
+    astarte_key_value_entry_list_read_head_and_tail_ids(&zms_fs, &head_id, &tail_id);
     zassert_equal(head_id, tail_id, "After deleting head, 1 element remains (head == tail)");
 
     astarte_key_value_destroy(&key_value);
@@ -241,7 +241,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_linked_list_head_tail)
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_deletion_shift_back)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char ns[] = "shift_ns";
 
     astarte_key_value_cfg_t cfg = {
@@ -250,13 +250,13 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_deletion_shift_back)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    zassert_equal(astarte_key_value_open(cfg, &nvs_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&nvs_fs, ns, &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, ns, &key_value), ASTARTE_RESULT_OK);
 
-    // Hardcoded keys known to collide at Target Hash: 9533
-    const char *k1 = "key_1029";
-    const char *k2 = "key_4753";
-    const char *k3 = "key_11804";
+    // Hardcoded keys known to collide at Target Hash: 2425929905
+    const char *k1 = "key_2533606";
+    const char *k2 = "key_2796754";
+    const char *k3 = "key_3381429";
 
     // Validate the hardcoded keys still collide in this environment
     validate_collision(ns, k1, k2, k3);
@@ -282,7 +282,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_deletion_shift_back)
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_iterator_safe_deletion)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
 
     astarte_key_value_cfg_t cfg = {
         .flash_device = fixture->flash_device,
@@ -290,8 +290,8 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_iterator_safe_deletion)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_key_value_open(cfg, &nvs_fs);
-    astarte_key_value_new(&nvs_fs, "iter_del_ns", &key_value);
+    astarte_key_value_open(cfg, &zms_fs);
+    astarte_key_value_new(&zms_fs, "iter_del_ns", &key_value);
 
     astarte_key_value_insert(&key_value, "A", "1", 2);
     astarte_key_value_insert(&key_value, "B", "2", 2);
@@ -326,7 +326,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_iterator_safe_deletion)
 ZTEST_F(astarte_device_sdk_key_value, test_key_value_invalid_buffer_sizes)
 {
     astarte_key_value_t key_value = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
 
     astarte_key_value_cfg_t cfg = {
         .flash_device = fixture->flash_device,
@@ -334,8 +334,8 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_invalid_buffer_sizes)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_key_value_open(cfg, &nvs_fs);
-    astarte_key_value_new(&nvs_fs, "err_ns", &key_value);
+    astarte_key_value_open(cfg, &zms_fs);
+    astarte_key_value_new(&zms_fs, "err_ns", &key_value);
 
     const char *long_val = "this_is_a_long_value";
     astarte_key_value_insert(&key_value, "k1", long_val, strlen(long_val) + 1);
@@ -378,7 +378,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_store_and_f
 
     // Initialize storage driver
     astarte_key_value_t kv_storage = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_key_value_cfg_t astarte_storage_cfg = {
@@ -387,10 +387,10 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_store_and_f
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&nvs_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -510,7 +510,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_read_sizes)
 
     // Initialize storage driver
     astarte_key_value_t kv_storage = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_key_value_cfg_t astarte_storage_cfg = {
@@ -519,10 +519,10 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_read_sizes)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&nvs_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -581,7 +581,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_overwrite)
 
     // Initialize storage driver
     astarte_key_value_t kv_storage = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_key_value_cfg_t astarte_storage_cfg = {
@@ -590,10 +590,10 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_overwrite)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&nvs_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -663,7 +663,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration)
 
     // Initialize storage driver
     astarte_key_value_t kv_storage = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_key_value_cfg_t astarte_storage_cfg = {
@@ -672,10 +672,10 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration)
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&nvs_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -757,7 +757,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration_e
 {
     // Initialize storage driver
     astarte_key_value_t kv_storage = { 0 };
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     const char namespace[] = "simple namespace";
 
     astarte_key_value_cfg_t astarte_storage_cfg = {
@@ -766,10 +766,10 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration_e
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&nvs_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Iterate over storage
@@ -785,26 +785,26 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
     astarte_result_t ret = ASTARTE_RESULT_OK;
     size_t value_size = 0U;
 
-    struct nvs_fs nvs_fs = { 0 };
+    struct zms_fs zms_fs = { 0 };
     astarte_key_value_cfg_t astarte_storage_cfg = {
         .flash_device = fixture->flash_device,
         .flash_offset = fixture->flash_offset,
         .flash_partition_size = fixture->flash_partition_size,
     };
 
-    ret = astarte_key_value_open(astarte_storage_cfg, &nvs_fs);
+    ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Initialize first storage driver
     astarte_key_value_t kv_astarte_storage_1 = { 0 };
     const char namespace_1[] = "first namespace";
-    ret = astarte_key_value_new(&nvs_fs, namespace_1, &kv_astarte_storage_1);
+    ret = astarte_key_value_new(&zms_fs, namespace_1, &kv_astarte_storage_1);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Initialize second storage driver
     astarte_key_value_t kv_astarte_storage_2 = { 0 };
     const char namespace_2[] = "second namespace";
-    ret = astarte_key_value_new(&nvs_fs, namespace_2, &kv_astarte_storage_2);
+    ret = astarte_key_value_new(&zms_fs, namespace_2, &kv_astarte_storage_2);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs with multiple namespaces

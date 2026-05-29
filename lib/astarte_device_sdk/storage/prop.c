@@ -176,7 +176,7 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
         goto exit;
     }
 
-    // Get the data from NVS
+    // Get the data from ZMS
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     ares = astarte_key_value_find(&handle->prop_storage, key, value, &value_len);
     if (ares != ASTARTE_RESULT_OK) {

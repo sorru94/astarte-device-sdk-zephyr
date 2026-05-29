@@ -9,14 +9,14 @@
 
 /**
  * @file key_value/core.h
- * @brief Key-value persistent storage implementation, with namespacing. Uses NVS as backend.
+ * @brief Key-value persistent storage implementation, with namespacing. Uses ZMS as backend.
  *
  * @details
- * Each namespaced key-value pair is stored as a single NVS entry. The entry ID is generated via a
+ * Each namespaced key-value pair is stored as a single ZMS entry. The entry ID is generated via a
  * CRC16 hash of the concatenated namespace and key strings, with linear probing used to handle
  * collisions.
  *
- * The payload of each NVS entry is structured as follows:
+ * The payload of each ZMS entry is structured as follows:
  * - 2 bytes: Namespace string length (excluding null terminator)
  * - 2 bytes: Key string length (excluding null terminator)
  * - 2 bytes: Next entry ID in the linked list (0xFFFF if tail)
@@ -35,9 +35,9 @@
 #include <zephyr/version.h>
 
 #if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
-#include <zephyr/kvss/nvs.h>
+#include <zephyr/kvss/zms.h>
 #else
-#include <zephyr/fs/nvs.h>
+#include <zephyr/fs/zms.h>
 #endif
 
 #include "astarte_device_sdk/astarte.h"
@@ -50,7 +50,7 @@
 /** @brief The current patch version for the key-value storage. */
 #define ASTARTE_KEY_VALUE_FORMAT_VERSION_PATCH 0
 
-/** @brief Version format structure for NVS storage. */
+/** @brief Version format structure for ZMS storage. */
 typedef struct
 {
     /** @brief Major version for the key-value storage. */
@@ -77,8 +77,8 @@ typedef struct
 {
     /** @brief Namespace used for this key-value storage instance. */
     char *namespace;
-    /** @brief Persistent NVS file system context */
-    struct nvs_fs *nvs_fs;
+    /** @brief Persistent ZMS file system context */
+    struct zms_fs *zms_fs;
 } astarte_key_value_t;
 
 /** @brief Iterator struct for the key-value pair storage. */
@@ -86,10 +86,8 @@ typedef struct
 {
     /** @brief Reference to the storage instance used by the iterator. */
     astarte_key_value_t *kv_storage;
-    /** @brief Current NVS ID pointed to by the iterator. */
-    uint16_t current_id;
-    /** @brief Previous global NVS ID, cached to safely delete the current entry. */
-    uint16_t prev_id;
+    /** @brief Current ZMS ID pointed to by the iterator. */
+    uint32_t current_id;
 } astarte_key_value_iter_t;
 
 #ifdef __cplusplus
@@ -97,16 +95,16 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize a NVS partition for use with the key-value driver.
+ * @brief Initialize a ZMS partition for use with the key-value driver.
  *
- * @note Each NVS partition should be only initialize once. Furthermore call this function only
- * once for each NVS partition.
+ * @note Each ZMS partition should be only initialize once. Furthermore call this function only
+ * once for each ZMS partition.
  *
- * @param[in] config Configuration struct for the NVS partition.
- * @param[in,out] nvs_fs The NVS file system context to open.
+ * @param[in] config Configuration struct for the ZMS partition.
+ * @param[in,out] zms_fs The ZMS file system context to open.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct nvs_fs *nvs_fs);
+astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct zms_fs *zms_fs);
 
 /**
  * @brief Create a new instance of the key-value pairs storage driver for a specific namespace.
@@ -114,14 +112,14 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct n
  * @note After being used the key-value storage instance should be destroyed with
  * #astarte_key_value_destroy.
  *
- * @param[in,out] nvs_fs The NVS file system context to use. This should have been opened previously
+ * @param[in,out] zms_fs The ZMS file system context to use. This should have been opened previously
  * using #astarte_key_value_open
  * @param[in] namespace The namespace to be used for this storage instance.
  * @param[out] kv_storage Data struct for the key-value storage instance to initialize.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_key_value_new(
-    struct nvs_fs *nvs_fs, const char *namespace, astarte_key_value_t *kv_storage);
+    struct zms_fs *zms_fs, const char *namespace, astarte_key_value_t *kv_storage);
 
 /**
  * @brief Destroy an instance of the key-value pairs storage driver.

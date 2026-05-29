@@ -13,9 +13,9 @@
 #include <zephyr/version.h>
 
 #if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
-#include <zephyr/kvss/nvs.h>
+#include <zephyr/kvss/zms.h>
 #else
-#include <zephyr/fs/nvs.h>
+#include <zephyr/fs/zms.h>
 #endif
 
 #include "log.h"
@@ -25,19 +25,19 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_L
  *        Defines, constants and typedef        *
  ***********************************************/
 
-#define NVS_PARTITION astarte_partition
-#if !FIXED_PARTITION_EXISTS(NVS_PARTITION)
+#define ZMS_PARTITION astarte_partition
+#if !FIXED_PARTITION_EXISTS(ZMS_PARTITION)
 #error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
-#endif // FIXED_PARTITION_EXISTS(NVS_PARTITION)
+#endif // FIXED_PARTITION_EXISTS(ZMS_PARTITION)
 
 #if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
-#define NVS_PARTITION_DEVICE PARTITION_DEVICE(NVS_PARTITION)
-#define NVS_PARTITION_OFFSET PARTITION_OFFSET(NVS_PARTITION)
-#define NVS_PARTITION_SIZE PARTITION_SIZE(NVS_PARTITION)
+#define ZMS_PARTITION_DEVICE PARTITION_DEVICE(ZMS_PARTITION)
+#define ZMS_PARTITION_OFFSET PARTITION_OFFSET(ZMS_PARTITION)
+#define ZMS_PARTITION_SIZE PARTITION_SIZE(ZMS_PARTITION)
 #else
-#define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)
-#define NVS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(NVS_PARTITION)
-#define NVS_PARTITION_SIZE FIXED_PARTITION_SIZE(NVS_PARTITION)
+#define ZMS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(ZMS_PARTITION)
+#define ZMS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(ZMS_PARTITION)
+#define ZMS_PARTITION_SIZE FIXED_PARTITION_SIZE(ZMS_PARTITION)
 #endif
 
 #define VERSION_NAMESPACE "version_namespace"
@@ -55,7 +55,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_L
  * @brief Erases the flash partition.
  *
  * @param[inout] handle Pointer to the storage handle data.
- * @param[in] kv_cfg Configuration struct to remount NVS.
+ * @param[in] kv_cfg Configuration struct to remount ZMS.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 static astarte_result_t erase_storage(
@@ -78,11 +78,11 @@ astarte_result_t astarte_storage_init(astarte_storage_data_t *handle)
 
     // Open the key value storage flash partition
     astarte_key_value_cfg_t kv_astarte_storage_cfg = {
-        .flash_device = NVS_PARTITION_DEVICE,
-        .flash_offset = NVS_PARTITION_OFFSET,
-        .flash_partition_size = NVS_PARTITION_SIZE,
+        .flash_device = ZMS_PARTITION_DEVICE,
+        .flash_offset = ZMS_PARTITION_OFFSET,
+        .flash_partition_size = ZMS_PARTITION_SIZE,
     };
-    ares = astarte_key_value_open(kv_astarte_storage_cfg, &handle->nvs_fs);
+    ares = astarte_key_value_open(kv_astarte_storage_cfg, &handle->zms_fs);
     if ((ares == ASTARTE_RESULT_KEY_VALUE_INCOMPATIBLE_VERSION)
         || (ares == ASTARTE_RESULT_KEY_VALUE_RECOVERY_FAILED)) {
         ASTARTE_LOG_ERR("key-value is corrupted or of incompatible version.");
@@ -97,20 +97,20 @@ astarte_result_t astarte_storage_init(astarte_storage_data_t *handle)
     }
 
     // Init Synchronization Storage
-    ares = astarte_key_value_new(&handle->nvs_fs, SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
+    ares = astarte_key_value_new(&handle->zms_fs, SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
 
     // Init Introspection Storage
-    ares = astarte_key_value_new(&handle->nvs_fs, INTROSPECTION_NAMESPACE, &handle->intro_storage);
+    ares = astarte_key_value_new(&handle->zms_fs, INTROSPECTION_NAMESPACE, &handle->intro_storage);
     if (ares != ASTARTE_RESULT_OK) {
         astarte_key_value_destroy(&handle->sync_storage); // Rollback
         return ares;
     }
 
     // Init Properties Storage
-    ares = astarte_key_value_new(&handle->nvs_fs, PROPERTIES_NAMESPACE, &handle->prop_storage);
+    ares = astarte_key_value_new(&handle->zms_fs, PROPERTIES_NAMESPACE, &handle->prop_storage);
     if (ares != ASTARTE_RESULT_OK) {
         astarte_key_value_destroy(&handle->sync_storage);
         astarte_key_value_destroy(&handle->intro_storage);
@@ -145,15 +145,15 @@ static astarte_result_t erase_storage(
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
     // Completely wipe the partition if the format might be incompatible
-    int flash_rc = flash_erase(NVS_PARTITION_DEVICE, NVS_PARTITION_OFFSET, NVS_PARTITION_SIZE);
+    int flash_rc = flash_erase(ZMS_PARTITION_DEVICE, ZMS_PARTITION_OFFSET, ZMS_PARTITION_SIZE);
     if (flash_rc != 0) {
         ASTARTE_LOG_ERR("Flash erase failed: %d", flash_rc);
         ares = ASTARTE_RESULT_INTERNAL_ERROR;
         goto exit;
     }
 
-    // Remount NVS after wiping the physical flash partition
-    ares = astarte_key_value_open(*kv_cfg, &handle->nvs_fs);
+    // Remount ZMS after wiping the physical flash partition
+    ares = astarte_key_value_open(*kv_cfg, &handle->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error reopening cache after erase: %s.", astarte_result_to_name(ares));
         goto exit;

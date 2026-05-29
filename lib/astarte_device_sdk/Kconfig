@@ -114,7 +114,7 @@ config ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 	depends on FLASH
 	depends on FLASH_MAP
 	depends on FLASH_PAGE_LAYOUT
-	depends on NVS
+	depends on ZMS
 	default y
 	help
 	  This option enables the permanent storage in for the Astarte device.

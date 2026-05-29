@@ -97,8 +97,8 @@ typedef enum
     ASTARTE_RESULT_DEVICE_NOT_READY = 32,
     /** @brief A partial aggregated object has been found. */
     ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT = 33,
-    /** @brief Error while reading/writing an NVS entry. */
-    ASTARTE_RESULT_NVS_ERROR = 34,
+    /** @brief Error while reading/writing an ZMS entry. */
+    ASTARTE_RESULT_ZMS_ERROR = 34,
     /** @brief Astarte key-value storage is full. */
     ASTARTE_RESULT_KEY_VALUE_FULL = 35,
     /** @brief An outdated introspection has been found in cache. */

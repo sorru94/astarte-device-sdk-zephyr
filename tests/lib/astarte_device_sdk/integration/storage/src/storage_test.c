@@ -71,14 +71,14 @@ static void astarte_storage_test_before(void *f)
 
     k_mutex_lock(&fixture->test_mutex, K_FOREVER);
 
-    struct nvs_fs nvs_fs;
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs;
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 
     astarte_result_t ares = astarte_storage_init(&fixture->caching_handle);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Init failed: %s", astarte_result_to_name(ares));
@@ -91,14 +91,14 @@ static void astarte_storage_test_after(void *f)
 
     astarte_storage_destroy(&fixture->caching_handle);
 
-    struct nvs_fs nvs_fs;
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs;
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 
     k_mutex_unlock(&fixture->test_mutex);
 }

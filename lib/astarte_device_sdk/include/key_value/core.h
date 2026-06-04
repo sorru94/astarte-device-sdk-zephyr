@@ -13,14 +13,14 @@
  *
  * @details
  * Each namespaced key-value pair is stored as a single ZMS entry. The entry ID is generated via a
- * CRC16 hash of the concatenated namespace and key strings, with linear probing used to handle
+ * 32-bit hash of the concatenated namespace and key strings, with linear probing used to handle
  * collisions.
  *
  * The payload of each ZMS entry is structured as follows:
  * - 2 bytes: Namespace string length (excluding null terminator)
  * - 2 bytes: Key string length (excluding null terminator)
- * - 2 bytes: Next entry ID in the linked list (0xFFFF if tail)
- * - 2 bytes: Previous entry ID in the linked list (0xFFFF if head)
+ * - 4 bytes: Next entry ID in the linked list (0xFFFFFFFF if tail)
+ * - 4 bytes: Previous entry ID in the linked list (0xFFFFFFFF if head)
  * - N bytes: Namespace string (no null terminator)
  * - K bytes: Key string (no null terminator)
  * - V bytes: Value data

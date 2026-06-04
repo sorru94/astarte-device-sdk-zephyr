@@ -144,7 +144,8 @@ astarte_result_t astarte_key_value_entry_get_next_id(
  * @brief Retrieves the previous ID in the linked list of entries.
  *
  * @param[inout] zms_fs ZMS file system.
- * @param[in] idx Valid ZMS ID of the current entry.
+ * @param[in] idx Valid ZMS ID of the current entry, if set to ASTARTE_KEY_VALUE_ENTRY_NULL_ID the
+ * function returns ASTARTE_KEY_VALUE_ENTRY_NULL_ID.
  * @param[out] prev_id Pointer to store the retrieved previous ID.
  * @retval ASTARTE_RESULT_OK The operation was performed correctly.
  * @retval ASTARTE_RESULT_ZMS_ERROR An underlying ZMS file system error occurred.

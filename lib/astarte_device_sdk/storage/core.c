@@ -148,17 +148,14 @@ static astarte_result_t erase_storage(
     int flash_rc = flash_erase(ZMS_PARTITION_DEVICE, ZMS_PARTITION_OFFSET, ZMS_PARTITION_SIZE);
     if (flash_rc != 0) {
         ASTARTE_LOG_ERR("Flash erase failed: %d", flash_rc);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Remount ZMS after wiping the physical flash partition
     ares = astarte_key_value_open(*kv_cfg, &handle->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error reopening cache after erase: %s.", astarte_result_to_name(ares));
-        goto exit;
     }
 
-exit:
     return ares;
 }

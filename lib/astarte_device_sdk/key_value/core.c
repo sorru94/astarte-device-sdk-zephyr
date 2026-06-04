@@ -70,7 +70,11 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct z
     zms_fs->sector_size = fp_info.size;
     zms_fs->sector_count = flash_sector_count;
 
+#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+    int zms_rc = zms_mount_force(zms_fs);
+#else
     int zms_rc = zms_mount(zms_fs);
+#endif
     if (zms_rc != 0) {
         ASTARTE_LOG_ERR("ZMS mount error: %s (%d).", strerror(-zms_rc), zms_rc);
         return ASTARTE_RESULT_ZMS_ERROR;

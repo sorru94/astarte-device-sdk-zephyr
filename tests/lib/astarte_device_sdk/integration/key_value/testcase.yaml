@@ -1,4 +1,4 @@
-# (C) Copyright 2024, SECO Mind Srl
+# (C) Copyright 2026, SECO Mind Srl
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,6 +11,3 @@ tests:
     integration_platforms:
       - native_sim
       - frdm_rw612
-
-# Execute locally with
-# west twister -p frdm_rw612 -T ./astarte-device-sdk-zephyr/tests/lib/astarte_device_sdk/integration/key_value/ --device-testing --device-serial /dev/ttyACM1

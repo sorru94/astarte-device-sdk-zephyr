@@ -1,7 +1,7 @@
 # Astarte key-value storage architecture
 
 <!--
-Copyright 2024 SECO Mind Srl
+Copyright 2026 SECO Mind Srl
 
 SPDX-License-Identifier: Apache-2.0
 -->

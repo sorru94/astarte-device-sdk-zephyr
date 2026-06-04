@@ -20,10 +20,6 @@
 
 ASTARTE_LOG_MODULE_DECLARE(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALUE_LOG_LEVEL);
 
-// TODO: This driver is weak to power losses in between writes.
-// Consider introducing a Intent Block with synchronous rollbacks to be more resilient over power
-// losses and ZMS API failures in multi write operations.
-
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -31,8 +27,6 @@ ASTARTE_LOG_MODULE_DECLARE(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALU
 static astarte_result_t update_list_tail(struct zms_fs *zms_fs, uint32_t new_tail_id);
 static uint8_t *serialize_entry(struct astarte_key_value_entry_header header, const void *value,
     size_t value_size, size_t *serialized_entry_size);
-// Possible return values: ASTARTE_RESULT_OUT_OF_MEMORY, ASTARTE_RESULT_NOT_FOUND,
-// ASTARTE_RESULT_ZMS_ERROR, ASTARTE_RESULT_MISMATCH
 static astarte_result_t check_entry_match(
     struct zms_fs *zms_fs, uint32_t idx, const char *namespace, const char *key);
 
@@ -271,11 +265,7 @@ astarte_result_t astarte_key_value_entry_check_namespace(
         goto exit;
     }
 
-    if (strncmp(header.namespace, namespace, header.fixed_header.namespace_len) == 0) {
-        *matches = true;
-    } else {
-        *matches = false;
-    }
+    *matches = strncmp(header.namespace, namespace, header.fixed_header.namespace_len) == 0;
 
 exit:
     astarte_key_value_entry_header_free(&header);

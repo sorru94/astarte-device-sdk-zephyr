@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "key_value/entry.h"
 #include "key_value/entry_hash.h"
 #include "key_value/entry_header.h"
@@ -137,7 +138,7 @@ static astarte_result_t shift_back_single_entry(
         goto exit;
     }
 
-    raw_entry = calloc(raw_entry_size, sizeof(uint8_t));
+    raw_entry = astarte_calloc(raw_entry_size, sizeof(uint8_t));
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_INTERNAL_ERROR;
@@ -190,7 +191,7 @@ static astarte_result_t shift_back_single_entry(
     }
 
 exit:
-    free(raw_entry);
+    astarte_free(raw_entry);
     astarte_key_value_entry_header_free(&header);
     return ares;
 }

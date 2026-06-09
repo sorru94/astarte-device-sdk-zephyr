@@ -10,6 +10,7 @@
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "storage/prop.h"
 #endif
+#include "alloc.h"
 #include "data/serialize.h"
 #include "mqtt/core.h"
 #include "mqtt/pubsub.h"
@@ -257,7 +258,7 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
 
     size_t topic_len = strlen(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "//") + ASTARTE_DEVICE_ID_LEN
         + strlen(interface_name) + strlen(path);
-    topic = calloc(topic_len + 1, sizeof(char));
+    topic = astarte_calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -275,7 +276,7 @@ static astarte_result_t publish_data(astarte_device_handle_t device, const char 
     astarte_mqtt_publish(&device->astarte_mqtt, topic, data, data_size, qos, NULL);
 
 exit:
-    free(topic);
+    astarte_free(topic);
     return ares;
 }
 

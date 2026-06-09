@@ -13,6 +13,7 @@
 #include "astarte_device_sdk/interface.h"
 #include "astarte_device_sdk/result.h"
 
+#include "alloc.h"
 #include "introspection.h"
 
 LOG_MODULE_REGISTER(introspection_test, CONFIG_LOG_DEFAULT_LEVEL); // NOLINT
@@ -49,7 +50,7 @@ const static astarte_interface_t test_interface_c = {
 static char *get_introspection_string(introspection_t *introspection)
 {
     size_t introspection_buf_len = introspection_get_string_size(introspection);
-    char *introspection_buf = calloc(introspection_buf_len, sizeof(char));
+    char *introspection_buf = astarte_calloc(introspection_buf_len, sizeof(char));
     introspection_fill_string(introspection, introspection_buf, introspection_buf_len);
     return introspection_buf;
 }

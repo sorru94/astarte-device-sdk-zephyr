@@ -21,6 +21,7 @@
 #include <zephyr/fs/zms.h>
 #endif
 
+#include "alloc.h"
 #include "key_value/entry.h"
 #include "key_value/entry_delete.h"
 #include "key_value/entry_intent.h"
@@ -135,7 +136,7 @@ astarte_result_t astarte_key_value_new(
     char *namespace_cpy = NULL;
     size_t namespace_cpy_size = strlen(namespace) + 1;
 
-    namespace_cpy = calloc(namespace_cpy_size, sizeof(char));
+    namespace_cpy = astarte_calloc(namespace_cpy_size, sizeof(char));
     if (!namespace_cpy) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -149,14 +150,14 @@ astarte_result_t astarte_key_value_new(
     return ASTARTE_RESULT_OK;
 
 error:
-    free(namespace_cpy);
+    astarte_free(namespace_cpy);
     kv_storage->namespace = NULL;
     return ares;
 }
 
 void astarte_key_value_destroy(astarte_key_value_t *kv_storage)
 {
-    free(kv_storage->namespace);
+    astarte_free(kv_storage->namespace);
     kv_storage->namespace = NULL;
 }
 
@@ -387,7 +388,7 @@ astarte_result_t astarte_key_value_iterator_delete(astarte_key_value_iter_t *ite
             ASTARTE_LOG_ERR("Key size reading failure: %s", astarte_result_to_name(ares));
             goto exit;
         }
-        next_key = calloc(next_key_size, sizeof(char));
+        next_key = astarte_calloc(next_key_size, sizeof(char));
         if (!next_key) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -434,7 +435,7 @@ astarte_result_t astarte_key_value_iterator_delete(astarte_key_value_iter_t *ite
 
 exit:
 
-    free(next_key);
+    astarte_free(next_key);
 
     mutex_rc = sys_mutex_unlock(&astarte_key_value_mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);

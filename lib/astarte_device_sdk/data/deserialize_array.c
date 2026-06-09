@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "bson/types.h"
 #include "mapping_private.h"
 
@@ -28,7 +29,7 @@ ASTARTE_LOG_MODULE_DECLARE(data_deserialize, CONFIG_ASTARTE_DEVICE_SDK_DATA_LOG_
         astarte_result_t ares = ASTARTE_RESULT_OK;                                                 \
         size_t capacity = 4;                                                                       \
         size_t count = 0;                                                                          \
-        TYPE *array = calloc(capacity, sizeof(TYPE));                                              \
+        TYPE *array = astarte_calloc(capacity, sizeof(TYPE));                                      \
         if (!array) {                                                                              \
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);                           \
             return ASTARTE_RESULT_OUT_OF_MEMORY;                                                   \
@@ -42,7 +43,7 @@ ASTARTE_LOG_MODULE_DECLARE(data_deserialize, CONFIG_ASTARTE_DEVICE_SDK_DATA_LOG_
             }                                                                                      \
             if (count >= capacity) {                                                               \
                 capacity *= 2;                                                                     \
-                TYPE *new_array = realloc(array, capacity * sizeof(TYPE));                         \
+                TYPE *new_array = astarte_realloc(array, capacity * sizeof(TYPE));                 \
                 if (!new_array) {                                                                  \
                     ares = ASTARTE_RESULT_OUT_OF_MEMORY;                                           \
                     break;                                                                         \
@@ -54,7 +55,7 @@ ASTARTE_LOG_MODULE_DECLARE(data_deserialize, CONFIG_ASTARTE_DEVICE_SDK_DATA_LOG_
         }                                                                                          \
         if (ares == ASTARTE_RESULT_NOT_FOUND) {                                                    \
             if (count == 0) {                                                                      \
-                free(array);                                                                       \
+                astarte_free(array);                                                               \
                 return initialize_empty_array(MAP_TYPE##ARRAY, data);                              \
             }                                                                                      \
             data->tag = MAP_TYPE##ARRAY;                                                           \
@@ -62,7 +63,7 @@ ASTARTE_LOG_MODULE_DECLARE(data_deserialize, CONFIG_ASTARTE_DEVICE_SDK_DATA_LOG_
             data->data.DATA_FIELD.buf = array;                                                     \
             return ASTARTE_RESULT_OK;                                                              \
         }                                                                                          \
-        free(array);                                                                               \
+        astarte_free(array);                                                                       \
         return ares;                                                                               \
     }
 // NOLINTEND(bugprone-macro-parentheses)
@@ -161,11 +162,11 @@ static astarte_result_t deserialize_array_binblob(
     size_t capacity = 4;
     size_t count = 0;
 
-    uint8_t **array = (uint8_t **) calloc(capacity, sizeof(uint8_t *));
-    size_t *sizes = (size_t *) calloc(capacity, sizeof(size_t));
+    uint8_t **array = (uint8_t **) astarte_calloc(capacity, sizeof(uint8_t *));
+    size_t *sizes = (size_t *) astarte_calloc(capacity, sizeof(size_t));
     if (!array || !sizes) {
-        free((void *) array);
-        free((void *) sizes);
+        astarte_free((void *) array);
+        astarte_free((void *) sizes);
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
@@ -181,8 +182,9 @@ static astarte_result_t deserialize_array_binblob(
         if (count >= capacity) {
             capacity *= 2;
             uint8_t **new_array
-                = (uint8_t **) realloc((void *) array, capacity * sizeof(uint8_t *));
-            size_t *new_sizes = (size_t *) realloc((void *) sizes, capacity * sizeof(size_t));
+                = (uint8_t **) astarte_realloc((void *) array, capacity * sizeof(uint8_t *));
+            size_t *new_sizes
+                = (size_t *) astarte_realloc((void *) sizes, capacity * sizeof(size_t));
             if (new_array) {
                 array = new_array;
             }
@@ -197,7 +199,7 @@ static astarte_result_t deserialize_array_binblob(
         }
         uint32_t len = 0;
         const uint8_t *blob = astarte_bson_deserializer_element_to_binary(elem, &len);
-        array[count] = calloc(len, sizeof(uint8_t));
+        array[count] = astarte_calloc(len, sizeof(uint8_t));
         if (!array[count]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -211,8 +213,8 @@ static astarte_result_t deserialize_array_binblob(
 
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         if (count == 0) {
-            free((void *) array);
-            free((void *) sizes);
+            astarte_free((void *) array);
+            astarte_free((void *) sizes);
             return initialize_empty_array(ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY, data);
         }
         data->tag = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY;
@@ -223,10 +225,10 @@ static astarte_result_t deserialize_array_binblob(
     }
 
     for (size_t i = 0; i < count; i++) {
-        free(array[i]);
+        astarte_free(array[i]);
     }
-    free((void *) array);
-    free((void *) sizes);
+    astarte_free((void *) array);
+    astarte_free((void *) sizes);
     return ares;
 }
 
@@ -247,7 +249,7 @@ static astarte_result_t deserialize_array_string(
     astarte_result_t ares = ASTARTE_RESULT_OK;
     size_t capacity = 4;
     size_t count = 0;
-    char **array = (char **) calloc(capacity, sizeof(char *));
+    char **array = (char **) astarte_calloc(capacity, sizeof(char *));
     if (!array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -263,7 +265,7 @@ static astarte_result_t deserialize_array_string(
         }
         if (count >= capacity) {
             capacity *= 2;
-            char **new_array = (char **) realloc((void *) array, capacity * sizeof(char *));
+            char **new_array = (char **) astarte_realloc((void *) array, capacity * sizeof(char *));
             if (!new_array) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
                 ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -273,7 +275,7 @@ static astarte_result_t deserialize_array_string(
         }
         uint32_t len = 0;
         const char *str = astarte_bson_deserializer_element_to_string(elem, &len);
-        array[count] = calloc(len + 1, sizeof(char));
+        array[count] = astarte_calloc(len + 1, sizeof(char));
         if (!array[count]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -286,7 +288,7 @@ static astarte_result_t deserialize_array_string(
 
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
         if (count == 0) {
-            free((void *) array);
+            astarte_free((void *) array);
             return initialize_empty_array(ASTARTE_MAPPING_TYPE_STRINGARRAY, data);
         }
         data->tag = ASTARTE_MAPPING_TYPE_STRINGARRAY;
@@ -296,8 +298,8 @@ static astarte_result_t deserialize_array_string(
     }
 
     for (size_t i = 0; i < count; i++) {
-        free(array[i]);
+        astarte_free(array[i]);
     }
-    free((void *) array);
+    astarte_free((void *) array);
     return ares;
 }

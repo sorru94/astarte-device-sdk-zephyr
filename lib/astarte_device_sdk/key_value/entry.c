@@ -12,6 +12,7 @@
 
 #include <zephyr/sys/crc.h>
 
+#include "alloc.h"
 #include "key_value/entry_hash.h"
 #include "key_value/entry_header.h"
 #include "key_value/entry_intent.h"
@@ -141,7 +142,7 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
     ares = astarte_key_value_entry_intent_clear(zms_fs);
 
 exit:
-    free(raw_entry);
+    astarte_free(raw_entry);
     return ares;
 }
 
@@ -181,7 +182,7 @@ astarte_result_t astarte_key_value_entry_read_value(
     }
 
     // Read the full entry
-    raw_entry = calloc(raw_entry_size, sizeof(uint8_t));
+    raw_entry = astarte_calloc(raw_entry_size, sizeof(uint8_t));
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -201,7 +202,7 @@ astarte_result_t astarte_key_value_entry_read_value(
     *value_size = read_value_size;
 
 exit:
-    free(raw_entry);
+    astarte_free(raw_entry);
     return ares;
 }
 
@@ -355,7 +356,7 @@ static uint8_t *serialize_entry(struct astarte_key_value_entry_header header, co
     uint16_t key_len = header.fixed_header.key_len;
     size_t entry_size
         = ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES + nsp_len + key_len + value_size;
-    uint8_t *entry = calloc(entry_size, sizeof(uint8_t));
+    uint8_t *entry = astarte_calloc(entry_size, sizeof(uint8_t));
     if (!entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return NULL;

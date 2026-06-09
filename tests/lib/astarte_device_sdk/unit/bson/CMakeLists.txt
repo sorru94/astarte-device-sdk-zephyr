@@ -15,5 +15,9 @@ target_include_directories(testbinary PRIVATE
 # Force inculde the ztest header in all sources
 target_compile_options(testbinary PRIVATE -include zephyr/ztest.h)
 
+target_sources(testbinary PRIVATE
+    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/tests/lib/astarte_device_sdk/unit/common/alloc.c
+)
+
 FILE(GLOB test_sources src/*.c)
 target_sources(testbinary PRIVATE ${test_sources})

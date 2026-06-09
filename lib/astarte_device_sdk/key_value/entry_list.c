@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "key_value/entry.h"
 #include "key_value/entry_header.h"
 #include "log.h"
@@ -89,7 +90,7 @@ astarte_result_t astarte_key_value_entry_list_update_next_id(
         goto exit;
     }
 
-    raw_entry = calloc(raw_entry_size, 1);
+    raw_entry = astarte_calloc(raw_entry_size, 1);
     if (!raw_entry) {
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto exit;
@@ -111,7 +112,7 @@ astarte_result_t astarte_key_value_entry_list_update_next_id(
     }
 
 exit:
-    free(raw_entry);
+    astarte_free(raw_entry);
     return ares;
 }
 
@@ -126,7 +127,7 @@ astarte_result_t astarte_key_value_entry_list_update_prev_id(
         goto exit;
     }
 
-    raw_entry = calloc(raw_entry_size, 1);
+    raw_entry = astarte_calloc(raw_entry_size, 1);
     if (!raw_entry) {
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
         goto exit;
@@ -150,6 +151,6 @@ astarte_result_t astarte_key_value_entry_list_update_prev_id(
     }
 
 exit:
-    free(raw_entry);
+    astarte_free(raw_entry);
     return ares;
 }

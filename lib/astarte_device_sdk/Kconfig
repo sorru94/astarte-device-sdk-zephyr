@@ -120,6 +120,19 @@ config ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 	  This option enables the permanent storage in for the Astarte device.
 	  It requires a partition to be present in flash with the exact name 'astarte_partition'.
 
+config ASTARTE_DEVICE_SDK_ENABLE_HEAP
+	bool "Enable custom heap for Astarte device"
+	depends on ASTARTE_DEVICE_SDK
+	help
+	  Enable the heap used by the Astarte device for memory allocations.
+
+config ASTARTE_DEVICE_SDK_HEAP_SIZE
+	int "Custom heap size for Astarte device"
+	depends on ASTARTE_DEVICE_SDK_ENABLE_HEAP
+	default 32768
+	help
+	  Define the size of the heap used by the Astarte device for memory allocations.
+
 menu "Development options"
 
 config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP

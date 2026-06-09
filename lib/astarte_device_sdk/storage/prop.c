@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "data/deserialize.h"
 #include "data/serialize.h"
 
@@ -71,7 +72,7 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
 
     // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = calloc(key_len, sizeof(char));
+    key = astarte_calloc(key_len, sizeof(char));
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -127,7 +128,7 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
     }
 
 exit:
-    free(key);
+    astarte_free(key);
     astarte_bson_serializer_destroy(&bson);
     return ares;
 }
@@ -148,7 +149,7 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
 
     // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = calloc(key_len, sizeof(char));
+    key = astarte_calloc(key_len, sizeof(char));
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -169,7 +170,7 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
     }
 
     // Allocate memory for BSON file to read
-    value = calloc(value_len, sizeof(char));
+    value = astarte_calloc(value_len, sizeof(char));
     if (!value) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -190,8 +191,8 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
     }
 
 exit:
-    free(key);
-    free(value);
+    astarte_free(key);
+    astarte_free(value);
     return ares;
 }
 
@@ -215,7 +216,7 @@ astarte_result_t astarte_storage_property_delete(
 
     // Get the full key interface_name + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = calloc(key_len, sizeof(char));
+    key = astarte_calloc(key_len, sizeof(char));
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -235,7 +236,7 @@ astarte_result_t astarte_storage_property_delete(
     }
 
 exit:
-    free(key);
+    astarte_free(key);
     return ares;
 }
 
@@ -300,7 +301,7 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
         goto exit;
     }
 
-    key = calloc(key_size, sizeof(char));
+    key = astarte_calloc(key_size, sizeof(char));
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -350,7 +351,7 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     memcpy(path, read_path, read_path_size);
 
 exit:
-    free(key);
+    astarte_free(key);
     return ares;
 }
 
@@ -402,8 +403,8 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
             goto error;
         }
 
-        interface_name = calloc(interface_name_size, sizeof(char));
-        path = calloc(path_size, sizeof(char));
+        interface_name = astarte_calloc(interface_name_size, sizeof(char));
+        path = astarte_calloc(path_size, sizeof(char));
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             goto error;
@@ -424,9 +425,9 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
             goto error;
         }
 
-        free(interface_name);
+        astarte_free(interface_name);
         interface_name = NULL;
-        free(path);
+        astarte_free(path);
         path = NULL;
 
         ares = astarte_storage_property_iterator_next(&iter);
@@ -441,8 +442,8 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
     return ASTARTE_RESULT_OK;
 
 error:
-    free(interface_name);
-    free(path);
+    astarte_free(interface_name);
+    astarte_free(path);
     return ares;
 }
 

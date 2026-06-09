@@ -14,6 +14,7 @@
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "storage/prop.h"
 #endif
+#include "alloc.h"
 #include "data/deserialize.h"
 #include "interface_private.h"
 #include "object_private.h"
@@ -205,7 +206,7 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
 
     uLongf decomp_data_len = __builtin_bswap32(*(uint32_t *) data);
 
-    decomp_data = calloc(decomp_data_len + 1, sizeof(char));
+    decomp_data = astarte_calloc(decomp_data_len + 1, sizeof(char));
     if (!decomp_data) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         goto exit;
@@ -230,7 +231,7 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
             goto exit;
         }
         do {
-            struct allow_node *allow_node = calloc(1, sizeof(struct allow_node));
+            struct allow_node *allow_node = astarte_calloc(1, sizeof(struct allow_node));
             if (!allow_node) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
                 goto exit;
@@ -250,9 +251,9 @@ exit:
     SYS_SLIST_FOR_EACH_NODE_SAFE(&allow_list, node, safe_node)
     {
         struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
-        free(allow_node);
+        astarte_free(allow_node);
     }
-    free(decomp_data);
+    astarte_free(decomp_data);
 }
 
 static void purge_server_properties(astarte_device_handle_t device, sys_slist_t *allow_list)
@@ -279,8 +280,8 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
         }
 
         // Allocate space for the name and path
-        interface_name = calloc(interface_name_size, sizeof(char));
-        path = calloc(path_size, sizeof(char));
+        interface_name = astarte_calloc(interface_name_size, sizeof(char));
+        path = astarte_calloc(path_size, sizeof(char));
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             goto end;
@@ -296,9 +297,9 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
         // Purge the property if not in the allow list
         purge_server_property(device, &iter, interface_name, path, allow_list);
 
-        free(interface_name);
+        astarte_free(interface_name);
         interface_name = NULL;
-        free(path);
+        astarte_free(path);
         path = NULL;
 
         ares = astarte_storage_property_iterator_next(&iter);
@@ -309,8 +310,8 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
     }
 
 end:
-    free(interface_name);
-    free(path);
+    astarte_free(interface_name);
+    astarte_free(path);
 }
 
 static void purge_server_property(astarte_device_handle_t device,
@@ -338,7 +339,7 @@ static void purge_server_property(astarte_device_handle_t device,
     }
 
     // Concatenate the interface_name and path
-    property = calloc(strlen(interface_name) + strlen(path) + 1, sizeof(char));
+    property = astarte_calloc(strlen(interface_name) + strlen(path) + 1, sizeof(char));
     if (!property) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         goto end;
@@ -370,7 +371,7 @@ static void purge_server_property(astarte_device_handle_t device,
     }
 
 end:
-    free(property);
+    astarte_free(property);
 }
 #endif
 

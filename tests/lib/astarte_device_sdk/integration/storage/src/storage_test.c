@@ -30,6 +30,14 @@ struct astarte_device_sdk_storage_fixture
     astarte_storage_data_t caching_handle;
 };
 
+struct property
+{
+    const char *interface_name;
+    const char *path;
+    uint32_t major;
+    astarte_data_t data;
+};
+
 static void *astarte_storage_test_setup(void)
 {
     struct flash_pages_info fp_info;
@@ -63,14 +71,14 @@ static void astarte_storage_test_before(void *f)
 
     k_mutex_lock(&fixture->test_mutex, K_FOREVER);
 
-    struct nvs_fs nvs_fs;
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs;
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 
     astarte_result_t ares = astarte_storage_init(&fixture->caching_handle);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Init failed: %s", astarte_result_to_name(ares));
@@ -83,14 +91,14 @@ static void astarte_storage_test_after(void *f)
 
     astarte_storage_destroy(&fixture->caching_handle);
 
-    struct nvs_fs nvs_fs;
-    nvs_fs.flash_device = fixture->flash_device;
-    nvs_fs.offset = fixture->flash_offset;
-    nvs_fs.sector_size = fixture->flash_sector_size;
-    nvs_fs.sector_count = fixture->flash_sector_count;
+    struct zms_fs zms_fs;
+    zms_fs.flash_device = fixture->flash_device;
+    zms_fs.offset = fixture->flash_offset;
+    zms_fs.sector_size = fixture->flash_sector_size;
+    zms_fs.sector_count = fixture->flash_sector_count;
 
-    zassert_equal(nvs_mount(&nvs_fs), 0, "NVS mounting failed.");
-    zassert_equal(nvs_clear(&nvs_fs), 0, "NVS clear failed.");
+    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
+    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
 
     k_mutex_unlock(&fixture->test_mutex);
 }
@@ -236,14 +244,6 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_introspect
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 }
 
-struct property
-{
-    const char *interface_name;
-    const char *path;
-    uint32_t major;
-    astarte_data_t data;
-};
-
 ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_load_property) // NOLINT
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
@@ -371,18 +371,18 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate) // NOLI
     ares = astarte_storage_property_iterator_get(
         &iter, NULL, &interface_name_size, NULL, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_1.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_1.path) + 1, "Incorrect path size:%d", path_size);
     ares = astarte_storage_property_iterator_get(
         &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_1.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_1.path) + 1, "Incorrect path size:%d", path_size);
     zassert_mem_equal(
-        interface_name_buffer, property_3.interface_name, strlen(property_3.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
+        interface_name_buffer, property_1.interface_name, strlen(property_1.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_1.path, strlen(property_1.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -415,20 +415,20 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate) // NOLI
     ares = astarte_storage_property_iterator_get(
         &iter, NULL, &interface_name_size, NULL, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_1.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_1.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
     memset(interface_name_buffer, '\0', ARRAY_SIZE(interface_name_buffer));
     memset(path_buffer, '\0', ARRAY_SIZE(path_buffer));
     ares = astarte_storage_property_iterator_get(
         &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_1.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_1.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
     zassert_mem_equal(
-        interface_name_buffer, property_1.interface_name, strlen(property_1.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_1.path, strlen(property_1.path) + 1);
+        interface_name_buffer, property_3.interface_name, strlen(property_3.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
@@ -508,7 +508,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
         property_6.path, property_6.major, property_6.data);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
-    // Delete a stored property
+    // Delete a stored property using key-based deletion before we start iterating
     ares = astarte_storage_property_delete(
         &fixture->caching_handle, property_2.interface_name, property_2.path);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -516,7 +516,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
         &fixture->caching_handle, property_1.interface_name, property_1.path);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
-    // Loop over all the stored properties
+    // Loop over all the stored properties (remaining expected: 3 -> 4 -> 5 -> 6)
     astarte_storage_property_iter_t iter = { 0 };
     ares = astarte_storage_property_iterator_new(&fixture->caching_handle, &iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -526,6 +526,26 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     ares = astarte_storage_property_iterator_get(
         &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
+        "Incorrect interface name size:%d", interface_name_size);
+    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_mem_equal(
+        interface_name_buffer, property_3.interface_name, strlen(property_3.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
+
+    // Delete a stored property using the safe mid-iteration delete call.
+    // It deletes the current entry (property_3)
+    ares = astarte_storage_property_iterator_delete(&iter);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+
+    ares = astarte_storage_property_iterator_next(&iter);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+
+    interface_name_size = ARRAY_SIZE(interface_name_buffer);
+    path_size = ARRAY_SIZE(path_buffer);
+    ares = astarte_storage_property_iterator_get(
+        &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
     zassert_equal(interface_name_size, strlen(property_4.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
     zassert_equal(path_size, strlen(property_4.path) + 1, "Incorrect path size:%d", path_size);
@@ -541,17 +561,12 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     ares = astarte_storage_property_iterator_get(
         &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_5.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_5.path) + 1, "Incorrect path size:%d", path_size);
     zassert_mem_equal(
-        interface_name_buffer, property_3.interface_name, strlen(property_3.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
-
-    // Delete a stored property
-    ares = astarte_storage_property_delete(
-        &fixture->caching_handle, property_5.interface_name, property_5.path);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+        interface_name_buffer, property_5.interface_name, strlen(property_5.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_5.path, strlen(property_5.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -569,24 +584,9 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     zassert_mem_equal(path_buffer, property_6.path, strlen(property_6.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    interface_name_size = ARRAY_SIZE(interface_name_buffer);
-    path_size = ARRAY_SIZE(path_buffer);
-    ares = astarte_storage_property_iterator_get(
-        &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_4.interface_name) + 1,
-        "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_4.path) + 1, "Incorrect path size:%d", path_size);
-    zassert_mem_equal(
-        interface_name_buffer, property_4.interface_name, strlen(property_4.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_4.path, strlen(property_4.path) + 1);
-
-    ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
 
-    // Loop over all the stored properties
+    // Loop over all the stored properties (remaining expected: 4 -> 5 -> 6)
     iter = (astarte_storage_property_iter_t){ 0 };
     ares = astarte_storage_property_iterator_new(&fixture->caching_handle, &iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -596,12 +596,27 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     ares = astarte_storage_property_iterator_get(
         &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_3.interface_name) + 1,
+    zassert_equal(interface_name_size, strlen(property_4.interface_name) + 1,
         "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_3.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_equal(path_size, strlen(property_4.path) + 1, "Incorrect path size:%d", path_size);
     zassert_mem_equal(
-        interface_name_buffer, property_3.interface_name, strlen(property_3.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
+        interface_name_buffer, property_4.interface_name, strlen(property_4.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_4.path, strlen(property_4.path) + 1);
+
+    ares = astarte_storage_property_iterator_next(&iter);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+
+    interface_name_size = ARRAY_SIZE(interface_name_buffer);
+    path_size = ARRAY_SIZE(path_buffer);
+    ares = astarte_storage_property_iterator_get(
+        &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
+    zassert_equal(interface_name_size, strlen(property_5.interface_name) + 1,
+        "Incorrect interface name size:%d", interface_name_size);
+    zassert_equal(path_size, strlen(property_5.path) + 1, "Incorrect path size:%d", path_size);
+    zassert_mem_equal(
+        interface_name_buffer, property_5.interface_name, strlen(property_5.interface_name) + 1);
+    zassert_mem_equal(path_buffer, property_5.path, strlen(property_5.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
@@ -617,21 +632,6 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     zassert_mem_equal(
         interface_name_buffer, property_6.interface_name, strlen(property_6.interface_name) + 1);
     zassert_mem_equal(path_buffer, property_6.path, strlen(property_6.path) + 1);
-
-    ares = astarte_storage_property_iterator_next(&iter);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    interface_name_size = ARRAY_SIZE(interface_name_buffer);
-    path_size = ARRAY_SIZE(path_buffer);
-    ares = astarte_storage_property_iterator_get(
-        &iter, interface_name_buffer, &interface_name_size, path_buffer, &path_size);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(interface_name_size, strlen(property_4.interface_name) + 1,
-        "Incorrect interface name size:%d", interface_name_size);
-    zassert_equal(path_size, strlen(property_4.path) + 1, "Incorrect path size:%d", path_size);
-    zassert_mem_equal(
-        interface_name_buffer, property_4.interface_name, strlen(property_4.interface_name) + 1);
-    zassert_mem_equal(path_buffer, property_4.path, strlen(property_4.path) + 1);
 
     ares = astarte_storage_property_iterator_next(&iter);
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
@@ -678,11 +678,12 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_get_properties_s
         .data = astarte_data_from_boolean(false),
     };
 
+    // Note the string generation follows the true insertion iteration order.
     const char properties_string[]
-        = "org.astarteplatform.zephyr.examples.DeviceProperty/11/double_endpoint;"
-          "org.astarteplatform.zephyr.examples.DeviceProperty/45/double_endpoint;"
+        = "org.astarteplatform.zephyr.examples.DeviceProperty/12/integer_endpoint;"
           "org.astarteplatform.zephyr.examples.DeviceProperty/24/boolean_endpoint;"
-          "org.astarteplatform.zephyr.examples.DeviceProperty/12/integer_endpoint";
+          "org.astarteplatform.zephyr.examples.DeviceProperty/45/double_endpoint;"
+          "org.astarteplatform.zephyr.examples.DeviceProperty/11/double_endpoint";
     char read_properties_string[ARRAY_SIZE(properties_string)] = { 0 };
 
     // Store a bunch of properties

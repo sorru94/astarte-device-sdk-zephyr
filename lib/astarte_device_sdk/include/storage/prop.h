@@ -23,7 +23,7 @@
 typedef struct
 {
     /** @brief Key-value storage iterator. */
-    astarte_storage_key_value_iter_t kv_iter;
+    astarte_key_value_iter_t kv_iter;
 } astarte_storage_property_iter_t;
 
 #ifdef __cplusplus
@@ -117,6 +117,17 @@ astarte_result_t astarte_storage_property_iterator_next(astarte_storage_property
  */
 astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_iter_t *iter,
     char *interface_name, size_t *interface_name_size, char *path, size_t *path_size);
+
+/**
+ * @brief Delete the property pointed to by the iterator.
+ * @warning Once a delete operation the iterator will point to the previous property. However,
+ * a second delete on the same iterator without advancing it first will result in undefined
+ * behaviour.
+ *
+ * @param[inout] iter Iterator initialized with #astarte_storage_property_iterator_new.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_storage_property_iterator_delete(astarte_storage_property_iter_t *iter);
 
 /**
  * @brief Get the device properties string.

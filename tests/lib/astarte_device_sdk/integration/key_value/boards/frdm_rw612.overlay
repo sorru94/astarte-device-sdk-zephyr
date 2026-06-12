@@ -1,0 +1,23 @@
+/*
+ * (C) Copyright 2024, SECO Mind Srl
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&w25q512jvfiq {
+	partitions {
+        storage_partition: partition@620000 {
+            label = "storage";
+            reg = <0x00620000 (DT_SIZE_M(56) - DT_SIZE_K(128))>;
+        };
+
+		astarte_partition: partition@3E00000 {
+			label = "astarte";
+			reg = <0x03E00000 DT_SIZE_M(1)>;
+		};
+		key_value_partition: partition@3F00000 {
+			label = "key_value";
+			reg = <0x03F00000 DT_SIZE_K(16)>;
+		};
+	};
+};

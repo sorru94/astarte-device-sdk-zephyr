@@ -15,22 +15,22 @@
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
 
-#include "storage/key_value.h"
+#include "key_value/core.h"
 
 /**
  * @brief Handle containing the persistent state for device storage.
- * @details This struct holds the context for the three NVS namespaces used by the storage.
+ * @details This struct holds the context for the three ZMS namespaces used by the storage.
  */
 typedef struct
 {
-    /** @brief NVS file system handle shared between all storages */
-    struct nvs_fs nvs_fs;
+    /** @brief ZMS file system handle shared between all storages */
+    struct zms_fs zms_fs;
     /** @brief Key value storage handle for synchronization state */
-    astarte_storage_key_value_t sync_storage;
+    astarte_key_value_t sync_storage;
     /** @brief Key value storage handle for introspection data */
-    astarte_storage_key_value_t intro_storage;
+    astarte_key_value_t intro_storage;
     /** @brief Key value storage handle for device properties */
-    astarte_storage_key_value_t prop_storage;
+    astarte_key_value_t prop_storage;
     /** @brief Flag to ensure we don't double-init or use uninitialized handles */
     bool initialized;
 } astarte_storage_data_t;
@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize the device storage and open all required NVS namespaces.
+ * @brief Initialize the device storage and open all required ZMS namespaces.
  * @param[in,out] handle Pointer to the handle structure to initialize.
  * @return ASTARTE_RESULT_OK if successful.
  */

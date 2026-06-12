@@ -31,26 +31,6 @@ ZTEST_SUITE(astarte_device_sdk_astarte_data_deserialize, NULL, NULL, NULL, NULL,
 // because the log environment is missing in the unit_testing platform.
 void z_log_minimal_printk(const char *fmt, ...) {}
 
-// This function allocates dynamically the memory required to store the string.
-// Since we are in a test environment we do not deallocate such memory.
-static char *hex_to_str(const uint8_t *input, size_t input_len)
-{
-    char *dyn_buf = calloc((input_len * 6) + 1, sizeof(char));
-    if (!dyn_buf) {
-        return "Allocation error";
-    }
-    char *cursor = dyn_buf + sprintf(dyn_buf, "{");
-    for (int i = 0; i < input_len; i++) {
-        const uint8_t *byte = input + i;
-        cursor = cursor + sprintf(cursor, "0x%02x", *byte);
-        if (i < input_len - 1) {
-            cursor = cursor + sprintf(cursor, ", ");
-        }
-    }
-    sprintf(cursor, "}");
-    return dyn_buf;
-}
-
 const uint8_t test_data_binaryblob[] = { 0x68, 0x65, 0x6c, 0x6c, 0x6f };
 const uint8_t test_data_serialized_binaryblob[] = { 0x12, 0x00, 0x00, 0x00, 0x05, 0x76, 0x00, 0x05,
     0x00, 0x00, 0x00, 0x00, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00 };

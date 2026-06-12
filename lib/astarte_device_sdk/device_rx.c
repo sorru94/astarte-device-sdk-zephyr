@@ -70,12 +70,14 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
  * removed as well.
  *
  * @param[in] device Handle to the device instance..
+ * @param[in] iter Pointer to the property iterator currently in use.
  * @param[in] interface_name Interface name for the stored property to be removed.
  * @param[in] path Path for the stored property to be removed.
  * @param[in] allow_list Purge properties allow list.
  */
-static void purge_server_property(
-    astarte_device_handle_t device, char *interface_name, char *path, sys_slist_t *allow_list);
+static void purge_server_property(astarte_device_handle_t device,
+    astarte_storage_property_iter_t *iter, char *interface_name, char *path,
+    sys_slist_t *allow_list);
 #endif
 /**
  * @brief Handles an incoming generic data message.
@@ -292,7 +294,7 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
         }
 
         // Purge the property if not in the allow list
-        purge_server_property(device, interface_name, path, allow_list);
+        purge_server_property(device, &iter, interface_name, path, allow_list);
 
         free(interface_name);
         interface_name = NULL;
@@ -311,8 +313,9 @@ end:
     free(path);
 }
 
-static void purge_server_property(
-    astarte_device_handle_t device, char *interface_name, char *path, sys_slist_t *allow_list)
+static void purge_server_property(astarte_device_handle_t device,
+    astarte_storage_property_iter_t *iter, char *interface_name, char *path,
+    sys_slist_t *allow_list)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char *property = NULL;
@@ -321,7 +324,8 @@ static void purge_server_property(
         &device->introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_DBG("Purging property from unknown interface: '%s%s'", interface_name, path);
-        ares = astarte_storage_property_delete(&device->caching, interface_name, path);
+
+        ares = astarte_storage_property_iterator_delete(iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed deleting the cached property: %s", astarte_result_to_name(ares));
@@ -339,8 +343,8 @@ static void purge_server_property(
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         goto end;
     }
-    int snprintf_rc
-        = snprintf(property, strlen(interface_name) + strlen(path), "%s%s", interface_name, path);
+    int snprintf_rc = snprintf(
+        property, strlen(interface_name) + strlen(path) + 1, "%s%s", interface_name, path);
     if (snprintf_rc != strlen(interface_name) + strlen(path)) {
         ASTARTE_LOG_ERR("Error encoding interface name '%s' and path '%s' in a single string.",
             interface_name, path);
@@ -358,7 +362,8 @@ static void purge_server_property(
     }
 
     ASTARTE_LOG_DBG("Purging property not in allow list: '%s%s'", interface_name, path);
-    ares = astarte_storage_property_delete(&device->caching, interface_name, path);
+
+    ares = astarte_storage_property_iterator_delete(iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed deleting the cached property: %s",
             astarte_result_to_name(ares));

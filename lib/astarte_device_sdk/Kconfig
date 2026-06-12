@@ -114,7 +114,7 @@ config ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 	depends on FLASH
 	depends on FLASH_MAP
 	depends on FLASH_PAGE_LAYOUT
-	depends on NVS
+	depends on ZMS
 	default y
 	help
 	  This option enables the permanent storage in for the Astarte device.
@@ -235,11 +235,6 @@ module-str = Log level for Astarte device SDK device reception
 module-help = Sets log level for Astarte device SDK device reception.
 source "subsys/logging/Kconfig.template.log_config"
 
-module = ASTARTE_DEVICE_SDK_DEVICE_STORAGE
-module-str = Log level for Astarte device SDK device caching
-module-help = Sets log level for Astarte device SDK device caching.
-source "subsys/logging/Kconfig.template.log_config"
-
 module = ASTARTE_DEVICE_SDK_DEVICE_TX
 module-str = Log level for Astarte device SDK device transmission
 module-help = Sets log level for Astarte device SDK device transmission.
@@ -255,7 +250,7 @@ module-str = Log level for Astarte device SDK introspection
 module-help = Sets log level for Astarte device SDK introspection.
 source "subsys/logging/Kconfig.template.log_config"
 
-module = ASTARTE_DEVICE_SDK_KV_STORAGE
+module = ASTARTE_DEVICE_SDK_KEY_VALUE
 module-str = Log level for Astarte device SDK key-value storage
 module-help = Sets log level for Astarte device SDK key-value storage.
 source "subsys/logging/Kconfig.template.log_config"
@@ -278,6 +273,11 @@ source "subsys/logging/Kconfig.template.log_config"
 module = ASTARTE_DEVICE_SDK_PAIRING
 module-str = Log level for Astarte device SDK pairing utilities
 module-help = Sets log level for Astarte device SDK pairing utilities.
+source "subsys/logging/Kconfig.template.log_config"
+
+module = ASTARTE_DEVICE_SDK_STORAGE
+module-str = Log level for Astarte device SDK storage
+module-help = Sets log level for Astarte device SDK storage.
 source "subsys/logging/Kconfig.template.log_config"
 
 module = ASTARTE_DEVICE_SDK_TLS_CREDENTIALS

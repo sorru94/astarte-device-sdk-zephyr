@@ -14,7 +14,7 @@
 #include "data/serialize.h"
 
 #include "log.h"
-ASTARTE_LOG_MODULE_DECLARE(device_storage, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_STORAGE_LOG_LEVEL);
+ASTARTE_LOG_MODULE_DECLARE(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_LOG_LEVEL);
 
 /************************************************
  *         Static functions declaration         *
@@ -121,7 +121,7 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
     }
 
     ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", key);
-    ares = astarte_storage_key_value_insert(&handle->prop_storage, key, data_ser, data_ser_len);
+    ares = astarte_key_value_insert(&handle->prop_storage, key, data_ser, data_ser_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error caching property: %s.", astarte_result_to_name(ares));
     }
@@ -163,7 +163,7 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     size_t value_len = 0;
-    ares = astarte_storage_key_value_find(&handle->prop_storage, key, NULL, &value_len);
+    ares = astarte_key_value_find(&handle->prop_storage, key, NULL, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         goto exit;
     }
@@ -176,9 +176,9 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
         goto exit;
     }
 
-    // Get the data from NVS
+    // Get the data from ZMS
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
-    ares = astarte_storage_key_value_find(&handle->prop_storage, key, value, &value_len);
+    ares = astarte_key_value_find(&handle->prop_storage, key, value, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not get property from storage: %s.", astarte_result_to_name(ares));
         goto exit;
@@ -229,7 +229,7 @@ astarte_result_t astarte_storage_property_delete(
     }
 
     ASTARTE_LOG_DBG("Deleting pair from storage. Key: %s", key);
-    ares = astarte_storage_key_value_delete(&handle->prop_storage, key);
+    ares = astarte_key_value_delete(&handle->prop_storage, key);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Error deleting cached property: %s.", astarte_result_to_name(ares));
     }
@@ -250,7 +250,7 @@ astarte_result_t astarte_storage_property_iterator_new(
     }
 
     ASTARTE_LOG_DBG("Initializing iterator for key value storage.");
-    ares = astarte_storage_key_value_iterator_init(&handle->prop_storage, &iter->kv_iter);
+    ares = astarte_key_value_iterator_init(&handle->prop_storage, &iter->kv_iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Key-value storage iterator init error: %s.", astarte_result_to_name(ares));
     }
@@ -263,7 +263,7 @@ astarte_result_t astarte_storage_property_iterator_next(astarte_storage_property
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
     ASTARTE_LOG_DBG("Advancing iterator for key value storage.");
-    ares = astarte_storage_key_value_iterator_next(&iter->kv_iter);
+    ares = astarte_key_value_iterator_next(&iter->kv_iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
     }
@@ -294,7 +294,7 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     // Get size of item key
     size_t key_size = 0U;
     ASTARTE_LOG_DBG("Getting the key size for the pair pointer by the storage iterator.");
-    ares = astarte_storage_key_value_iterator_get(&iter->kv_iter, NULL, &key_size);
+    ares = astarte_key_value_iterator_get(&iter->kv_iter, NULL, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
         goto exit;
@@ -308,7 +308,7 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     }
 
     ASTARTE_LOG_DBG("Getting the key data for the pair pointer by the storage iterator.");
-    ares = astarte_storage_key_value_iterator_get(&iter->kv_iter, key, &key_size);
+    ares = astarte_key_value_iterator_get(&iter->kv_iter, key, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
         goto exit;
@@ -351,6 +351,25 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
 
 exit:
     free(key);
+    return ares;
+}
+
+astarte_result_t astarte_storage_property_iterator_delete(astarte_storage_property_iter_t *iter)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    if (!iter) {
+        ASTARTE_LOG_ERR("Iterator is NULL.");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    ASTARTE_LOG_DBG("Deleting current property from storage iterator.");
+
+    ares = astarte_key_value_iterator_delete(&iter->kv_iter);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Key-value storage iterator del error: %s.", astarte_result_to_name(ares));
+    }
+
     return ares;
 }
 

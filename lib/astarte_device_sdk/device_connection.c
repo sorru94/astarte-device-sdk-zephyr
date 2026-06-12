@@ -82,13 +82,15 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
  * the provided one then the property is deleted from the cache.
  *
  * @param[in] device Handle to the device instance.
+ * @param[in] iter Pointer to the property iterator currently in use.
  * @param[in] interface_name Name of the interface for the property as retreived from cache.
  * @param[in] path Path for the property as retreived from cache.
  * @param[in] major Major version for the interface of the property as retreived from cache.
  * @param[in] data Data for the property as retreived from cache.
  */
-static void send_device_owned_property(astarte_device_handle_t device, const char *interface_name,
-    const char *path, uint32_t major, astarte_data_t data);
+static void send_device_owned_property(astarte_device_handle_t device,
+    astarte_storage_property_iter_t *iter, const char *interface_name, const char *path,
+    uint32_t major, astarte_data_t data);
 /**
  * @brief Send the device owned properties to Astarte.
  *
@@ -495,15 +497,17 @@ exit:
     return ares;
 }
 
-static void send_device_owned_property(astarte_device_handle_t device, const char *interface_name,
-    const char *path, uint32_t major, astarte_data_t data)
+static void send_device_owned_property(astarte_device_handle_t device,
+    astarte_storage_property_iter_t *iter, const char *interface_name, const char *path,
+    uint32_t major, astarte_data_t data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
     if ((!interface) || (interface->major_version != major)) {
         ASTARTE_LOG_DBG("Removing property from storage: '%s%s'", interface_name, path);
-        ares = astarte_storage_property_delete(&device->caching, interface_name, path);
+
+        ares = astarte_storage_property_iterator_delete(iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed deleting the cached property: %s", astarte_result_to_name(ares));
@@ -565,7 +569,7 @@ static astarte_result_t send_device_owned_properties(astarte_device_handle_t dev
             goto end;
         }
 
-        send_device_owned_property(device, interface_name, path, major, data);
+        send_device_owned_property(device, &iter, interface_name, path, major, data);
 
         free(interface_name);
         interface_name = NULL;

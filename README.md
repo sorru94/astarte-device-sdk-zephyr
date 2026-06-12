@@ -257,3 +257,4 @@ Some additional documentation for the library architecture is available.
   client.
 - [Astarte device](doc/architecture/Astarte-device-architecture.md) is the main entry point for any
   interaction with Astarte.
+- [Astarte key-value storage](doc/architecture/Astarte-key-value-storage.md) is an overlay on the ZMS library that greatly extends the allowed keys length.

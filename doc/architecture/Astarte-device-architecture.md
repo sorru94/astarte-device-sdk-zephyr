@@ -1,10 +1,10 @@
+# Astarte device architecture
+
 <!--
 Copyright 2024 SECO Mind Srl
 
 SPDX-License-Identifier: Apache-2.0
 -->
-
-# Astarte device architecture
 
 A more in depth description of the architecture of the Astarte device is present in this section.
 

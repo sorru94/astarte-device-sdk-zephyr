@@ -1,10 +1,10 @@
+# Astarte MQTT client architecture
+
 <!--
 Copyright 2024 SECO Mind Srl
 
 SPDX-License-Identifier: Apache-2.0
 -->
-
-# Astarte MQTT client architecture
 
 Astarte MQTT client is a soft wrapper around the MQTT client library from Zephyr. It extends the
 functionality of the standard MQTT client.

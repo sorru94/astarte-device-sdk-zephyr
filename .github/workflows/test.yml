@@ -44,5 +44,5 @@ jobs:
       - name: Run integration tests
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |
-          west twister --disable-warnings-as-errors -v --inline-logs --filter runnable --integration -T tests/lib/${{ env.LIBRARY_NAME }}/unit
-          west twister -v --inline-logs --filter runnable --integration -T tests/lib/${{ env.LIBRARY_NAME }}/integration
+          west twister -v --inline-logs --integration -T tests/lib/${{ env.LIBRARY_NAME }}/unit
+          west twister -v --inline-logs --integration -T tests/lib/${{ env.LIBRARY_NAME }}/integration

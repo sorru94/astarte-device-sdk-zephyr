@@ -27,7 +27,7 @@ static struct net_mgmt_event_callback l4_cb;
 
 enum eth_flags
 {
-    IPV4_ADDRESS_OBTAINED = 1U,
+    IPV4_DHCP_BOUND_FLAG = 1U,
     IFACE_UP,
 };
 static atomic_t eth_flags;
@@ -204,12 +204,11 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_ADDR_ADD:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_ADD."); // NOLINT
-            atomic_set_bit(&eth_flags, IPV4_ADDRESS_OBTAINED);
             break;
 
         case NET_EVENT_IPV4_ADDR_DEL:
             LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
-            atomic_clear_bit(&eth_flags, IPV4_ADDRESS_OBTAINED);
+            atomic_clear_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG);
             break;
 
         case NET_EVENT_IPV4_MADDR_ADD:
@@ -234,10 +233,12 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_DHCP_BOUND:
             LOG_DBG("Network event: NET_EVENT_IPV4_DHCP_BOUND."); // NOLINT
+            atomic_set_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG);
             break;
 
         case NET_EVENT_IPV4_DHCP_STOP:
             LOG_DBG("Network event: NET_EVENT_IPV4_DHCP_STOP."); // NOLINT
+            atomic_clear_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG);
             break;
 
         case NET_EVENT_IPV4_MCAST_JOIN:
@@ -355,7 +356,7 @@ int eth_connect(void)
     net_dhcpv4_start(iface);
 
     LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-    while (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
+    while (!atomic_test_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG)) {
         k_sleep(K_MSEC(200));
     }
 #endif
@@ -385,12 +386,12 @@ int eth_poll(void)
 
 // Restart DHCP if required.
 #ifdef CONFIG_NET_DHCPV4
-    if (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
+    if (!atomic_test_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG)) {
         LOG_WRN("Missing IPv4 address."); // NOLINT
         net_dhcpv4_restart(iface);
 
         LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-        while (!atomic_test_bit(&eth_flags, IPV4_ADDRESS_OBTAINED)) {
+        while (!atomic_test_bit(&eth_flags, IPV4_DHCP_BOUND_FLAG)) {
             k_sleep(K_MSEC(200));
         }
         LOG_INF("Ready..."); // NOLINT

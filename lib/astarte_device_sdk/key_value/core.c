@@ -15,7 +15,7 @@
 #include <zephyr/sys/mutex.h>
 #include <zephyr/version.h>
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
 #include <zephyr/kvss/zms.h>
 #else
 #include <zephyr/fs/zms.h>
@@ -70,7 +70,7 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct z
     zms_fs->sector_size = fp_info.size;
     zms_fs->sector_count = flash_sector_count;
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
     int zms_rc = zms_mount_force(zms_fs);
 #else
     int zms_rc = zms_mount(zms_fs);

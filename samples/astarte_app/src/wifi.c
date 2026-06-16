@@ -21,8 +21,10 @@ LOG_MODULE_REGISTER(wifi, CONFIG_APP_LOG_LEVEL); // NOLINT
 static struct net_mgmt_event_callback wifi_shell_mgmt_cb;
 static struct net_mgmt_event_callback ipv4_cb;
 
-static K_SEM_DEFINE(wifi_connected, 0, 1);
-static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
+#define WIFI_CONNECTED_BIT BIT(0)
+#define IPV4_BOUND_BIT BIT(1)
+
+static K_EVENT_DEFINE(wifi_events);
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -36,14 +38,14 @@ static void wifi_mgmt_event_handler(
         case NET_EVENT_WIFI_CONNECT_RESULT:
             if (status->status) {
                 LOG_DBG("WiFi connection request failed (%d)", status->status);
-                k_sem_take(&wifi_connected, K_NO_WAIT);
+                k_event_clear(&wifi_events, WIFI_CONNECTED_BIT | IPV4_BOUND_BIT);
             } else {
                 LOG_DBG("WiFi connected");
-                k_sem_give(&wifi_connected);
+                k_event_post(&wifi_events, WIFI_CONNECTED_BIT);
             }
             break;
         case NET_EVENT_WIFI_DISCONNECT_RESULT:
-            k_sem_take(&wifi_connected, K_NO_WAIT);
+            k_event_clear(&wifi_events, WIFI_CONNECTED_BIT | IPV4_BOUND_BIT);
             if (status->status) {
                 LOG_DBG("WiFi disconnection error, status: (%d)", status->status);
             } else {
@@ -65,7 +67,11 @@ static void ipv4_mgmt_event_handler(
 
         case NET_EVENT_IPV4_DHCP_BOUND:
             LOG_DBG("Network event: NET_EVENT_IPV4_DHCP_BOUND."); // NOLINT
-            k_sem_give(&ipv4_address_obtained);
+            k_event_post(&wifi_events, IPV4_BOUND_BIT);
+            break;
+        case NET_EVENT_IPV4_ADDR_DEL:
+            LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
+            k_event_clear(&wifi_events, IPV4_BOUND_BIT);
             break;
 
         default:
@@ -82,7 +88,7 @@ void app_wifi_init(void)
     net_mgmt_init_event_callback(
         &wifi_shell_mgmt_cb, wifi_mgmt_event_handler, WIFI_SHELL_MGMT_EVENTS);
     net_mgmt_init_event_callback(
-        &ipv4_cb, ipv4_mgmt_event_handler, NET_EVENT_IPV4_DHCP_BOUND);
+        &ipv4_cb, ipv4_mgmt_event_handler, NET_EVENT_IPV4_DHCP_BOUND | NET_EVENT_IPV4_ADDR_DEL);
 
     net_mgmt_add_event_callback(&wifi_shell_mgmt_cb);
     net_mgmt_add_event_callback(&ipv4_cb);
@@ -115,16 +121,12 @@ int app_wifi_connect(const char *ssid, enum wifi_security_type sec, const char *
     }
 
     LOG_INF("Waiting for WiFi to be connected.");
-    while (k_sem_count_get(&wifi_connected) == 0) {
-        k_sleep(K_MSEC(200));
-    }
+    k_event_wait(&wifi_events, WIFI_CONNECTED_BIT, false, K_FOREVER);
 
     net_dhcpv4_start(iface);
 
     LOG_INF("Waiting for an IPv4 address (DHCP)."); // NOLINT
-    while (k_sem_count_get(&ipv4_address_obtained) == 0) {
-        k_sleep(K_MSEC(200));
-    }
+    k_event_wait(&wifi_events, IPV4_BOUND_BIT, false, K_FOREVER);
 
     LOG_INF("WiFi ready..."); // NOLINT
 

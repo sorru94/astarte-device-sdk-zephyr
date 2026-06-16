@@ -63,14 +63,9 @@ static void ipv4_mgmt_event_handler(
 
     switch (mgmt_event) {
 
-        case NET_EVENT_IPV4_ADDR_ADD:
-            LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_ADD."); // NOLINT
+        case NET_EVENT_IPV4_DHCP_BOUND:
+            LOG_DBG("Network event: NET_EVENT_IPV4_DHCP_BOUND."); // NOLINT
             k_sem_give(&ipv4_address_obtained);
-            break;
-
-        case NET_EVENT_IPV4_ADDR_DEL:
-            LOG_DBG("Network event: NET_EVENT_IPV4_ADDR_DEL."); // NOLINT
-            k_sem_take(&ipv4_address_obtained, K_NO_WAIT);
             break;
 
         default:
@@ -87,7 +82,7 @@ void app_wifi_init(void)
     net_mgmt_init_event_callback(
         &wifi_shell_mgmt_cb, wifi_mgmt_event_handler, WIFI_SHELL_MGMT_EVENTS);
     net_mgmt_init_event_callback(
-        &ipv4_cb, ipv4_mgmt_event_handler, NET_EVENT_IPV4_ADDR_ADD | NET_EVENT_IPV4_ADDR_DEL);
+        &ipv4_cb, ipv4_mgmt_event_handler, NET_EVENT_IPV4_DHCP_BOUND);
 
     net_mgmt_add_event_callback(&wifi_shell_mgmt_cb);
     net_mgmt_add_event_callback(&ipv4_cb);

@@ -12,7 +12,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/version.h>
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
 #include <zephyr/kvss/zms.h>
 #else
 #include <zephyr/fs/zms.h>
@@ -30,7 +30,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_L
 #error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
 #endif // FIXED_PARTITION_EXISTS(ZMS_PARTITION)
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
 #define ZMS_PARTITION_DEVICE PARTITION_DEVICE(ZMS_PARTITION)
 #define ZMS_PARTITION_OFFSET PARTITION_OFFSET(ZMS_PARTITION)
 #define ZMS_PARTITION_SIZE PARTITION_SIZE(ZMS_PARTITION)

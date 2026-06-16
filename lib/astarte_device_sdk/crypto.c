@@ -135,7 +135,7 @@ astarte_result_t astarte_crypto_create_csr(
         goto exit;
     }
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
     res = mbedtls_x509write_csr_pem(&csr_ctx, csr_pem, csr_pem_size);
 #else
     res = mbedtls_x509write_csr_pem(&csr_ctx, csr_pem, csr_pem_size, NULL, NULL);

@@ -11,7 +11,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/version.h>
 
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
 #include <zephyr/kvss/nvs.h>
 #else
 #include <zephyr/fs/nvs.h>
@@ -29,7 +29,7 @@ static struct nvs_fs file_system;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 #define NVS_PARTITION storage_partition
-#if (KERNEL_VERSION_MAJOR >= 4) && (KERNEL_VERSION_MINOR >= 4)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
 #define NVS_PARTITION_DEVICE PARTITION_DEVICE(NVS_PARTITION)
 #define NVS_PARTITION_OFFSET PARTITION_OFFSET(NVS_PARTITION)
 #else

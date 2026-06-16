@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Support for Astarte 1.3.x.
+- Support for Zephyr 4.3.x and 4.4.x.
 - Added `esp_wrover_kit` board support to the sample application.
 
 ### Changed
@@ -22,6 +24,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Reduced the default static HTTP receive buffer size from 4096 to 1024 bytes. This remains configurable via `ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE`.
 - Refactored internal MbedTLS usage to leverage the [PSA crypto API](https://docs.zephyrproject.org/latest/services/crypto/psa_crypto.html). This introduces no public API changes but requires the PSA Crypto API to be enabled in the project's Kconfig options.
 - Changed the default value of `CONFIG_GET_CONFIG_FROM_FLASH` to `n` for the `frdm_rw612` board in the sample application.
+- Updated the README.md for the `astarte_app` sample.
+- Use native Zephyr module in place of a custom UUID implementation. This requires the Zephyr UUID module to be enabled.
+- The `astarte_result_t` enum has been reordered. As such most of its entries have changed value.
 
 ### Removed
 - Support for Zephyr versions older than 4.3.x, including 3.7.x (LTS3).

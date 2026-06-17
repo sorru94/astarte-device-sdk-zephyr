@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "bson/types.h"
 #include "mapping_private.h"
 
@@ -117,7 +118,7 @@ static astarte_result_t deserialize_binaryblob(
     const uint8_t *deserialized
         = astarte_bson_deserializer_element_to_binary(bson_elem, &deserialized_len);
 
-    dyn_deserialized = calloc(deserialized_len, sizeof(uint8_t));
+    dyn_deserialized = astarte_calloc(deserialized_len, sizeof(uint8_t));
     if (!dyn_deserialized) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -130,7 +131,7 @@ static astarte_result_t deserialize_binaryblob(
     return ares;
 
 failure:
-    free(dyn_deserialized);
+    astarte_free(dyn_deserialized);
     return ares;
 }
 
@@ -143,7 +144,7 @@ static astarte_result_t deserialize_string(astarte_bson_element_t bson_elem, ast
     const char *deserialized
         = astarte_bson_deserializer_element_to_string(bson_elem, &deserialized_len);
 
-    dyn_deserialized = calloc(deserialized_len + 1, sizeof(char));
+    dyn_deserialized = astarte_calloc(deserialized_len + 1, sizeof(char));
     if (!dyn_deserialized) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -156,6 +157,6 @@ static astarte_result_t deserialize_string(astarte_bson_element_t bson_elem, ast
     return ares;
 
 failure:
-    free(dyn_deserialized);
+    astarte_free(dyn_deserialized);
     return ares;
 }

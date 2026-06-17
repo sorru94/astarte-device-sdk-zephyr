@@ -19,6 +19,7 @@
 #include <interface_private.h>
 #include <object_private.h>
 
+#include "alloc.h"
 #include "data.h"
 #include "device_handler.h"
 #include "utilities.h"
@@ -206,8 +207,8 @@ static int cmd_send_individual(const struct shell *shell, size_t argc, char **ar
 
 cleanup:
     astarte_data_destroy_deserialized(data);
-    free((void *) value.buf);
-    free(path);
+    astarte_free((void *) value.buf);
+    astarte_free(path);
 
     return return_code;
 }
@@ -254,8 +255,8 @@ static int cmd_send_object(const struct shell *shell, size_t argc, char **argv)
 
 cleanup:
     astarte_object_entries_destroy_deserialized(entries, entries_length);
-    free((void *) value.buf);
-    free(path);
+    astarte_free((void *) value.buf);
+    astarte_free(path);
 
     return return_code;
 }
@@ -297,8 +298,8 @@ static int cmd_send_property_set(const struct shell *shell, size_t argc, char **
 
 cleanup:
     astarte_data_destroy_deserialized(data);
-    free((void *) value.buf);
-    free(path);
+    astarte_free((void *) value.buf);
+    astarte_free(path);
 
     return return_code;
 }
@@ -331,7 +332,7 @@ static int cmd_send_property_unset(const struct shell *shell, size_t argc, char 
     return_code = 0;
 
 cleanup:
-    free(path);
+    astarte_free(path);
 
     return return_code;
 }
@@ -372,12 +373,12 @@ static int cmd_expect_individual(const struct shell *shell, size_t argc, char **
 
     LOG_INF("Individual added to the expected list.");
 
-    free((void *) value.buf);
+    astarte_free((void *) value.buf);
     return 0;
 
 error:
-    free(path);
-    free((void *) value.buf);
+    astarte_free(path);
+    astarte_free((void *) value.buf);
     astarte_data_destroy_deserialized(data);
 
     return 1;
@@ -427,8 +428,8 @@ static int cmd_expect_object(const struct shell *shell, size_t argc, char **argv
     return 0;
 
 error:
-    free(path);
-    free((void *) value.buf);
+    astarte_free(path);
+    astarte_free((void *) value.buf);
     astarte_object_entries_destroy_deserialized(entries, entries_length);
 
     return 1;
@@ -467,12 +468,12 @@ static int cmd_expect_property_set(const struct shell *shell, size_t argc, char 
 
     LOG_INF("Set property added to the expected list.");
 
-    free((void *) value.buf);
+    astarte_free((void *) value.buf);
     return 0;
 
 error:
-    free(path);
-    free((void *) value.buf);
+    astarte_free(path);
+    astarte_free((void *) value.buf);
     astarte_data_destroy_deserialized(data);
 
     return 1;
@@ -506,7 +507,7 @@ static int cmd_expect_property_unset(const struct shell *shell, size_t argc, cha
     return 0;
 
 error:
-    free(path);
+    astarte_free(path);
     return 1;
 }
 
@@ -554,7 +555,7 @@ static char *shell_helpers_next_alloc_string_param(char ***args, size_t *argc)
     const char *const arg = (*args)[0];
 
     size_t arg_len = strlen(arg);
-    char *const copied_arg = calloc(arg_len + 1, sizeof(char));
+    char *const copied_arg = astarte_calloc(arg_len + 1, sizeof(char));
     CHECK_HALT(!copied_arg, "Could not allocate memory to copy string parameter");
     memcpy(copied_arg, arg, arg_len + 1);
 
@@ -585,7 +586,7 @@ static byte_array_t shell_helpers_next_alloc_base64_param(char ***args, size_t *
 
     LOG_DBG("The size of the decoded buffer is: %d", byte_array_length);
 
-    byte_array = calloc(byte_array_length, sizeof(uint8_t));
+    byte_array = astarte_calloc(byte_array_length, sizeof(uint8_t));
     CHECK_HALT(!byte_array, "Out of memory");
 
     res = base64_decode(byte_array, byte_array_length, &byte_array_length, arg, arg_len);
@@ -600,7 +601,7 @@ static byte_array_t shell_helpers_next_alloc_base64_param(char ***args, size_t *
     return (byte_array_t){ .buf = byte_array, .len = byte_array_length };
 
 error:
-    free(byte_array);
+    astarte_free(byte_array);
     return (byte_array_t){};
 }
 

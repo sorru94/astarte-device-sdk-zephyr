@@ -10,6 +10,7 @@
 #include "storage/prop.h"
 #include "storage/sync.h"
 #endif
+#include "alloc.h"
 #include "device_connection.h"
 #include "device_private.h"
 #include "device_rx.h"
@@ -103,7 +104,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         goto failure;
     }
 
-    handle = calloc(1, sizeof(struct astarte_device));
+    handle = astarte_calloc(1, sizeof(struct astarte_device));
     if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -207,7 +208,7 @@ failure:
 #endif
         introspection_free(handle->introspection);
     }
-    free(handle);
+    astarte_free(handle);
     return ares;
 }
 
@@ -239,7 +240,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 #endif
 
     introspection_free(device->introspection);
-    free(device);
+    astarte_free(device);
     return ASTARTE_RESULT_OK;
 }
 

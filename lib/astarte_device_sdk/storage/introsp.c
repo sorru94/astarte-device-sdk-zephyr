@@ -10,6 +10,7 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 
+#include "alloc.h"
 #include "log.h"
 ASTARTE_LOG_MODULE_DECLARE(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_LOG_LEVEL);
 
@@ -74,7 +75,7 @@ astarte_result_t astarte_storage_introspection_check(
         goto exit;
     }
 
-    read_intr = calloc(read_intr_size, sizeof(char));
+    read_intr = astarte_calloc(read_intr_size, sizeof(char));
     if (!read_intr) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -96,6 +97,6 @@ astarte_result_t astarte_storage_introspection_check(
     }
 
 exit:
-    free(read_intr);
+    astarte_free(read_intr);
     return ares;
 }

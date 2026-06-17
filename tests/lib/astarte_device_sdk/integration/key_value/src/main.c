@@ -15,6 +15,7 @@
 
 #include "astarte_device_sdk/result.h"
 
+#include "alloc.h"
 #include "key_value/core.h"
 #include "key_value/entry.h"
 #include "key_value/entry_hash.h"
@@ -44,7 +45,7 @@ static void *astarte_storage_key_value_test_setup(void)
     zassert_equal(flash_get_page_info_by_offs(device, offset, &fp_info), 0, "Can't get page info.");
 
     struct astarte_device_sdk_key_value_fixture *fixture
-        = calloc(1, sizeof(struct astarte_device_sdk_key_value_fixture));
+        = astarte_calloc(1, sizeof(struct astarte_device_sdk_key_value_fixture));
     zassert_not_null(fixture, "Failed allocating test fixture");
 
     fixture->flash_device = ZMS_PARTITION_DEVICE;
@@ -96,7 +97,7 @@ static void astarte_storage_key_value_test_teardown(void *f)
     struct astarte_device_sdk_key_value_fixture *fixture
         = (struct astarte_device_sdk_key_value_fixture *) f;
 
-    free(fixture);
+    astarte_free(fixture);
 }
 
 ZTEST_SUITE(astarte_device_sdk_key_value, NULL, astarte_storage_key_value_test_setup,
@@ -832,7 +833,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
         ret = astarte_key_value_iterator_get(&iter_1, NULL, &value_size);
         zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-        char *dynamic_key = calloc(value_size, sizeof(char));
+        char *dynamic_key = astarte_calloc(value_size, sizeof(char));
         zassert_not_null(dynamic_key, "Failed to allocate memory for key");
 
         ret = astarte_key_value_iterator_get(&iter_1, dynamic_key, &value_size);
@@ -846,7 +847,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
             zassert_unreachable("Unexpected key found during iteration: %s", dynamic_key);
         }
 
-        free(dynamic_key);
+        astarte_free(dynamic_key);
         ret = astarte_key_value_iterator_next(&iter_1);
     }
 
@@ -868,7 +869,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
         ret = astarte_key_value_iterator_get(&iter_2, NULL, &value_size);
         zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-        char *dynamic_key = calloc(value_size, sizeof(char));
+        char *dynamic_key = astarte_calloc(value_size, sizeof(char));
         zassert_not_null(dynamic_key, "Failed to allocate memory for key");
 
         ret = astarte_key_value_iterator_get(&iter_2, dynamic_key, &value_size);
@@ -884,7 +885,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
             zassert_unreachable("Unexpected key found during iteration: %s", dynamic_key);
         }
 
-        free(dynamic_key);
+        astarte_free(dynamic_key);
         ret = astarte_key_value_iterator_next(&iter_2);
     }
 

@@ -20,6 +20,7 @@ target_sources(testbinary PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/data/serialize.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/bson/serializer.c
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/result.c
+    ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/tests/lib/astarte_device_sdk/unit/common/alloc.c
 )
 
 

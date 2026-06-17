@@ -13,6 +13,7 @@
 #include "astarte_device_sdk/data.h"
 #include "astarte_device_sdk/result.h"
 
+#include "alloc.h"
 #include "generated_interfaces.h"
 #include "storage/core.h"
 #include "storage/introsp.h"
@@ -47,7 +48,7 @@ static void *astarte_storage_test_setup(void)
     zassert_equal(flash_get_page_info_by_offs(device, offset, &fp_info), 0, "Can't get page info.");
 
     struct astarte_device_sdk_storage_fixture *fixture
-        = calloc(1, sizeof(struct astarte_device_sdk_storage_fixture));
+        = astarte_calloc(1, sizeof(struct astarte_device_sdk_storage_fixture));
     zassert_not_null(fixture, "Failed allocating test fixture");
 
     (void) introspection_init(&fixture->introspection);
@@ -108,7 +109,7 @@ static void astarte_storage_test_teardown(void *f)
     struct astarte_device_sdk_storage_fixture *fixture
         = (struct astarte_device_sdk_storage_fixture *) f;
 
-    free(fixture);
+    astarte_free(fixture);
 }
 
 static bool astarte_data_is_equal(astarte_data_t first, astarte_data_t second)

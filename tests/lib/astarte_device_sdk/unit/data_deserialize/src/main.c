@@ -20,10 +20,10 @@
 
 #include <zephyr/ztest.h>
 
+#include "alloc.h"
 #include "astarte_device_sdk/data.h"
-#include "data/deserialize.h"
-
 #include "bson/deserializer.h"
+#include "data/deserialize.h"
 
 ZTEST_SUITE(astarte_device_sdk_astarte_data_deserialize, NULL, NULL, NULL, NULL, NULL);
 

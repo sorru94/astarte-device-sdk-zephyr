@@ -20,6 +20,7 @@
 
 #include <zephyr/ztest.h>
 
+#include "alloc.h"
 #include "astarte_device_sdk/data.h"
 #include "data/serialize.h"
 
@@ -35,7 +36,7 @@ void z_log_minimal_printk(const char *fmt, ...) {}
 // Since we are in a test environment we do not deallocate such memory.
 static char *hex_to_str(const uint8_t *input, size_t input_len)
 {
-    char *dyn_buf = calloc((input_len * 6) + 1, sizeof(char));
+    char *dyn_buf = astarte_calloc((input_len * 6) + 1, sizeof(char));
     if (!dyn_buf) {
         return "Allocation error";
     }

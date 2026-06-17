@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 
+#include "alloc.h"
 #include "log.h"
 #include "mqtt/caching.h"
 
@@ -133,7 +134,7 @@ void astarte_mqtt_handle_publish_event(
 
     // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = calloc(topic_len + 1, sizeof(char));
+    char *topic = astarte_calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return;
@@ -142,7 +143,7 @@ void astarte_mqtt_handle_publish_event(
     if (astarte_mqtt->on_incoming_cbk) {
         astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
     }
-    free(topic);
+    astarte_free(topic);
 }
 
 void astarte_mqtt_handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)

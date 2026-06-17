@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_DECLARE(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALUE_LOG_LEVEL);
@@ -43,7 +44,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
     size_t raw_header_size = ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES
         + fixed_header.namespace_len + fixed_header.key_len;
 
-    raw_header = calloc(raw_header_size, sizeof(uint8_t));
+    raw_header = astarte_calloc(raw_header_size, sizeof(uint8_t));
     if (!raw_header) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -57,7 +58,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
     }
 
     // Duplicate the namespace
-    namespace = calloc(fixed_header.namespace_len + 1, sizeof(char));
+    namespace = astarte_calloc(fixed_header.namespace_len + 1, sizeof(char));
     if (!namespace) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -67,7 +68,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
         fixed_header.namespace_len);
     namespace[fixed_header.namespace_len] = '\0';
     // Duplicate the key
-    key = calloc(fixed_header.key_len + 1, sizeof(char));
+    key = astarte_calloc(fixed_header.key_len + 1, sizeof(char));
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ares = ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -84,13 +85,13 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
     header->dynamically_allocated = true;
     *raw_size = raw_entry_size;
 
-    free(raw_header);
+    astarte_free(raw_header);
     return ares;
 
 error:
-    free(raw_header);
-    free(namespace);
-    free(key);
+    astarte_free(raw_header);
+    astarte_free(namespace);
+    astarte_free(key);
     return ares;
 }
 
@@ -100,9 +101,9 @@ void astarte_key_value_entry_header_free(struct astarte_key_value_entry_header *
         return;
     }
 
-    free(header->namespace);
+    astarte_free(header->namespace);
     header->namespace = NULL;
-    free(header->key);
+    astarte_free(header->key);
     header->key = NULL;
 }
 

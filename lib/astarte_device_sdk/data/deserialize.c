@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "bson/deserializer.h"
 #include "bson/types.h"
 #include "data/deserialize_array.h"
@@ -68,38 +69,38 @@ void astarte_data_destroy_deserialized(astarte_data_t data)
 
     switch (data.tag) {
         case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-            free((void *) data.data.binaryblob.buf);
+            astarte_free((void *) data.data.binaryblob.buf);
             break;
         case ASTARTE_MAPPING_TYPE_STRING:
-            free((void *) data.data.string);
+            astarte_free((void *) data.data.string);
             break;
         case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
-            free((void *) data.data.integer_array.buf);
+            astarte_free((void *) data.data.integer_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
-            free((void *) data.data.longinteger_array.buf);
+            astarte_free((void *) data.data.longinteger_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
-            free((void *) data.data.double_array.buf);
+            astarte_free((void *) data.data.double_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_STRINGARRAY:
             for (size_t i = 0; i < data.data.string_array.len; i++) {
-                free((void *) data.data.string_array.buf[i]);
+                astarte_free((void *) data.data.string_array.buf[i]);
             }
-            free((void *) data.data.string_array.buf);
+            astarte_free((void *) data.data.string_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
             for (size_t i = 0; i < data.data.binaryblob_array.count; i++) {
-                free((void *) data.data.binaryblob_array.blobs[i]);
+                astarte_free((void *) data.data.binaryblob_array.blobs[i]);
             }
-            free(data.data.binaryblob_array.sizes);
-            free((void *) data.data.binaryblob_array.blobs);
+            astarte_free(data.data.binaryblob_array.sizes);
+            astarte_free((void *) data.data.binaryblob_array.blobs);
             break;
         case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
-            free((void *) data.data.boolean_array.buf);
+            astarte_free((void *) data.data.boolean_array.buf);
             break;
         case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
-            free((void *) data.data.datetime_array.buf);
+            astarte_free((void *) data.data.datetime_array.buf);
             break;
         default:
             break;

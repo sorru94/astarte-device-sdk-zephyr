@@ -8,6 +8,8 @@
 #include "mqtt/caching.h"
 #include "mqtt/events.h"
 
+#include <stdlib.h>
+#include <zephyr/net/dns_resolve.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/net/tls_credentials.h>
 
@@ -24,8 +26,45 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEV
 #endif /* defined(CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT) */
 
 /************************************************
+ *        Defines, constants and typedef        *
+ ***********************************************/
+
+/** @brief Context structure used for DNS resolution. */
+struct dns_resolve_ctx
+{
+    /** @brief Semaphore to synchronize DNS resolution completion. */
+    struct k_sem sem;
+    /** @brief The resolved IPv4 address. */
+    struct sockaddr_in resolved_addr;
+    /** @brief Flag indicating whether a valid address was found. */
+    bool addr_found;
+};
+
+/************************************************
  *       Callbacks declaration/definition       *
  ***********************************************/
+
+static void dns_resolve_cb(
+    enum dns_resolve_status status, struct dns_addrinfo *info, void *user_data)
+{
+    ASTARTE_LOG_DBG("DNS callback fired. Status: %d", status);
+    struct dns_resolve_ctx *ctx = (struct dns_resolve_ctx *) user_data;
+
+    // DNS_EAI_ALLDONE signals that the DNS resolver has finished iterating
+    if (status == DNS_EAI_ALLDONE || status == DNS_EAI_CANCELED) {
+        k_sem_give(&ctx->sem);
+        return;
+    }
+
+    // Capture the first valid IPv4 address
+    if (status == DNS_EAI_INPROGRESS && info != NULL && !ctx->addr_found) {
+        if (info->ai_family == AF_INET) {
+            memcpy(&ctx->resolved_addr, &info->ai_addr, sizeof(struct sockaddr_in));
+            ctx->addr_found = true;
+            ASTARTE_LOG_DBG("Successfully captured IPv4 address for MQTT broker!");
+        }
+    }
+}
 
 static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt_evt *evt)
 {
@@ -242,7 +281,6 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    struct zsock_addrinfo *broker_addrinfo = NULL;
 
     // Lock the mutex for the Astarte MQTT wrapper
     int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
@@ -262,24 +300,38 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
         goto exit;
     }
 
-    // Get broker address info
-    struct zsock_addrinfo hints = { 0 };
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    int getaddrinfo_rc = zsock_getaddrinfo(
-        astarte_mqtt->broker_hostname, astarte_mqtt->broker_port, &hints, &broker_addrinfo);
-    if (getaddrinfo_rc != 0) {
-        ASTARTE_LOG_ERR("Unable to resolve broker address %s", zsock_gai_strerror(getaddrinfo_rc));
-        if (getaddrinfo_rc == DNS_EAI_SYSTEM) {
-            ASTARTE_LOG_ERR("Errno: %s", strerror(errno));
-        }
+    // Attempt DNS resolution for the MQTT broker
+    struct dns_resolve_ctx dns_ctx = { .addr_found = false };
+    k_sem_init(&dns_ctx.sem, 0, 1);
+
+    uint16_t dns_id = 0;
+    int resolve_rc = dns_get_addr_info(astarte_mqtt->broker_hostname, DNS_QUERY_TYPE_A, &dns_id,
+        dns_resolve_cb, &dns_ctx, astarte_mqtt->connection_timeout_ms);
+    if (resolve_rc == 0) {
+        // Block until the callback gives the semaphore
+        k_sem_take(&dns_ctx.sem, K_FOREVER);
+    } else {
+        ASTARTE_LOG_ERR("Failed to initiate DNS resolution (err: %d)", resolve_rc);
         ares = ASTARTE_RESULT_SOCKET_ERROR;
         goto exit;
     }
 
+    if (!dns_ctx.addr_found) {
+        ASTARTE_LOG_ERR("DNS resolution failed to find any IPv4 addresses for %s",
+            astarte_mqtt->broker_hostname);
+        ares = ASTARTE_RESULT_SOCKET_ERROR;
+        goto exit;
+    }
+
+    // Convert string port into an integer and set it
+    const int base_ten = 10;
+    long port_val = strtol(astarte_mqtt->broker_port, NULL, base_ten);
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
+    dns_ctx.resolved_addr.sin_port = htons((uint16_t) port_val);
+
     // MQTT client configuration
     mqtt_client_init(&astarte_mqtt->client);
-    astarte_mqtt->client.broker = broker_addrinfo->ai_addr;
+    astarte_mqtt->client.broker = (struct sockaddr *) &dns_ctx.resolved_addr;
     astarte_mqtt->client.evt_cb = mqtt_evt_handler;
     astarte_mqtt->client.client_id.utf8 = (uint8_t *) astarte_mqtt->client_id;
     astarte_mqtt->client.client_id.size = strlen(astarte_mqtt->client_id);
@@ -330,10 +382,6 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTING;
 
 exit:
-    // Free the broker address info
-    if (broker_addrinfo) {
-        zsock_freeaddrinfo(broker_addrinfo);
-    }
     // Unlock the mutex
     mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);

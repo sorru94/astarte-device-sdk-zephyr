@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Zephyr 4.3.x and 4.4.x.
 - Board support for `esp_wrover_kit` in the sample application.
 - Dedicated heap for the Astarte device library. You can enable it via the `ASTARTE_DEVICE_SDK_ENABLE_HEAP` Kconfig option and configure its size using `ASTARTE_DEVICE_SDK_HEAP_SIZE`. When enabled, no allocations occur on the system stack, allowing the system stack to be safely disabled.
+- Configurable Astarte Device SDK system heap size requirement through `HEAP_MEM_POOL_ADD_SIZE_ASTARTE_SDK` Kconfig option.
 
 ### Changed
 - Updated `astarte_data_from_*` function signatures to accept `const` pointers, clarifying that they do not modify user-supplied input data.

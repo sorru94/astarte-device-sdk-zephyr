@@ -14,28 +14,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for Astarte 1.3.x.
 - Support for Zephyr 4.3.x and 4.4.x.
-- Added `esp_wrover_kit` board support to the sample application.
-- Dedicated heap for the Astarte device library. Users can enable the dedicated heap through the `ASTARTE_DEVICE_SDK_ENABLE_HEAP` kconfig option. And change its dimension through the `ASTARTE_DEVICE_SDK_HEAP_SIZE` option. When the dedicated heap is enabled no allocation is performed on the system stack which can be safely disabled.
+- Board support for `esp_wrover_kit` in the sample application.
+- Dedicated heap for the Astarte device library. You can enable it via the `ASTARTE_DEVICE_SDK_ENABLE_HEAP` Kconfig option and configure its size using `ASTARTE_DEVICE_SDK_HEAP_SIZE`. When enabled, no allocations occur on the system stack, allowing the system stack to be safely disabled.
 
 ### Changed
-- The `astarte_data_from_*` functions that take the input data as pointers have had their signature modified. The new signature accepts constant pointers in place of standard pointers. This makes it clearer that the functions do not modify the original user supplied data.
-- The `astarte_data_to_*` functions that return the extracted data as a pointer have had their signature modified. The new signature uses constant pointers for the output parameter. This makes it clearer that the output data should not be directly modified by the user.
+- Updated `astarte_data_from_*` function signatures to accept `const` pointers, clarifying that they do not modify user-supplied input data.
+- Updated `astarte_data_to_*` function signatures to use `const` pointers for output parameters, clarifying that the extracted data should not be directly modified by the user.
 - Prefixed all included west extensions with `astarte-` to prevent naming conflicts with user-created extensions.
 - Renamed the `generate-interfaces` west extension command to `astarte-interfaces`.
-- Reduced the default static HTTP receive buffer size from 4096 to 1024 bytes. This remains configurable via `ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE`.
-- Refactored internal MbedTLS usage to leverage the [PSA crypto API](https://docs.zephyrproject.org/latest/services/crypto/psa_crypto.html). This introduces no public API changes but requires the PSA Crypto API to be enabled in the project's Kconfig options.
+- Reduced the default static HTTP receive buffer size from 4096 to 1024 bytes (this remains configurable via `ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE`).
+- Refactored internal MbedTLS usage to leverage the [PSA crypto API](https://docs.zephyrproject.org/latest/services/crypto/psa_crypto.html). This introduces no public API changes, but requires the PSA Crypto API to be enabled in the project's Kconfig options.
 - Changed the default value of `CONFIG_GET_CONFIG_FROM_FLASH` to `n` for the `frdm_rw612` board in the sample application.
-- Updated the README.md for the `astarte_app` sample.
-- Use native Zephyr module in place of a custom UUID implementation. This requires the Zephyr UUID module to be enabled.
-- The `astarte_result_t` enum has been reordered. As such most of its entries have changed value.
+- Updated the `README.md` for the `astarte_app` sample.
+- Switched to the native Zephyr UUID module, replacing the custom implementation. This requires the Zephyr UUID module to be enabled.
+- Reordered the `astarte_result_t` enum, which changes the underlying integer values of most of its entries.
 
 ### Removed
 - Support for Zephyr versions older than 4.3.x, including 3.7.x (LTS3).
-- The public header `util.h` which contained the `ASTARTE_UTIL_DEFINE_ARRAY` macro.
+- The public header `util.h`, which contained the `ASTARTE_UTIL_DEFINE_ARRAY` macro.
 
 ### Fixed
 - Corrected the storage partition size for the `frdm_rw612` board sample.
-- Optimized persistent storage write operations to significantly reduce overhead, resolving associated write failures.
+- Optimized persistent storage write operations to significantly reduce overhead and resolve associated write failures.
 - Removed a conflicting keyword from the library, restoring compatibility for C++ compilers.
 
 ## [0.9.0] - 2025-07-22

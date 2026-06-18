@@ -14,6 +14,14 @@
 ASTARTE_LOG_MODULE_DECLARE(astarte_mqtt, CONFIG_ASTARTE_DEVICE_SDK_MQTT_LOG_LEVEL);
 
 /************************************************
+ *         Static functions declaration         *
+ ***********************************************/
+
+static int read_publish_payload(astarte_mqtt_t *astarte_mqtt, char *msg_buffer, size_t alloc_size,
+    uint32_t message_size, bool discarded);
+static int acknowledge_qos(astarte_mqtt_t *astarte_mqtt, uint16_t message_id, uint8_t qos);
+
+/************************************************
  *       Callbacks declaration/definition       *
  ***********************************************/
 
@@ -64,86 +72,55 @@ void astarte_mqtt_handle_publish_event(
     astarte_mqtt_t *astarte_mqtt, struct mqtt_publish_param publish)
 {
     uint16_t message_id = publish.message_id;
-    ASTARTE_LOG_DBG("Received PUBLISH packet (%u)", message_id);
-    int ret = 0U;
-    size_t received = 0U;
     uint32_t message_size = publish.message.payload.len;
-    char msg_buffer[CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE] = { 0 };
+    char *topic = NULL;
+    char *msg_buffer = NULL;
+
+    ASTARTE_LOG_DBG("Received PUBLISH packet (%u)", message_id);
+
+    // Safety limit to prevent unbounded allocations
     const bool discarded = message_size > CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE;
+    size_t alloc_size = discarded ? CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE : message_size;
+
+    // Safely handle 0-byte payloads
+    if (alloc_size > 0) {
+        msg_buffer = astarte_calloc(alloc_size, sizeof(char));
+        if (!msg_buffer) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            goto exit;
+        }
+    }
 
     ASTARTE_LOG_DBG("RECEIVED on topic \"%.*s\" [ id: %u qos: %u ] payload: %u / %u B",
         publish.message.topic.topic.size, (const char *) publish.message.topic.topic.utf8,
         message_id, publish.message.topic.qos, message_size,
         CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE);
 
-    while (received < message_size) {
-        char *pkt = discarded ? msg_buffer : &msg_buffer[received];
-        size_t capacity = discarded ? CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE
-                                    : (CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE - received);
-
-        ret = mqtt_read_publish_payload_blocking(&astarte_mqtt->client, pkt, capacity);
-        if (ret < 0) {
-            ASTARTE_LOG_ERR("Error reading payload of PUBLISH packet %s", strerror(ret));
-            return;
-        }
-
-        received += ret;
-    }
-
-    if (publish.message.topic.qos == MQTT_QOS_1_AT_LEAST_ONCE) {
-        struct mqtt_puback_param puback = { .message_id = message_id };
-        ret = mqtt_publish_qos1_ack(&astarte_mqtt->client, &puback);
-        if (ret != 0) {
-            ASTARTE_LOG_ERR("MQTT PUBACK transmission error %d", ret);
-        }
-    }
-    if (publish.message.topic.qos == MQTT_QOS_2_EXACTLY_ONCE) {
-        struct mqtt_pubrec_param pubrec = { .message_id = message_id };
-        ret = mqtt_publish_qos2_receive(&astarte_mqtt->client, &pubrec);
-        if (ret != 0) {
-            ASTARTE_LOG_ERR("MQTT PUBREC transmission error %d", ret);
-        }
-
-        if (astarte_mqtt_caching_find_message(&astarte_mqtt->in_msg_map, message_id)) {
-            ASTARTE_LOG_WRN("Received duplicated PUBLISH QoS 2 with message ID (%d).", message_id);
-            return;
-        }
-
-        astarte_mqtt_caching_message_t message = {
-            .type = MQTT_CACHING_PUBREC_ENTRY,
-            .topic = NULL,
-            .data = NULL,
-            .data_size = 0,
-            .qos = 2,
-        };
-        astarte_mqtt_caching_insert_message(&astarte_mqtt->in_msg_map, message_id, message);
-    }
-
-    if (received != publish.message.payload.len) {
-        ASTARTE_LOG_ERR("Incoherent expected and read MQTT publish payload lengths.");
-        return;
-    }
-
-    if (discarded) {
-        ASTARTE_LOG_ERR("Insufficient space in the Astarte MQTT reception buffer.");
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return;
+    if (read_publish_payload(astarte_mqtt, msg_buffer, alloc_size, message_size, discarded) < 0) {
+        goto exit;
     }
 
     ASTARTE_LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256U), "Received payload:");
 
-    // This copy is necessary due to the Zephyr MQTT library not null terminating the topic.
+    if (acknowledge_qos(astarte_mqtt, message_id, publish.message.topic.qos) < 0) {
+        goto exit;
+    }
+
     size_t topic_len = publish.message.topic.topic.size;
-    char *topic = astarte_calloc(topic_len + 1, sizeof(char));
+    topic = astarte_calloc(topic_len + 1, sizeof(char));
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return;
+        goto exit;
     }
     memcpy(topic, publish.message.topic.topic.utf8, topic_len);
+
     if (astarte_mqtt->on_incoming_cbk) {
         astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
     }
+
+exit:
     astarte_free(topic);
+    astarte_free(msg_buffer);
 }
 
 void astarte_mqtt_handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)
@@ -216,4 +193,75 @@ void astarte_mqtt_handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_
         }
         astarte_mqtt->on_subscribed_cbk(astarte_mqtt, message_id, return_code);
     }
+}
+
+/************************************************
+ *         Static functions definitions         *
+ ***********************************************/
+
+static int read_publish_payload(astarte_mqtt_t *astarte_mqtt, char *msg_buffer, size_t alloc_size,
+    uint32_t message_size, bool discarded)
+{
+    int ret = 0U;
+    size_t received = 0U;
+
+    while (received < message_size) {
+        char *pkt = discarded ? msg_buffer : &msg_buffer[received];
+        size_t capacity = discarded ? alloc_size : (alloc_size - received);
+
+        ret = mqtt_read_publish_payload_blocking(&astarte_mqtt->client, pkt, capacity);
+        if (ret < 0) {
+            ASTARTE_LOG_ERR("Error reading payload of PUBLISH packet %s", strerror(ret));
+            return -1;
+        }
+
+        received += ret;
+    }
+
+    if (received != message_size) {
+        ASTARTE_LOG_ERR("Incoherent expected and read MQTT publish payload lengths.");
+        return -1;
+    }
+
+    if (discarded) {
+        ASTARTE_LOG_ERR("Insufficient space in the Astarte MQTT reception buffer.");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int acknowledge_qos(astarte_mqtt_t *astarte_mqtt, uint16_t message_id, uint8_t qos)
+{
+    int ret = 0U;
+
+    if (qos == MQTT_QOS_1_AT_LEAST_ONCE) {
+        struct mqtt_puback_param puback = { .message_id = message_id };
+        ret = mqtt_publish_qos1_ack(&astarte_mqtt->client, &puback);
+        if (ret != 0) {
+            ASTARTE_LOG_ERR("MQTT PUBACK transmission error %d", ret);
+        }
+    } else if (qos == MQTT_QOS_2_EXACTLY_ONCE) {
+        struct mqtt_pubrec_param pubrec = { .message_id = message_id };
+        ret = mqtt_publish_qos2_receive(&astarte_mqtt->client, &pubrec);
+        if (ret != 0) {
+            ASTARTE_LOG_ERR("MQTT PUBREC transmission error %d", ret);
+        }
+
+        if (astarte_mqtt_caching_find_message(&astarte_mqtt->in_msg_map, message_id)) {
+            ASTARTE_LOG_WRN("Received duplicated PUBLISH QoS 2 with message ID (%d).", message_id);
+            return -1;
+        }
+
+        astarte_mqtt_caching_message_t message = {
+            .type = MQTT_CACHING_PUBREC_ENTRY,
+            .topic = NULL,
+            .data = NULL,
+            .data_size = 0,
+            .qos = 2,
+        };
+        astarte_mqtt_caching_insert_message(&astarte_mqtt->in_msg_map, message_id, message);
+    }
+
+    return 0;
 }

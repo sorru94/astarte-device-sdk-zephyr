@@ -3,11 +3,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 #include "astarte_zlib.h"
+
+#include "alloc.h"
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
+
+voidpf *astarte_alloc_func(voidpf /* opaque */, uInt items, uInt size)
+{
+    return (voidpf *) astarte_calloc(items, size);
+}
+
+void astarte_free_func(voidpf /* opaque */, voidpf address)
+{
+    astarte_free(address);
+}
 
 // NOLINTBEGIN: This function is pretty much identical to the one contained in zlib.
 int ZEXPORT astarte_zlib_compress(
@@ -21,8 +34,8 @@ int ZEXPORT astarte_zlib_compress(
     left = *destLen;
     *destLen = 0;
 
-    stream.zalloc = (alloc_func) 0;
-    stream.zfree = (free_func) 0;
+    stream.zalloc = (alloc_func) astarte_alloc_func;
+    stream.zfree = (free_func) astarte_free_func;
     stream.opaque = (voidpf) 0;
 
     int windowBits = 9; // Smallest possible window

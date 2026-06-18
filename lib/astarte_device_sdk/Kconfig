@@ -126,6 +126,13 @@ config ASTARTE_DEVICE_SDK_ENABLE_HEAP
 	help
 	  Enable the heap used by the Astarte device for memory allocations.
 
+config HEAP_MEM_POOL_ADD_SIZE_ASTARTE_SDK
+	int "Minimum heap size required by the SDK to work properly"
+	depends on !ASTARTE_DEVICE_SDK_ENABLE_HEAP
+	default 32768
+	help
+	  Define the minimum size of the system heap used by the Astarte device sdk for memory allocations.
+
 config ASTARTE_DEVICE_SDK_HEAP_SIZE
 	int "Custom heap size for Astarte device"
 	depends on ASTARTE_DEVICE_SDK_ENABLE_HEAP

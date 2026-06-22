@@ -11,10 +11,10 @@
 #include "storage/sync.h"
 #endif
 #include "alloc.h"
-#include "device_connection.h"
-#include "device_private.h"
-#include "device_rx.h"
-#include "device_tx.h"
+#include "device/connection.h"
+#include "device/core.h"
+#include "device/reception.h"
+#include "device/transmission.h"
 #include "mqtt/core.h"
 #include "mqtt/pubsub.h"
 #include "pairing/core.h"
@@ -165,7 +165,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     astarte_mqtt_config.on_subscribed_cbk = astarte_device_connection_on_subscribed_handler;
     astarte_mqtt_config.on_connected_cbk = astarte_device_connection_on_connected_handler;
     astarte_mqtt_config.on_disconnected_cbk = astarte_device_connection_on_disconnected_handler;
-    astarte_mqtt_config.on_incoming_cbk = astarte_device_rx_on_incoming_handler;
+    astarte_mqtt_config.on_incoming_cbk = astarte_device_reception_on_incoming_handler;
 
     ASTARTE_LOG_DBG("Getting MQTT broker hostname and port");
     ares = astarte_pairing_get_mqtt_broker_hostname_and_port(handle->http_timeout_ms,
@@ -302,7 +302,8 @@ astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_stream_individual(device, interface_name, path, data, timestamp);
+    return astarte_device_transmission_stream_individual(
+        device, interface_name, path, data, timestamp);
 }
 
 astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
@@ -318,7 +319,7 @@ astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_stream_aggregated(
+    return astarte_device_transmission_stream_aggregated(
         device, interface_name, path, entries, entries_len, timestamp);
 }
 
@@ -334,7 +335,7 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_set_property(device, interface_name, path, data);
+    return astarte_device_transmission_set_property(device, interface_name, path, data);
 }
 
 astarte_result_t astarte_device_unset_property(
@@ -349,7 +350,7 @@ astarte_result_t astarte_device_unset_property(
         return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
-    return astarte_device_tx_unset_property(device, interface_name, path);
+    return astarte_device_transmission_unset_property(device, interface_name, path);
 }
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE

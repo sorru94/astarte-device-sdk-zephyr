@@ -8,7 +8,7 @@
 #define DEVICE_PRIVATE_H
 
 /**
- * @file device_private.h
+ * @file device/core.h
  * @brief Device private header.
  */
 

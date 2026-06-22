@@ -8,7 +8,7 @@
 #define DEVICE_TX_H
 
 /**
- * @file device_tx.h
+ * @file device/transmission.h
  * @brief Device transmission header.
  */
 
@@ -16,7 +16,7 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
-#include "device_private.h"
+#include "device/core.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +32,7 @@ extern "C" {
  * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_stream_individual(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp);
 
 /**
@@ -46,7 +46,7 @@ astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t dev
  * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_stream_aggregated(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp);
 
@@ -59,7 +59,7 @@ astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t dev
  * @param[in] data New data value for the property.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data);
 
 /**
@@ -70,7 +70,7 @@ astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
  * @param[in] path Path of the property.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_device_tx_unset_property(
+astarte_result_t astarte_device_transmission_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path);
 
 #ifdef __cplusplus

@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "device_rx.h"
+#include "device/reception.h"
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include <zlib.h>
@@ -134,7 +134,7 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
  *         Global functions definitions         *
  ***********************************************/
 
-void astarte_device_rx_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic,
+void astarte_device_reception_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic,
     size_t topic_len, const char *data, size_t data_len)
 {
     struct astarte_device *device = CONTAINER_OF(astarte_mqtt, struct astarte_device, astarte_mqtt);

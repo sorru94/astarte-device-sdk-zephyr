@@ -8,7 +8,7 @@
 #define DEVICE_CONNECTION_H
 
 /**
- * @file device_connection.h
+ * @file device/connection.h
  * @brief Device connection header.
  */
 
@@ -16,7 +16,7 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
-#include "device_private.h"
+#include "device/core.h"
 
 #ifdef __cplusplus
 extern "C" {

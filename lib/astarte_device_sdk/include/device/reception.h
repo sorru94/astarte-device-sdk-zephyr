@@ -8,7 +8,7 @@
 #define DEVICE_RX_H
 
 /**
- * @file device_rx.h
+ * @file device/reception.h
  * @brief Device reception header.
  */
 
@@ -16,7 +16,7 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
-#include "device_private.h"
+#include "device/core.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
  * @param[in] data Data buffer for the event.
  * @param[in] data_len Number of bytes in the data buffer.
  */
-void astarte_device_rx_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic,
+void astarte_device_reception_on_incoming_handler(astarte_mqtt_t *astarte_mqtt, const char *topic,
     size_t topic_len, const char *data, size_t data_len);
 
 #ifdef __cplusplus

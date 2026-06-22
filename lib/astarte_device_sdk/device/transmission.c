@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "device_tx.h"
+#include "device/transmission.h"
 
 #include "bson/serializer.h"
 #include "validation.h"
@@ -18,10 +18,6 @@
 
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(device_transmission, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_TX_LOG_LEVEL);
-
-/************************************************
- *        Defines, constants and typedef        *
- ***********************************************/
 
 /************************************************
  *         Static functions declaration         *
@@ -57,7 +53,7 @@ static astarte_result_t serialize_aggregated_payload(astarte_bson_serializer_t *
  *         Global functions definitions         *
  ***********************************************/
 
-astarte_result_t astarte_device_tx_stream_individual(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_stream_individual(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
 {
     astarte_bson_serializer_t bson = { 0 };
@@ -126,7 +122,7 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_device_tx_stream_aggregated(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_stream_aggregated(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_object_entry_t *entries,
     size_t entries_len, const int64_t *timestamp)
 {
@@ -181,7 +177,7 @@ exit:
     return ares;
 }
 
-astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
+astarte_result_t astarte_device_transmission_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
@@ -205,10 +201,10 @@ astarte_result_t astarte_device_tx_set_property(astarte_device_handle_t device,
     }
 #endif
 
-    return astarte_device_tx_stream_individual(device, interface_name, path, data, NULL);
+    return astarte_device_transmission_stream_individual(device, interface_name, path, data, NULL);
 }
 
-astarte_result_t astarte_device_tx_unset_property(
+astarte_result_t astarte_device_transmission_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
     const astarte_interface_t *interface = introspection_get(

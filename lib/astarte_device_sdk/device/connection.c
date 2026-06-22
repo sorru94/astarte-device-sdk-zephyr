@@ -3,11 +3,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "device_connection.h"
+#include "device/connection.h"
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "astarte_zlib.h"
-#include "device_tx.h"
+#include "device/transmission.h"
 #include "storage/introsp.h"
 #include "storage/prop.h"
 #include "storage/sync.h"
@@ -517,7 +517,8 @@ static void send_device_owned_property(astarte_device_handle_t device,
     }
 
     if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_DEVICE) {
-        ares = astarte_device_tx_stream_individual(device, interface_name, path, data, NULL);
+        ares = astarte_device_transmission_stream_individual(
+            device, interface_name, path, data, NULL);
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed sending cached property: %s",
             astarte_result_to_name(ares));
     }

@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef DEVICE_PRIVATE_H
-#define DEVICE_PRIVATE_H
+#ifndef DEVICE_CORE_H
+#define DEVICE_CORE_H
 
 /**
  * @file device/core.h
- * @brief Device private header.
+ * @brief Device private core definitions and state.
  */
 
 #include "astarte_device_sdk/astarte.h"
@@ -140,4 +140,4 @@ struct astarte_device
 #endif
 };
 
-#endif // DEVICE_PRIVATE_H
+#endif // DEVICE_CORE_H

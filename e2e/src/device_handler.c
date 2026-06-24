@@ -234,14 +234,27 @@ static void device_thread_entry_point(void *unused1, void *unused2, void *unused
         k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
 
         astarte_result_t res = astarte_device_poll(device_handle);
-        CHECK_HALT(
-            res != ASTARTE_RESULT_TIMEOUT && res != ASTARTE_RESULT_OK, "Device poll failure.");
+        if (res != ASTARTE_RESULT_TIMEOUT && res != ASTARTE_RESULT_OK) {
+            LOG_WRN("Device poll failure: %d", res);
+        }
 
         k_sleep(sys_timepoint_timeout(timepoint));
     }
 
-    CHECK_ASTARTE_OK_HALT(
-        astarte_device_disconnect(device_handle, K_SECONDS(10)), "Device disconnection failure.");
+    LOG_INF("Disconnecting Astarte device...");
+    astarte_result_t res = astarte_device_disconnect(device_handle, K_SECONDS(10));
+    if (res != ASTARTE_RESULT_OK) {
+        LOG_ERR("Device disconnection failure: %d", res);
+    }
+
+    // Keep polling until the disconnection callback clears the flag.
+    // A 5-second timeout ensures the thread doesn't hang forever if the network drops completely.
+    k_timepoint_t timeout = sys_timepoint_calc(K_SECONDS(5));
+    while (atomic_test_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG)
+        && !sys_timepoint_expired(timeout)) {
+        astarte_device_poll(device_handle);
+        k_sleep(K_MSEC(100));
+    }
 
     LOG_INF("Exiting from the polling thread.");
 }

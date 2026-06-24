@@ -204,7 +204,9 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
     sys_slist_t allow_list = { 0 };
     sys_slist_init(&allow_list);
 
-    uLongf decomp_data_len = __builtin_bswap32(*(uint32_t *) data);
+    uint32_t raw_len = 0;
+    memcpy(&raw_len, data, sizeof(raw_len));
+    uLongf decomp_data_len = __builtin_bswap32(raw_len);
 
     decomp_data = astarte_calloc(decomp_data_len + 1, sizeof(char));
     if (!decomp_data) {
@@ -225,7 +227,8 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
 
     // Parse the received message and fill a list of properties
     if (decomp_data_len != 0) {
-        char *property = strtok(decomp_data, ";");
+        char *saveptr = NULL;
+        char *property = strtok_r(decomp_data, ";", &saveptr);
         if (!property) {
             ASTARTE_LOG_ERR("Error parsing the purge property message %s.", decomp_data);
             goto exit;
@@ -238,7 +241,7 @@ static void on_purge_properties(astarte_device_handle_t device, const char *data
             }
             allow_node->property = property;
             sys_slist_append(&allow_list, &allow_node->node);
-            property = strtok(NULL, ";");
+            property = strtok_r(NULL, ";", &saveptr);
         } while (property);
     }
 

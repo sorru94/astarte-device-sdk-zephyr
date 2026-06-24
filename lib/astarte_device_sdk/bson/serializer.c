@@ -129,6 +129,7 @@ astarte_result_t astarte_bson_serializer_init(astarte_bson_serializer_t *bson)
 void astarte_bson_serializer_destroy(astarte_bson_serializer_t *bson)
 {
     byte_array_destroy(bson);
+    bson->terminated = false;
 }
 
 const void *astarte_bson_serializer_get_serialized(const astarte_bson_serializer_t *bson, int *size)

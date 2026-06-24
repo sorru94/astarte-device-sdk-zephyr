@@ -35,7 +35,7 @@ ASTARTE_LOG_MODULE_REGISTER(device_transmission, CONFIG_ASTARTE_DEVICE_SDK_DEVIC
  * @return ASTARTE_RESULT_OK if publish has been successful, an error code otherwise.
  */
 static astarte_result_t publish_data(astarte_device_handle_t device, const char *interface_name,
-    const char *path, void *data, int data_size, int qos);
+    const char *path, const void *data, int data_size, int qos);
 
 /**
  * @brief Serialize an aggregated payload into a BSON document.
@@ -102,7 +102,7 @@ astarte_result_t astarte_device_transmission_stream_individual(astarte_device_ha
     }
 
     int data_ser_len = 0;
-    void *data_ser = (void *) astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
     if (!data_ser) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
         ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
@@ -133,26 +133,28 @@ astarte_result_t astarte_device_transmission_stream_aggregated(astarte_device_ha
         &device->introspection, interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR("Couldn't find interface in device introspection (%s).", interface_name);
-        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        ares = ASTARTE_RESULT_INTERFACE_NOT_FOUND;
+        goto exit;
     }
 
     if (interface->mappings_length != entries_len) {
         ASTARTE_LOG_ERR("Incomplete aggregated datastream (%s/%s).", interface->name, path);
-        return ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+        ares = ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+        goto exit;
     }
 
     ares = astarte_validation_aggregated_datastream(
         interface, path, entries, entries_len, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");
-        return ares;
+        goto exit;
     }
 
     int qos = 0;
     ares = astarte_interface_get_qos(interface, NULL, &qos);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed getting QoS for aggregated data streaming.");
-        return ares;
+        goto exit;
     }
 
     ares = serialize_aggregated_payload(&outer_bson, entries, entries_len, timestamp);
@@ -169,7 +171,7 @@ astarte_result_t astarte_device_transmission_stream_aggregated(astarte_device_ha
         goto exit;
     }
 
-    ares = publish_data(device, interface_name, path, (void *) data, len, qos);
+    ares = publish_data(device, interface_name, path, data, len, qos);
 
 exit:
     astarte_bson_serializer_destroy(&outer_bson);
@@ -235,7 +237,7 @@ astarte_result_t astarte_device_transmission_unset_property(
  ***********************************************/
 
 static astarte_result_t publish_data(astarte_device_handle_t device, const char *interface_name,
-    const char *path, void *data, int data_size, int qos)
+    const char *path, const void *data, int data_size, int qos)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char *topic = NULL;
@@ -285,13 +287,13 @@ static astarte_result_t serialize_aggregated_payload(astarte_bson_serializer_t *
     ares = astarte_bson_serializer_init(outer_bson);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the outer bson serializer");
-        return ares;
+        goto exit;
     }
 
     ares = astarte_bson_serializer_init(&inner_bson);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the inner bson serializer");
-        return ares;
+        goto exit;
     }
 
     ares = astarte_object_entries_serialize(&inner_bson, entries, entries_len);

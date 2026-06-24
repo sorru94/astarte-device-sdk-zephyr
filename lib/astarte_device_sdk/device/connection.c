@@ -465,8 +465,8 @@ static astarte_result_t send_purge_device_properties(astarte_device_handle_t dev
         goto exit;
     }
     // Fill the first 32 bits of the payload
-    uint32_t *payload_uint32 = (uint32_t *) payload;
-    *payload_uint32 = __builtin_bswap32(compression_input_len);
+    uint32_t raw_len = __builtin_bswap32(compression_input_len);
+    memcpy(payload, &raw_len, sizeof(raw_len));
     // Perform the compression and store result in the payload
     int compress_res = astarte_zlib_compress((char unsigned *) &payload[4], &compressed_len,
         (char unsigned *) compression_input, compression_input_len);

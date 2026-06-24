@@ -16,6 +16,7 @@
 #include <zephyr/net/tls_credentials.h>
 #endif
 
+#include "alloc.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_http, CONFIG_ASTARTE_DEVICE_SDK_HTTP_LOG_LEVEL);
@@ -306,10 +307,13 @@ static astarte_result_t astarte_http_do_request(enum http_method method, int32_t
     }
 
     struct http_request req = { 0 };
-    // TODO: This buffer is still allocated on the stack. Consider moving this to the heap to avoid
-    // the stack overflow risk.
-    uint8_t recv_buf[CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE];
-    memset(recv_buf, 0, sizeof(recv_buf));
+    size_t buf_size = CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_HTTP_RCV_BUFFER_SIZE;
+    uint8_t *recv_buf = (uint8_t *) astarte_calloc(buf_size, sizeof(uint8_t));
+    if (recv_buf == NULL) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        zsock_close(sock);
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
 
     req.method = method;
     req.host = CONFIG_ASTARTE_DEVICE_SDK_HOSTNAME;
@@ -329,7 +333,7 @@ static astarte_result_t astarte_http_do_request(enum http_method method, int32_t
     }
 
     req.recv_buf = recv_buf;
-    req.recv_buf_len = sizeof(recv_buf);
+    req.recv_buf_len = buf_size;
 
     ASTARTE_LOG_DBG("Executing http_client_req on socket %d...", sock);
 
@@ -342,11 +346,13 @@ static astarte_result_t astarte_http_do_request(enum http_method method, int32_t
         ASTARTE_LOG_ERR("HTTP request failed (http_client_req code: %d, context flag ok: %d)",
             http_rc, ctx->request_ok);
         zsock_close(sock);
+        astarte_free(recv_buf);
         return ASTARTE_RESULT_HTTP_REQUEST_ERROR;
     }
 
     ASTARTE_LOG_DBG("HTTP request completed successfully. Closing socket %d.", sock);
     zsock_close(sock);
 
+    astarte_free(recv_buf);
     return ASTARTE_RESULT_OK;
 }

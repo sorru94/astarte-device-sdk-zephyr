@@ -13,6 +13,12 @@ SPDX-FileCopyrightText = "SECO Mind Srl"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
+path = "e2e/certificate/api.astarte.clea-dev.midgar.services.pem"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "SECO Mind Srl"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
 path = "samples/astarte_app/interfaces/generated_interfaces.c"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "SECO Mind Srl"

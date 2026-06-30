@@ -37,6 +37,8 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VAL
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static SYS_MUTEX_DEFINE(astarte_key_value_mutex);
 
+#define FULL_KEY(alternate, key) ((alternate) ? ((1U << 16U) + (uint32_t) (key)) : (uint32_t) (key))
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -47,6 +49,110 @@ static astarte_result_t find_next_matching_id(
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
+
+astarte_result_t astarte_key_value_direct_insert(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key, const void *value, size_t value_size)
+{
+    if (!value || value_size == 0) {
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    int mutex_rc = sys_mutex_lock(&astarte_key_value_mutex, K_FOREVER);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+
+    uint32_t full_key = FULL_KEY(alternate, key);
+
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    ssize_t ret = zms_write(zms_fs, full_key, value, value_size);
+    if (ret < 0) {
+        ASTARTE_LOG_ERR("Failed to insert direct key %d: %d", full_key, (int) ret);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
+    }
+
+    mutex_rc = sys_mutex_unlock(&astarte_key_value_mutex);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+
+    return ares;
+}
+
+astarte_result_t astarte_key_value_direct_find(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key, void *value, size_t *value_size)
+{
+    if (!value_size) {
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    int mutex_rc = sys_mutex_lock(&astarte_key_value_mutex, K_FOREVER);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+
+    uint32_t full_key = FULL_KEY(alternate, key);
+
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    ssize_t data_len = zms_get_data_length(zms_fs, full_key);
+
+    if (data_len == -ENOENT) {
+        ares = ASTARTE_RESULT_NOT_FOUND;
+        goto exit;
+    } else if (data_len < 0) {
+        ASTARTE_LOG_ERR("Failed to get data length for key %d: %d", key, (int) data_len);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
+        goto exit;
+    }
+
+    if (!value) {
+        *value_size = data_len;
+        goto exit;
+    }
+
+    if (*value_size < (size_t) data_len) {
+        ASTARTE_LOG_ERR(
+            "Buffer too small for key %d. Need %d, got %d", key, (int) data_len, *value_size);
+        ares = ASTARTE_RESULT_INVALID_PARAM;
+        goto exit;
+    }
+
+    ssize_t ret = zms_read(zms_fs, key, value, *value_size);
+    if (ret != data_len) {
+        ASTARTE_LOG_ERR("Failed to read direct key %d: %d", key, (int) ret);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
+    } else {
+        *value_size = ret;
+    }
+
+exit:
+    mutex_rc = sys_mutex_unlock(&astarte_key_value_mutex);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+    return ares;
+}
+
+astarte_result_t astarte_key_value_direct_delete(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key)
+{
+    int mutex_rc = sys_mutex_lock(&astarte_key_value_mutex, K_FOREVER);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+
+    uint32_t full_key = FULL_KEY(alternate, key);
+
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    ssize_t ret = zms_delete(zms_fs, full_key);
+
+    // -ENOENT means it was already deleted, which is a successful state
+    if (ret < 0 && ret != -ENOENT) {
+        ASTARTE_LOG_ERR("Failed to delete direct key %d: %d", key, (int) ret);
+        ares = ASTARTE_RESULT_ZMS_ERROR;
+    }
+
+    mutex_rc = sys_mutex_unlock(&astarte_key_value_mutex);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+
+    return ares;
+}
 
 astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct zms_fs *zms_fs)
 {

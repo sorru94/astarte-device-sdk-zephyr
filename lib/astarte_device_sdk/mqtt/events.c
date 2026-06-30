@@ -39,8 +39,8 @@ void astarte_mqtt_handle_connack_event(
     }
 
     if (connack.session_present_flag == 0) {
-        astarte_mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
-        astarte_mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
+        astarte_mqtt_caching_clear_messages(&astarte_mqtt->in_msgs);
+        astarte_mqtt_caching_clear_messages(&astarte_mqtt->out_msgs);
     }
 
     if (astarte_mqtt->on_connected_cbk) {
@@ -128,7 +128,7 @@ void astarte_mqtt_handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_
     uint16_t message_id = pubrel.message_id;
     ASTARTE_LOG_DBG("Received PUBREL packet (%u)", message_id);
 
-    astarte_mqtt_caching_remove_message(&astarte_mqtt->in_msg_map, message_id);
+    astarte_mqtt_caching_remove_message(&astarte_mqtt->in_msgs, message_id);
 
     struct mqtt_pubcomp_param pubcomp = { .message_id = message_id };
     int res = mqtt_publish_qos2_complete(&astarte_mqtt->client, &pubcomp);
@@ -142,7 +142,7 @@ void astarte_mqtt_handle_puback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_
     uint16_t message_id = puback.message_id;
     ASTARTE_LOG_DBG("Received PUBACK packet (%u)", message_id);
 
-    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
+    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msgs, message_id);
 
     if (astarte_mqtt->on_delivered_cbk) {
         astarte_mqtt->on_delivered_cbk(astarte_mqtt, message_id);
@@ -154,7 +154,7 @@ void astarte_mqtt_handle_pubrec_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_
     uint16_t message_id = pubrec.message_id;
     ASTARTE_LOG_DBG("Received PUBREC packet (%u)", message_id);
 
-    astarte_mqtt_caching_update_message_expiry(&astarte_mqtt->out_msg_map, message_id);
+    astarte_mqtt_caching_update_message_expiry(&astarte_mqtt->out_msgs, message_id);
 
     // Transmit a PUBREL
     const struct mqtt_pubrel_param rel_param = { .message_id = message_id };
@@ -170,7 +170,7 @@ void astarte_mqtt_handle_pubcomp_event(
     uint16_t message_id = pubcomp.message_id;
     ASTARTE_LOG_DBG("Received PUBCOMP packet (%u)", message_id);
 
-    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
+    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msgs, message_id);
 
     if (astarte_mqtt->on_delivered_cbk) {
         astarte_mqtt->on_delivered_cbk(astarte_mqtt, message_id);
@@ -182,7 +182,7 @@ void astarte_mqtt_handle_suback_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_
     uint16_t message_id = suback.message_id;
     ASTARTE_LOG_DBG("Received SUBACK packet (%u)", message_id);
 
-    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msg_map, message_id);
+    astarte_mqtt_caching_remove_message(&astarte_mqtt->out_msgs, message_id);
 
     if (astarte_mqtt->on_subscribed_cbk) {
         enum mqtt_suback_return_code return_code = MQTT_SUBACK_FAILURE;
@@ -248,19 +248,19 @@ static int acknowledge_qos(astarte_mqtt_t *astarte_mqtt, uint16_t message_id, ui
             ASTARTE_LOG_ERR("MQTT PUBREC transmission error %d", ret);
         }
 
-        if (astarte_mqtt_caching_find_message(&astarte_mqtt->in_msg_map, message_id)) {
+        if (astarte_mqtt_caching_find_message(&astarte_mqtt->in_msgs, message_id)) {
             ASTARTE_LOG_WRN("Received duplicated PUBLISH QoS 2 with message ID (%d).", message_id);
             return -1;
         }
 
-        astarte_mqtt_caching_message_t message = {
-            .type = MQTT_CACHING_PUBREC_ENTRY,
+        astarte_storage_mqtt_message_t message = {
+            .type = STORAGE_MQTT_PUBREC_ENTRY,
             .topic = NULL,
             .data = NULL,
             .data_size = 0,
             .qos = 2,
         };
-        astarte_mqtt_caching_insert_message(&astarte_mqtt->in_msg_map, message_id, message);
+        astarte_mqtt_caching_insert_message(&astarte_mqtt->in_msgs, message_id, message);
     }
 
     return 0;

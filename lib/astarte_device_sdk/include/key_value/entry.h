@@ -41,7 +41,7 @@
 #define ASTARTE_KEY_VALUE_ENTRY_MAX_USABLE_ID (ASTARTE_KEY_VALUE_ENTRY_INTENT_ID - 1)
 
 /** @brief The minimum allowable ZMS ID to reserve the first block of entries. */
-#define ASTARTE_KEY_VALUE_ENTRY_MIN_USABLE_ID ((uint32_t) UINT16_MAX + 1)
+#define ASTARTE_KEY_VALUE_ENTRY_MIN_USABLE_ID ((uint32_t) 0x1FFFF + 1)
 
 /**
  * @brief Finds an existing ZMS ID via hash and probing, or allocates an available one.

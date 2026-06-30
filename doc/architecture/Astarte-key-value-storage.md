@@ -14,7 +14,7 @@ The library abstracts standard key-value pairs by mapping them to discrete 32-bi
 
 | ZMS reserved IDs                           | Value          | Purpose                                                                         |
 | ------------------------------------------ | -------------- | ------------------------------------------------------------------------------- |
-| `ASTARTE_KEY_VALUE_ENTRY_MIN_USABLE_ID`    | UINT16_MAX + 1 | The minimum allowable ID for standard key-value payloads.                       |
+| `ASTARTE_KEY_VALUE_ENTRY_MIN_USABLE_ID`    | 0x1FFFF + 1    | The minimum allowable ID for standard key-value payloads.                       |
 | `ASTARTE_KEY_VALUE_ENTRY_MAX_USABLE_ID`    | UINT32_MAX - 4 | The maximum allowable ID for standard key-value payloads.                       |
 | `ASTARTE_KEY_VALUE_ENTRY_INTENT_ID`        | UINT32_MAX - 3 | Stores the Write-Ahead Log (WAL) intent block.                                  |
 | `ASTARTE_KEY_VALUE_ENTRY_HEAD_AND_TAIL_ID` | UINT32_MAX - 2 | Stores the global linked list's head and tail pointers.                         |

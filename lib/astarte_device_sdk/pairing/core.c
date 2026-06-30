@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "crypto.h"
 #include "http.h"
 #include "log.h"
@@ -204,6 +205,10 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt)
 {
     astarte_result_t ares = ASTARTE_RESULT_INVALID_PARAM;
+    unsigned char *csr_buf = NULL;
+    char *payload = NULL;
+    char *resp_buf = NULL;
+
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
@@ -219,8 +224,15 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         goto error;
     }
 
-    unsigned char csr_buf[ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE];
-    ares = astarte_crypto_create_csr(&client_crt->privkey, csr_buf, sizeof(csr_buf));
+    csr_buf = astarte_calloc(ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE, sizeof(unsigned char));
+    if (!csr_buf) {
+        ASTARTE_LOG_ERR("Failed to allocate memory for CSR buffer.");
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto error;
+    }
+
+    ares = astarte_crypto_create_csr(
+        &client_crt->privkey, csr_buf, ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
         goto error;
@@ -236,14 +248,27 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         goto error;
     }
     const char *header_fields[] = { auth_header, NULL };
-    char payload[GET_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
+
+    payload = astarte_calloc(GET_CLIENT_CRT_PAYLOAD_MAX_SIZE, sizeof(char));
+    if (!payload) {
+        ASTARTE_LOG_ERR("Failed to allocate memory for payload buffer.");
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto error;
+    }
+
     ares = astarte_pairing_serialize_get_client_certificate_payload(
         csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
         goto error;
     }
 
-    char resp_buf[GET_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
+    resp_buf = astarte_calloc(GET_CLIENT_CRT_RESPONSE_MAX_SIZE, sizeof(char));
+    if (!resp_buf) {
+        ASTARTE_LOG_ERR("Failed to allocate memory for response buffer.");
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto error;
+    }
+
     char url[PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN + 1] = { 0 };
     snprintf_rc = snprintf(url, PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN + 1,
         PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_URL_SUFFIX, device_id);
@@ -253,7 +278,8 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         goto error;
     }
 
-    ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
+    ares = astarte_http_post(
+        timeout_ms, url, header_fields, payload, resp_buf, GET_CLIENT_CRT_RESPONSE_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
         goto error;
     }
@@ -276,9 +302,18 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     }
 
     ASTARTE_LOG_DBG("Received client certificate: %s", client_crt->crt_pem);
+
+    astarte_free(csr_buf);
+    astarte_free(payload);
+    astarte_free(resp_buf);
+
     return ASTARTE_RESULT_OK;
 
 error:
+    astarte_free(csr_buf);
+    astarte_free(payload);
+    astarte_free(resp_buf);
+
     // clear the credentials
     psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
     if (psa_ret != PSA_SUCCESS) {
@@ -295,6 +330,8 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *device_id, const char *cred_secr, const char *crt_pem)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
+    char *payload = NULL;
+
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
@@ -311,11 +348,18 @@ astarte_result_t astarte_pairing_verify_client_certificate(
         return ASTARTE_RESULT_INVALID_PARAM;
     }
     const char *header_fields[] = { auth_header, NULL };
-    char payload[VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE] = { 0 };
+
+    // Dynamically allocate the payload buffer
+    payload = astarte_calloc(VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE, sizeof(char));
+    if (!payload) {
+        ASTARTE_LOG_ERR("Failed to allocate memory for payload buffer.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
+
     ares = astarte_pairing_serialize_verify_client_certificate_payload(
         crt_pem, payload, VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+        goto exit;
     }
 
     char url[PAIRING_DEVICE_CERT_CHECK_URL_LEN + 1] = { 0 };
@@ -323,17 +367,23 @@ astarte_result_t astarte_pairing_verify_client_certificate(
         PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX, device_id);
     if (snprintf_rc != PAIRING_DEVICE_CERT_CHECK_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for verify client certificate request.");
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        ares = ASTARTE_RESULT_INTERNAL_ERROR;
+        goto exit;
     }
 
     char resp_buf[VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
     ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (ares != ASTARTE_RESULT_OK) {
-        return ares;
+        goto exit;
     }
 
     // Step 3: process the result
-    return astarte_pairing_deserialize_verify_client_certificate_response(resp_buf);
+    ares = astarte_pairing_deserialize_verify_client_certificate_response(resp_buf);
+
+exit:
+    // Free the buffer regardless of success or failure
+    astarte_free(payload);
+    return ares;
 }
 
 /************************************************

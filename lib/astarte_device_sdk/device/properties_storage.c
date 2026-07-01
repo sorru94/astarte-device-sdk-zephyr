@@ -96,6 +96,15 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
             ASTARTE_LOG_ERR("Can't get stored properties string: %s", astarte_result_to_name(ares));
             goto exit;
         }
+    } else {
+        const size_t header_size = 4U;
+        intr_str = astarte_calloc(header_size, sizeof(char));
+        if (!intr_str) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
+            goto exit;
+        }
+        intr_str_size = header_size;
     }
 
     // Transmit the payload

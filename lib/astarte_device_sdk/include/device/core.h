@@ -26,6 +26,8 @@
 
 /** @brief Generic prefix to be used for all MQTT topics. */
 #define MQTT_TOPIC_PREFIX CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/"
+/** @brief Suffix to be used for the capabilites MQTT topic. */
+#define MQTT_CAPABILITIES_TOPIC_SUFFIX "/capabilities"
 /** @brief Generic suffix to be used for all control MQTT topics. */
 #define MQTT_CONTROL_TOPIC_SUFFIX "/control"
 /** @brief Suffix to be used for the empty cache control MQTT topic. */
@@ -39,6 +41,10 @@
 #define MQTT_TOPIC_PREFIX_LEN (sizeof(MQTT_TOPIC_PREFIX) - 1)
 /** @brief Size in chars of the generic base topic. In the form: 'REALM NAME/DEVICE ID' */
 #define MQTT_BASE_TOPIC_LEN (MQTT_TOPIC_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN)
+/** @brief Size in chars of the #MQTT_CAPABILITIES_TOPIC_SUFFIX string. */
+#define MQTT_CAPABILITIES_TOPIC_SUFFIX_LEN (sizeof(MQTT_CAPABILITIES_TOPIC_SUFFIX) - 1)
+/** @brief Size in chars of the generic capabilities topic. */
+#define MQTT_CAPABILITIES_TOPIC_LEN (MQTT_BASE_TOPIC_LEN + MQTT_CAPABILITIES_TOPIC_SUFFIX_LEN)
 /** @brief Size in chars of the #MQTT_CONTROL_TOPIC_SUFFIX string. */
 #define MQTT_CONTROL_TOPIC_SUFFIX_LEN (sizeof(MQTT_CONTROL_TOPIC_SUFFIX) - 1)
 /** @brief Size in chars of the generic control topic. */
@@ -126,6 +132,8 @@ struct astarte_device
     k_timepoint_t reconnection_timepoint;
     /** @brief Base MQTT topic for the device. */
     char base_topic[MQTT_BASE_TOPIC_LEN + 1];
+    /** @brief Publish topic for the control EmptyCache. */
+    char capabilities_topic[MQTT_CAPABILITIES_TOPIC_LEN + 1];
     /** @brief Base MQTT control topic for the device. */
     char control_topic[MQTT_CONTROL_TOPIC_LEN + 1];
     /** @brief Publish topic for the control EmptyCache. */

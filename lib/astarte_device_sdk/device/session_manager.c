@@ -6,6 +6,7 @@
 #include "device/core.h"
 
 #include "alloc.h"
+#include "bson/serializer.h"
 #include "device/properties.h"
 #include "device/properties_storage.h"
 #include "mqtt/pubsub.h"
@@ -28,6 +29,7 @@ static void state_machine_handshake_error_run(astarte_device_handle_t device);
 static void state_machine_connected_run(astarte_device_handle_t device);
 static astarte_result_t setup_subscriptions(astarte_device_handle_t device);
 static void send_introspection(astarte_device_handle_t device, char *intr_str);
+static void send_device_capabilities(astarte_device_handle_t device);
 static void send_emptycache(astarte_device_handle_t device);
 
 /************************************************
@@ -179,13 +181,13 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
         goto exit;
     }
 #endif
-
     if (setup_subscriptions(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
         goto exit;
     }
     send_introspection(device, intr_str);
+    send_device_capabilities(device);
     send_emptycache(device);
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
     if (astarte_device_properties_send_purge(device) != ASTARTE_RESULT_OK) {
@@ -329,6 +331,44 @@ static void send_introspection(astarte_device_handle_t device, char *intr_str)
     const char *topic = device->base_topic;
     ASTARTE_LOG_DBG("Publishing introspection: %s", intr_str);
     astarte_mqtt_publish(&device->astarte_mqtt, topic, intr_str, strlen(intr_str), 2, NULL);
+}
+
+static void send_device_capabilities(astarte_device_handle_t device)
+{
+    const char *topic = device->capabilities_topic;
+    ASTARTE_LOG_DBG("Publishing device capabilities");
+
+    astarte_bson_serializer_t bson = { 0 };
+    astarte_result_t ares = astarte_bson_serializer_init(&bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to initialize BSON serializer for capabilities");
+        goto exit;
+    }
+
+    ares = astarte_bson_serializer_append_string(
+        &bson, "purge_properties_compression_format", "plaintext");
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to append string to capabilities BSON");
+        goto exit;
+    }
+
+    ares = astarte_bson_serializer_append_end_of_document(&bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to finalize capabilities BSON document");
+        goto exit;
+    }
+
+    int size = 0;
+    const void *document = astarte_bson_serializer_get_serialized(&bson, &size);
+    if (!document) {
+        ASTARTE_LOG_ERR("Failed to get serialized BSON document");
+        goto exit;
+    }
+
+    astarte_mqtt_publish(&device->astarte_mqtt, topic, (void *) document, size, 2, NULL);
+
+exit:
+    astarte_bson_serializer_destroy(&bson);
 }
 
 static void send_emptycache(astarte_device_handle_t device)

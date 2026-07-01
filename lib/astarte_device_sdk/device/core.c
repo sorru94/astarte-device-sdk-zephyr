@@ -289,6 +289,12 @@ static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device)
         ASTARTE_LOG_ERR("Error encoding base topic");
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    snprintf_rc = snprintf(device->capabilities_topic, MQTT_CAPABILITIES_TOPIC_LEN + 1,
+        MQTT_TOPIC_PREFIX "%s" MQTT_CAPABILITIES_TOPIC_SUFFIX, device->device_id);
+    if (snprintf_rc != MQTT_CAPABILITIES_TOPIC_LEN) {
+        ASTARTE_LOG_ERR("Error encoding capabilities topic");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
+    }
     snprintf_rc = snprintf(device->control_topic, MQTT_CONTROL_TOPIC_LEN + 1,
         MQTT_TOPIC_PREFIX "%s" MQTT_CONTROL_TOPIC_SUFFIX, device->device_id);
     if (snprintf_rc != MQTT_CONTROL_TOPIC_LEN) {

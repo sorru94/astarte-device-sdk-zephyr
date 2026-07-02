@@ -84,62 +84,71 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
     switch (evt->type) {
         case MQTT_EVT_CONNACK:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT CONNACK event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT CONNACK event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_connack_event(astarte_mqtt, evt->param.connack);
             break;
         case MQTT_EVT_DISCONNECT:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT disconnection event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT disconnection event error: %d, %s", evt->result, strerror(evt->result));
             }
             astarte_mqtt_handle_disconnection_event(astarte_mqtt);
             break;
         case MQTT_EVT_PUBLISH:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBLISH event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PUBLISH event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_publish_event(astarte_mqtt, evt->param.publish);
             break;
         case MQTT_EVT_PUBREL:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBREL event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PUBREL event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_pubrel_event(astarte_mqtt, evt->param.pubrel);
             break;
         case MQTT_EVT_PUBACK:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBACK event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PUBACK event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_puback_event(astarte_mqtt, evt->param.puback);
             break;
         case MQTT_EVT_PUBREC:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBREC event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PUBREC event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_pubrec_event(astarte_mqtt, evt->param.pubrec);
             break;
         case MQTT_EVT_PUBCOMP:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PUBCOMP event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PUBCOMP event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_pubcomp_event(astarte_mqtt, evt->param.pubcomp);
             break;
         case MQTT_EVT_SUBACK:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT SUBACK event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT SUBACK event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             astarte_mqtt_handle_suback_event(astarte_mqtt, evt->param.suback);
             break;
         case MQTT_EVT_PINGRESP:
             if (evt->result != 0) {
-                ASTARTE_LOG_ERR("MQTT PINGRESP event error: %s", strerror(-evt->result));
+                ASTARTE_LOG_ERR(
+                    "MQTT PINGRESP event error: %d, %s", evt->result, strerror(evt->result));
                 break;
             }
             ASTARTE_LOG_DBG("Received PINGRESP packet");

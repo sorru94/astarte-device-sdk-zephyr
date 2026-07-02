@@ -301,7 +301,8 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         memmove(tmp + 1, tmp + 2, len + 1);
     }
 
-    ASTARTE_LOG_DBG("Received client certificate: %s", client_crt->crt_pem);
+    ASTARTE_LOG_HEXDUMP_DBG(
+        client_crt->crt_pem, strlen(client_crt->crt_pem), "Received client certificate:");
 
     astarte_free(csr_buf);
     astarte_free(payload);

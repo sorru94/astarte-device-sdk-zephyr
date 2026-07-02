@@ -19,6 +19,19 @@ extern "C" {
 #endif
 
 /**
+ * @brief Internal function to send a value, bypassing connection state checks.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[in] interface_name Interface where to publish data.
+ * @param[in] path Path where to publish data.
+ * @param[in] data Astarte value to send.
+ * @param[in] timestamp Timestamp of the message, ignored if set to NULL.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp);
+
+/**
  * @brief Handles an incoming generic datastream data message.
  *
  * @details Deserializes the BSON payload and calls the appropriate handler based on the Astarte

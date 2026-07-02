@@ -419,7 +419,7 @@ static void send_device_owned_property(astarte_device_handle_t device,
     }
 
     if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_DEVICE) {
-        ares = astarte_device_send_individual(device, interface_name, path, data, NULL);
+        ares = astarte_device_send_individual_internal(device, interface_name, path, data, NULL);
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed sending cached property: %s",
             astarte_result_to_name(ares));
     }

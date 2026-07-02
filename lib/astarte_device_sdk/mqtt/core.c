@@ -151,11 +151,14 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
 }
 
 static void mqtt_caching_retransmit_out_msg_handler(
-    astarte_mqtt_t *astarte_mqtt, uint16_t message_id, astarte_mqtt_caching_message_t message)
+    astarte_mqtt_caching_t *caching, uint16_t message_id, astarte_storage_mqtt_message_t message)
 {
     int ret = 0;
+
+    astarte_mqtt_t *astarte_mqtt = CONTAINER_OF(caching, astarte_mqtt_t, out_msgs);
+
     switch (message.type) {
-        case MQTT_CACHING_PUBLISH_ENTRY:
+        case STORAGE_MQTT_PUBLISH_ENTRY:
             ASTARTE_LOG_DBG("Retransmitting MQTT publish message: %d", message_id);
             struct mqtt_publish_param msg = { 0 };
             msg.retain_flag = 0U;
@@ -175,7 +178,7 @@ static void mqtt_caching_retransmit_out_msg_handler(
                 ASTARTE_LOG_HEXDUMP_DBG(message.data, message.data_size, "Published payload:");
             }
             break;
-        case MQTT_CACHING_SUBSCRIPTION_ENTRY:
+        case STORAGE_MQTT_SUBSCRIPTION_ENTRY:
             ASTARTE_LOG_DBG("Retransmitting MQTT subscribe message: %d", message_id);
             struct mqtt_topic topics[] = { {
                 .topic = { .utf8 = message.topic, .size = strlen(message.topic) },
@@ -201,9 +204,12 @@ static void mqtt_caching_retransmit_out_msg_handler(
 }
 
 static void mqtt_caching_retransmit_in_msg_handler(
-    astarte_mqtt_t *astarte_mqtt, uint16_t message_id, astarte_mqtt_caching_message_t message)
+    astarte_mqtt_caching_t *caching, uint16_t message_id, astarte_storage_mqtt_message_t message)
 {
     (void) message;
+
+    astarte_mqtt_t *astarte_mqtt = CONTAINER_OF(caching, astarte_mqtt_t, in_msgs);
+
     struct mqtt_pubrec_param pubrec = { .message_id = message_id };
     int ret = mqtt_publish_qos2_receive(&astarte_mqtt->client, &pubrec);
     if (ret != 0) {
@@ -248,29 +254,14 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
     // Initialize the reconnection timepoint
     astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_NO_WAIT);
 
-    // Initialize the caching hashmaps
-    // NOLINTNEXTLINE
-    astarte_mqtt->out_msg_map_config = (const struct sys_hashmap_config) SYS_HASHMAP_CONFIG(
-        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
-        SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
-    astarte_mqtt->out_msg_map = (struct sys_hashmap){
-        .api = &sys_hashmap_sc_api,
-        .config = &astarte_mqtt->out_msg_map_config,
-        .data = &astarte_mqtt->out_msg_map_data,
-        .hash_func = sys_hash32,
-        .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
-    };
-    // NOLINTNEXTLINE
-    astarte_mqtt->in_msg_map_config = (const struct sys_hashmap_config) SYS_HASHMAP_CONFIG(
-        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE,
-        SYS_HASHMAP_DEFAULT_LOAD_FACTOR);
-    astarte_mqtt->in_msg_map = (struct sys_hashmap){
-        .api = &sys_hashmap_sc_api,
-        .config = &astarte_mqtt->in_msg_map_config,
-        .data = &astarte_mqtt->in_msg_map_data,
-        .hash_func = sys_hash32,
-        .alloc_func = SYS_HASHMAP_DEFAULT_ALLOCATOR,
-    };
+    // Initialize caching
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+    astarte_mqtt_caching_init(&astarte_mqtt->out_msgs, cfg->storage, STORAGE_MQTT_MSG_OUTGOING);
+    astarte_mqtt_caching_init(&astarte_mqtt->in_msgs, cfg->storage, STORAGE_MQTT_MSG_INCOMING);
+#else
+    astarte_mqtt_caching_init(&astarte_mqtt->out_msgs);
+    astarte_mqtt_caching_init(&astarte_mqtt->in_msgs);
+#endif
 
     // Initialize the mutex
     sys_mutex_init(&astarte_mqtt->mutex);
@@ -479,11 +470,11 @@ astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
             astarte_mqtt_caching_retransmit_cbk_t retransmit_out_msg_cbk
                 = mqtt_caching_retransmit_out_msg_handler;
             astarte_mqtt_caching_check_message_expiry(
-                &astarte_mqtt->out_msg_map, astarte_mqtt, retransmit_out_msg_cbk);
+                &astarte_mqtt->out_msgs, retransmit_out_msg_cbk);
             astarte_mqtt_caching_retransmit_cbk_t retransmit_in_msg_cbk
                 = mqtt_caching_retransmit_in_msg_handler;
             astarte_mqtt_caching_check_message_expiry(
-                &astarte_mqtt->in_msg_map, astarte_mqtt, retransmit_in_msg_cbk);
+                &astarte_mqtt->in_msgs, retransmit_in_msg_cbk);
         }
 
         // Check connection and ensure to periodically ping the broker using mqtt_live

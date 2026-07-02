@@ -9,7 +9,7 @@ tests:
     harness_config:
       pytest_dut_scope: "session"
     timeout: 300
-    platform_allow: [qemu_x86, native_sim]
+    platform_allow: [qemu_x86, native_sim, stm32h573i_dk]
     integration_platforms: [native_sim]
     tags:
       - e2e

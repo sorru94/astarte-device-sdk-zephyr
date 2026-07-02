@@ -24,6 +24,8 @@ manifest:
           - tf-psa-crypto
           - picolibc
           - net-tools
+          - hal_stm32
+          - cmsis_6
     - name: zlib-zephyr
       remote: secomind
       revision: release-v1.3.1

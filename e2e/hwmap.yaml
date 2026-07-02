@@ -1,0 +1,14 @@
+# (C) Copyright 2026, SECO Mind Srl
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Note, this hawrdware map is only intended as a reference, generate an appropiate one for
+# your machine using the west command, e.g.:
+# west twister --generate-hardware-map hwmap.yaml
+
+- connected: true
+  id: '003600463532511731333430'
+  platform: stm32h573i_dk
+  product: STLINK-V3
+  runner: stm32cubeprogrammer
+  serial: /dev/ttyACM0

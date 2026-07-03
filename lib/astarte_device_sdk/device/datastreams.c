@@ -36,17 +36,28 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
 astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
 {
+    if (!device) {
+        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    if (device->connection_state != DEVICE_CONNECTED) {
+        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected");
+        return ASTARTE_RESULT_DEVICE_NOT_READY;
+    }
+
+    return astarte_device_send_individual_internal(device, interface_name, path, data, timestamp);
+}
+
+astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t device,
+    const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
+{
     astarte_bson_serializer_t bson = { 0 };
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
     if (!device || !interface_name || !path) {
         ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter");
         ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
-    }
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected");
-        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
         goto exit;
     }
 

@@ -82,7 +82,8 @@ astarte_result_t astarte_crypto_create_key(
         goto error;
     }
 
-    ASTARTE_LOG_DBG("%.*s", strlen((char *) privkey_pem), privkey_pem);
+    ASTARTE_LOG_HEXDUMP_DBG(
+        (char *) privkey_pem, strlen((char *) privkey_pem), "Generated PEM private key:");
 
     mbedtls_pk_free(&key_ctx);
 
@@ -145,7 +146,7 @@ astarte_result_t astarte_crypto_create_csr(
         goto exit;
     }
 
-    ASTARTE_LOG_DBG("%.*s", strlen((char *) csr_pem), csr_pem);
+    ASTARTE_LOG_HEXDUMP_DBG((char *) csr_pem, strlen((char *) csr_pem), "Generated PEM CSR:");
 
     ares = ASTARTE_RESULT_OK;
 

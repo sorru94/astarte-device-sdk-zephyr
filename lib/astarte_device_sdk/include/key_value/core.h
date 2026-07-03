@@ -46,7 +46,7 @@
 /** @brief The current major version for the key-value storage. */
 #define ASTARTE_KEY_VALUE_FORMAT_VERSION_MAJOR 0
 /** @brief The current minor version for the key-value storage. */
-#define ASTARTE_KEY_VALUE_FORMAT_VERSION_MINOR 5
+#define ASTARTE_KEY_VALUE_FORMAT_VERSION_MINOR 6
 /** @brief The current patch version for the key-value storage. */
 #define ASTARTE_KEY_VALUE_FORMAT_VERSION_PATCH 0
 
@@ -93,6 +93,44 @@ typedef struct
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Insert or update a value at a specific 16-bit key.
+ *
+ * @param[in,out] zms_fs The ZMS file system context to open.
+ * @param[in] alternate Alternate option for the entry.
+ * @param[in] key The 16-bit key.
+ * @param[in] value Value to store.
+ * @param[in] value_size Size of the value to store.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_key_value_direct_insert(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key, const void *value, size_t value_size);
+
+/**
+ * @brief Read a value from a specific 16-bit key.
+ *
+ * @param[in,out] zms_fs The ZMS file system context to open.
+ * @param[in] alternate Alternate option for the entry.
+ * @param[in] key The 16-bit key.
+ * @param[out] value Buffer where to store the value, can be NULL to just query the size.
+ * @param[inout] value_size Size of the provided buffer. Will be updated to the actual data size.
+ * @return ASTARTE_RESULT_OK if successful, ASTARTE_RESULT_NOT_FOUND if not found, otherwise an
+ * error code.
+ */
+astarte_result_t astarte_key_value_direct_find(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key, void *value, size_t *value_size);
+
+/**
+ * @brief Remove the value associated with a specific 16-bit key.
+ *
+ * @param[in,out] zms_fs The ZMS file system context to open.
+ * @param[in] alternate Alternate option for the entry.
+ * @param[in] key The 16-bit key to remove.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_key_value_direct_delete(
+    struct zms_fs *zms_fs, bool alternate, uint16_t key);
 
 /**
  * @brief Initialize a ZMS partition for use with the key-value driver.

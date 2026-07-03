@@ -21,16 +21,16 @@ void astarte_mqtt_subscribe(
     ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
     __ASSERT_NO_MSG(mutex_rc == 0);
 
-    uint16_t message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+    uint16_t message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msgs);
 
-    astarte_mqtt_caching_message_t message = {
-        .type = MQTT_CACHING_SUBSCRIPTION_ENTRY,
+    astarte_storage_mqtt_message_t message = {
+        .type = STORAGE_MQTT_SUBSCRIPTION_ENTRY,
         .topic = (char *) topic,
         .data = NULL,
         .data_size = 0,
         .qos = max_qos,
     };
-    astarte_mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
+    astarte_mqtt_caching_insert_message(&astarte_mqtt->out_msgs, message_id, message);
 
     struct mqtt_topic topics[] = { {
         .topic = { .utf8 = topic, .size = strlen(topic) },
@@ -69,18 +69,18 @@ void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void 
 
     uint16_t message_id = 0;
     if (qos > 0) {
-        message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msg_map);
+        message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msgs);
     }
 
     if (qos > 0) {
-        astarte_mqtt_caching_message_t message = {
-            .type = MQTT_CACHING_PUBLISH_ENTRY,
+        astarte_storage_mqtt_message_t message = {
+            .type = STORAGE_MQTT_PUBLISH_ENTRY,
             .topic = (char *) topic,
             .data = data,
             .data_size = data_size,
             .qos = qos,
         };
-        astarte_mqtt_caching_insert_message(&astarte_mqtt->out_msg_map, message_id, message);
+        astarte_mqtt_caching_insert_message(&astarte_mqtt->out_msgs, message_id, message);
     }
 
     if (out_message_id && (qos > 0)) {
@@ -112,11 +112,11 @@ void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void 
 
 bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt)
 {
-    return !sys_hashmap_is_empty(&astarte_mqtt->out_msg_map);
+    return !sys_hashmap_is_empty(&astarte_mqtt->out_msgs.map);
 }
 
 void astarte_mqtt_clear_all_pending(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_mqtt_caching_clear_messages(&astarte_mqtt->in_msg_map);
-    astarte_mqtt_caching_clear_messages(&astarte_mqtt->out_msg_map);
+    astarte_mqtt_caching_clear_messages(&astarte_mqtt->in_msgs);
+    astarte_mqtt_caching_clear_messages(&astarte_mqtt->out_msgs);
 }

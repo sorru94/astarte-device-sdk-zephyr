@@ -152,6 +152,9 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     astarte_mqtt_config.connection_timeout_ms = cfg->mqtt_connection_timeout_ms;
     astarte_mqtt_config.poll_timeout_ms = cfg->mqtt_poll_timeout_ms;
     astarte_mqtt_config.refresh_client_cert_cbk = refresh_client_cert_handler;
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+    astarte_mqtt_config.storage = &handle->caching;
+#endif
 
     // Wire up dispatcher
     astarte_mqtt_config.on_subscribed_cbk = astarte_device_dispatcher_on_subscribed;

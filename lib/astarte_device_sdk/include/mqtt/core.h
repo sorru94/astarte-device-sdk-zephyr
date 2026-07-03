@@ -20,6 +20,7 @@
 #include "astarte_device_sdk/device_id.h"
 
 #include "backoff.h"
+#include "mqtt/caching.h"
 
 /** @brief Max allowed hostname characters are 253 */
 #define ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN 253
@@ -97,6 +98,10 @@ typedef struct
     astarte_mqtt_on_disconnected_cbk_t on_disconnected_cbk;
     /** @brief Callback used to notify the user that an MQTT message has been received. */
     astarte_mqtt_on_incoming_cbk_t on_incoming_cbk;
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+    /** @brief Handle to the permanent storage. */
+    astarte_storage_data_t *storage;
+#endif
 } astarte_mqtt_config_t;
 
 /**
@@ -138,18 +143,10 @@ struct astarte_mqtt
     astarte_mqtt_on_delivered_cbk_t on_delivered_cbk;
     /** @brief Callback used to check if transmitted subscriptions have been delivered. */
     astarte_mqtt_on_subscribed_cbk_t on_subscribed_cbk;
-    /** @brief Configuration struct for the hashmap used to cache outgoing MQTT messages. */
-    struct sys_hashmap_config out_msg_map_config;
-    /** @brief Data struct for the hashmap used to cache outgoing MQTT messages. */
-    struct sys_hashmap_data out_msg_map_data;
-    /** @brief Main struct for the hashmap used to cache outgoing MQTT messages. */
-    struct sys_hashmap out_msg_map;
-    /** @brief Configuration struct for the hashmap used to cache incoming MQTT messages. */
-    struct sys_hashmap_config in_msg_map_config;
-    /** @brief Data struct for the hashmap used to cache incoming MQTT messages. */
-    struct sys_hashmap_data in_msg_map_data;
-    /** @brief Main struct for the hashmap used to cache incoming MQTT messages. */
-    struct sys_hashmap in_msg_map;
+    /** @brief Caching structure for outgoing MQTT messages. */
+    astarte_mqtt_caching_t out_msgs;
+    /** @brief Caching structure for incoming MQTT messages. */
+    astarte_mqtt_caching_t in_msgs;
     /** @brief Callback used to notify the user that MQTT connection has been established. */
     astarte_mqtt_on_connected_cbk_t on_connected_cbk;
     /** @brief Callback used to notify the user that MQTT connection has been terminated. */

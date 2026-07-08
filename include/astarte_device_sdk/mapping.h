@@ -80,6 +80,22 @@ typedef enum
 } astarte_mapping_reliability_t;
 
 /**
+ * @brief mapping retention definition
+ *
+ * This enum represents the possible values of the retention of an astarte mapping
+ * https://docs.astarte-platform.org/astarte/latest/040-interface_schema.html#astarte-mapping-schema-retention
+ */
+typedef enum
+{
+    /** @brief Discard retention */
+    ASTARTE_MAPPING_RETENTION_DISCARD = 0,
+    /** @brief Volatile retention */
+    ASTARTE_MAPPING_RETENTION_VOLATILE = 1,
+    /** @brief Stored retention */
+    ASTARTE_MAPPING_RETENTION_STORED = 2,
+} astarte_mapping_retention_t;
+
+/**
  * @brief interface mapping definition
  *
  * This structs represent a subset of the information contained in an Astarte interface mapping
@@ -89,20 +105,16 @@ typedef struct
 {
     /** @brief Mapping endpoint */
     const char *endpoint;
-    /**
-     * @brief Modified mapping endpoint for regex matching.
-     *
-     * @details The original mapping endpoint can contain parameters in the form
-     * `%{([a-zA-Z_][a-zA-Z0-9_]*)}`. In this modified endpoint all the parameters have been
-     * substituted by the regex pattern: `[a-zA-Z_]+[a-zA-Z0-9_]*` to ease pattern matching.
-     */
-    const char *regex_endpoint;
     /** @brief Mapping type */
     astarte_mapping_type_t type;
     /** @brief Mapping reliability */
     astarte_mapping_reliability_t reliability;
     /** @brief Explicit timestamp flag */
     bool explicit_timestamp;
+    /** @brief Mapping retention */
+    astarte_mapping_retention_t retention;
+    /** @brief Mapping expiry limit */
+    int32_t expiry;
     /** @brief Allow unset flag */
     bool allow_unset;
 } astarte_mapping_t;

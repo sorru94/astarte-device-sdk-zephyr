@@ -127,7 +127,9 @@ jobs:
         run: pip install black
       - name: Check format for the west extension scripts
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
-        run: python -m black --line-length 100 --diff --check ./scripts/*.py
+        run: |
+          python -m black --line-length 100 --diff --check ./scripts/*.py
+          python -m black --line-length 100 --diff --check ./scripts/astarte_interfaces/*.py
       - name: Check format for the end to end scripts
         working-directory: ${{ env.PROJECT_MANIFEST_FOLDER }}
         run: |

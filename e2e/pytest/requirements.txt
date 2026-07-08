@@ -4,3 +4,4 @@
 
 curlify
 python-dotenv
+astarte-device-sdk

@@ -460,8 +460,8 @@ static uint64_t get_system_timestamp(struct astarte_device_transmission_queue *h
     if (sys_clock_gettime(SYS_CLOCK_REALTIME, &timespec) == 0) {
         const uint64_t seconds_multiplier = 1000;
         const uint64_t nanoseconds_multiplier = 1000000;
-        return (uint64_t) timespec.tv_sec * seconds_multiplier
-            + (uint64_t) timespec.tv_nsec / nanoseconds_multiplier;
+        return ((uint64_t) timespec.tv_sec * seconds_multiplier)
+            + ((uint64_t) timespec.tv_nsec / nanoseconds_multiplier);
     }
 
     ASTARTE_LOG_WRN("Failed to read system time. Stamping with 0.");

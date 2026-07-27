@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "alloc.h"
 #include "log.h"
 #include "mqtt/caching.h"
 #include "mqtt/core.h"
@@ -17,9 +18,7 @@ void astarte_mqtt_subscribe(
     astarte_mqtt_t *astarte_mqtt, const char *topic, int max_qos, uint16_t *out_message_id)
 {
     // Lock the mutex for the Astarte MQTT wrapper
-    int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
     uint16_t message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msgs);
 
@@ -52,27 +51,18 @@ void astarte_mqtt_subscribe(
     } else {
         ASTARTE_LOG_DBG("SUBSCRIBED to %s", topic);
     }
-
-    // Unlock the mutex
-    mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
 }
 
 void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void *data,
     size_t data_size, int qos, uint16_t *out_message_id)
 {
     // Lock the mutex for the Astarte MQTT wrapper
-    int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
     uint16_t message_id = 0;
     if (qos > 0) {
         message_id = astarte_mqtt_caching_get_available_message_id(&astarte_mqtt->out_msgs);
-    }
 
-    if (qos > 0) {
         astarte_storage_mqtt_message_t message = {
             .type = STORAGE_MQTT_PUBLISH_ENTRY,
             .topic = (char *) topic,
@@ -103,20 +93,21 @@ void astarte_mqtt_publish(astarte_mqtt_t *astarte_mqtt, const char *topic, void 
             msg.message_id, msg.message.topic.qos, data_size);
         ASTARTE_LOG_HEXDUMP_DBG(data, data_size, "Published payload:");
     }
-
-    // Unlock the mutex
-    mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
 }
 
 bool astarte_mqtt_has_pending_outgoing(astarte_mqtt_t *astarte_mqtt)
 {
+    // Lock before reading the hashmap
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
+
     return !sys_hashmap_is_empty(&astarte_mqtt->out_msgs.map);
 }
 
 void astarte_mqtt_clear_all_pending(astarte_mqtt_t *astarte_mqtt)
 {
+    // Lock before mutating the hashmaps
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
+
     astarte_mqtt_caching_clear_messages(&astarte_mqtt->in_msgs);
     astarte_mqtt_caching_clear_messages(&astarte_mqtt->out_msgs);
 }

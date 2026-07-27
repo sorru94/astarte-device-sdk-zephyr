@@ -20,6 +20,7 @@
 #include "astarte_device_sdk/device_id.h"
 
 #include "backoff.h"
+#include "log.h"
 #include "mqtt/caching.h"
 
 /** @brief Max allowed hostname characters are 253 */
@@ -209,6 +210,19 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt);
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt);
+
+/** @cond INTERNAL_HIDDEN */
+// Helper to lock and assert
+void astarte_mqtt_sys_mutex_lock_helper(struct sys_mutex *mtx);
+
+// Helper to unlock and assert
+void astarte_mqtt_sys_mutex_unlock_helper(struct sys_mutex *mtx);
+
+// Scope guard for the MQTT mutex
+// NOLINTNEXTLINE(readability-identifier-length)
+SCOPE_GUARD_DEFINE(astarte_mqtt_sys_mutex, struct sys_mutex *,
+    astarte_mqtt_sys_mutex_lock_helper(_T), astarte_mqtt_sys_mutex_unlock_helper(_T));
+/** @endcond */
 
 #ifdef __cplusplus
 }

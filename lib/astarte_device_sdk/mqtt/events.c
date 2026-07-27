@@ -73,22 +73,16 @@ void astarte_mqtt_handle_publish_event(
 {
     uint16_t message_id = publish.message_id;
     uint32_t message_size = publish.message.payload.len;
-    char *topic = NULL;
-    char *msg_buffer = NULL;
 
     ASTARTE_LOG_DBG("Received PUBLISH packet (%u)", message_id);
 
     // Safety limit to prevent unbounded allocations
     const bool discarded = message_size > CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE;
     size_t alloc_size = discarded ? CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE : message_size;
-
-    // Safely handle 0-byte payloads
-    if (alloc_size > 0) {
-        msg_buffer = astarte_calloc(alloc_size, sizeof(char));
-        if (!msg_buffer) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            goto exit;
-        }
+    scope_var(scoped_char, msg_buffer)(alloc_size);
+    if (alloc_size != 0 && !msg_buffer) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        return;
     }
 
     ASTARTE_LOG_DBG("RECEIVED on topic \"%.*s\" [ id: %u qos: %u ] payload: %u / %u B",
@@ -97,30 +91,26 @@ void astarte_mqtt_handle_publish_event(
         CONFIG_ASTARTE_DEVICE_SDK_MQTT_MAX_MSG_SIZE);
 
     if (read_publish_payload(astarte_mqtt, msg_buffer, alloc_size, message_size, discarded) < 0) {
-        goto exit;
+        return;
     }
 
     ASTARTE_LOG_HEXDUMP_DBG(msg_buffer, MIN(message_size, 256U), "Received payload:");
 
     if (acknowledge_qos(astarte_mqtt, message_id, publish.message.topic.qos) < 0) {
-        goto exit;
+        return;
     }
 
     size_t topic_len = publish.message.topic.topic.size;
-    topic = astarte_calloc(topic_len + 1, sizeof(char));
+    scope_var(scoped_char, topic)(topic_len + 1);
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        goto exit;
+        return;
     }
     memcpy(topic, publish.message.topic.topic.utf8, topic_len);
 
     if (astarte_mqtt->on_incoming_cbk) {
         astarte_mqtt->on_incoming_cbk(astarte_mqtt, topic, topic_len, msg_buffer, message_size);
     }
-
-exit:
-    astarte_free(topic);
-    astarte_free(msg_buffer);
 }
 
 void astarte_mqtt_handle_pubrel_event(astarte_mqtt_t *astarte_mqtt, struct mqtt_pubrel_param pubrel)

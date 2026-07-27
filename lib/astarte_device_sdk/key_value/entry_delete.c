@@ -117,17 +117,17 @@ static astarte_result_t shift_back_single_entry(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
-    uint8_t *raw_entry = NULL;
-    ssize_t raw_entry_size = 0;
-    struct astarte_key_value_entry_header header = { 0 };
-
     if (idx <= 1) {
         ASTARTE_LOG_ERR("Attempting to shift back entry with ID %d", idx);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     uint32_t source_id = idx;
+
+    struct astarte_key_value_entry_header header = { 0 };
+    scope_defer(astarte_key_value_entry_header_free)(&header);
+
+    ssize_t raw_entry_size = 0;
 
     // Read the source entry to be shifted back
     ares = astarte_key_value_entry_header_read(zms_fs, source_id, &header, &raw_entry_size);
@@ -135,21 +135,19 @@ static astarte_result_t shift_back_single_entry(
         if (ares != ASTARTE_RESULT_NOT_FOUND) {
             ASTARTE_LOG_ERR("Failed in reading header for entry with ID %d", idx);
         }
-        goto exit;
+        return ares;
     }
 
-    raw_entry = astarte_calloc(raw_entry_size, sizeof(uint8_t));
+    scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     ssize_t ret = zms_read(zms_fs, source_id, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
         ASTARTE_LOG_ERR("Failed in reading entry with ID %d", idx);
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     // Calculate the natural hash for the entry to be shifted back
@@ -168,21 +166,19 @@ static astarte_result_t shift_back_single_entry(
         ret = zms_write(zms_fs, hole_id, raw_entry, raw_entry_size);
         if (ret < 0) {
             ASTARTE_LOG_ERR("Failed in writing entry with ID %d", idx);
-            ares = ASTARTE_RESULT_ZMS_ERROR;
-            goto exit;
+            return ASTARTE_RESULT_ZMS_ERROR;
         }
 
         // Update linked list pointers of the physically moved entry's neighbors
         ares = update_shifted_entry_neighbors(zms_fs, &header, hole_id);
         if (ares != ASTARTE_RESULT_OK) {
-            goto exit;
+            return ares;
         }
 
         // Clean up the entry from its old position
         ret = zms_delete(zms_fs, source_id);
         if (ret < 0) {
-            ares = ASTARTE_RESULT_ZMS_ERROR;
-            goto exit;
+            return ASTARTE_RESULT_ZMS_ERROR;
         }
 
         *shift_performed = true;
@@ -190,10 +186,7 @@ static astarte_result_t shift_back_single_entry(
         *shift_performed = false;
     }
 
-exit:
-    astarte_free(raw_entry);
-    astarte_key_value_entry_header_free(&header);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 static astarte_result_t update_shifted_entry_neighbors(

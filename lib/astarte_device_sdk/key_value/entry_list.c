@@ -82,24 +82,19 @@ astarte_result_t astarte_key_value_entry_list_write_head_and_tail_ids(
 astarte_result_t astarte_key_value_entry_list_update_next_id(
     struct zms_fs *zms_fs, uint32_t idx, uint32_t new_next)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *raw_entry = NULL;
     ssize_t raw_entry_size = zms_get_data_length(zms_fs, idx);
     if (raw_entry_size <= 0) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
-    raw_entry = astarte_calloc(raw_entry_size, 1);
+    scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     size_t next_id_offset = ASTARTE_KEY_VALUE_ENTRY_HEADER_NAMESPACE_LEN_BYTES
@@ -108,35 +103,28 @@ astarte_result_t astarte_key_value_entry_list_update_next_id(
 
     ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
-exit:
-    astarte_free(raw_entry);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_key_value_entry_list_update_prev_id(
     struct zms_fs *zms_fs, uint32_t idx, uint32_t new_prev)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *raw_entry = NULL;
     ssize_t raw_entry_size = zms_get_data_length(zms_fs, idx);
     if (raw_entry_size <= 0) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
-    raw_entry = astarte_calloc(raw_entry_size, 1);
+    scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     size_t prev_id_offset = ASTARTE_KEY_VALUE_ENTRY_HEADER_NAMESPACE_LEN_BYTES
@@ -146,11 +134,8 @@ astarte_result_t astarte_key_value_entry_list_update_prev_id(
 
     ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
-exit:
-    astarte_free(raw_entry);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }

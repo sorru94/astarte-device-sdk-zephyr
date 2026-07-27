@@ -78,7 +78,6 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
     const char *namespace, const char *key, const void *value, size_t value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *raw_entry = NULL;
     size_t raw_entry_size = 0;
 
     bool is_end_of_list = false;
@@ -90,7 +89,7 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
     } else if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error computing next and previous IDs for entry at ID %d: %s", idx,
             astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     // Serialize the entry with the computed next and previous IDs
@@ -105,11 +104,13 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
         .key = (char *) key,
         .dynamically_allocated = false,
     };
-    raw_entry = serialize_entry(header, value, value_size, &raw_entry_size);
+
+    scope_var_init(
+        scoped_uint8, raw_entry, serialize_entry(header, value, value_size, &raw_entry_size));
+
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     // Log intent before any physical write occurs
@@ -118,15 +119,14 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
         : ASTARTE_KEY_VALUE_ENTRY_INTENT_UPDATING;
     ares = astarte_key_value_entry_intent_write(zms_fs, intent_state, idx, prev_id, next_id);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
 
     // Write the serialized entry to ZMS
     ssize_t ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
         ASTARTE_LOG_ERR("Error writing to ZMS at ID %d, error: %d", idx, ret);
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     // Update the previous tail to point to the new entry and update the head/tail IDs if needed
@@ -134,30 +134,25 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
         ares = update_list_tail(zms_fs, idx);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Error updating tail %d, error: %s", idx, astarte_result_to_name(ares));
-            goto exit;
+            return ares;
         }
     }
 
     // Clear intent block to signal successful multi-step transaction
-    ares = astarte_key_value_entry_intent_clear(zms_fs);
-
-exit:
-    astarte_free(raw_entry);
-    return ares;
+    return astarte_key_value_entry_intent_clear(zms_fs);
 }
 
 astarte_result_t astarte_key_value_entry_read_value(
     struct zms_fs *zms_fs, uint32_t idx, void *value, size_t *value_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *raw_entry = NULL;
     size_t raw_entry_size = 0;
 
     // Read the fixed header
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
     ares = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
 
     // Calculate the full header size
@@ -165,34 +160,30 @@ astarte_result_t astarte_key_value_entry_read_value(
         + fixed_header.namespace_len + fixed_header.key_len;
     if (header_size > raw_entry_size) {
         ASTARTE_LOG_ERR("Error: Incomplete header at ID %d", idx);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     // Compute the value size and return it immediately if there is no output buffer
     size_t read_value_size = raw_entry_size - header_size;
     if (!value) {
         *value_size = read_value_size;
-        goto exit;
+        return ASTARTE_RESULT_OK;
     }
     if (*value_size < read_value_size) {
         ASTARTE_LOG_ERR("Error: Value buffer too small at ID %d", idx);
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Read the full entry
-    raw_entry = astarte_calloc(raw_entry_size, sizeof(uint8_t));
+    scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
         ASTARTE_LOG_ERR("Error reading full payload from ZMS at ID %d, error: %d", idx, ret);
-        ares = ASTARTE_RESULT_ZMS_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     if (read_value_size > 0) {
@@ -201,9 +192,7 @@ astarte_result_t astarte_key_value_entry_read_value(
 
     *value_size = read_value_size;
 
-exit:
-    astarte_free(raw_entry);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_key_value_entry_read_key(

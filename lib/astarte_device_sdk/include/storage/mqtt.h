@@ -12,9 +12,12 @@
  * @brief Storage functions for the Astarte device MQTT wrapper.
  */
 
+#include <zephyr/sys/util.h>
+
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
 
+#include "cleanup.h"
 #include "storage/core.h"
 
 /** @brief Direction for the messages to store. */
@@ -48,7 +51,8 @@ typedef struct
     void *data;
     /** @brief Size of data of the message, can be zero. */
     size_t data_size;
-    /** @brief Quality of service or maximum allowed quality of service depending on message type */
+    /** @brief Quality of service or maximum allowed quality of service depending on message type.
+     */
     int qos;
 } astarte_storage_mqtt_message_t;
 
@@ -88,6 +92,11 @@ astarte_result_t astarte_storage_mqtt_find_alloc(astarte_storage_data_t *handle,
  * @param[inout] message Pointer to the message whose data payload needs to be freed.
  */
 void astarte_storage_mqtt_find_free(astarte_storage_mqtt_message_t *message);
+
+// Allows callers to automatically clean up MQTT messages.
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_storage_mqtt_find_free, astarte_storage_mqtt_message_t *);
+/** @endcond */
 
 /**
  * @brief Delete an MQTT message from permanent storage.

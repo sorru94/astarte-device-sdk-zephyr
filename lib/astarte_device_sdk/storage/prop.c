@@ -60,8 +60,6 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
     const char *interface_name, const char *path, uint32_t major, astarte_data_t data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *key = NULL;
-    astarte_bson_serializer_t bson = { 0 };
 
     if (!handle || !handle->initialized) {
         ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
@@ -70,55 +68,52 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
 
     ASTARTE_LOG_DBG("Caching property ('%s' - '%s').", interface_name, path);
 
-    // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = astarte_calloc(key_len, sizeof(char));
+    scope_var(scoped_char, key)(key_len);
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     int snprintf_rc = snprintf(key, key_len, "%s;%s", interface_name, path);
     if (snprintf_rc != key_len - 1) {
         ASTARTE_LOG_ERR("Could not create the property key-value storage key.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    // Serialize the Astarte data
+    astarte_bson_serializer_t bson = { 0 };
+    scope_defer(astarte_bson_serializer_destroy)(&bson);
+
     ares = astarte_bson_serializer_init(&bson);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not initialize the bson serializer");
-        goto exit;
+        return ares;
     }
     ares = astarte_bson_serializer_append_int32(&bson, "major", (int32_t) major);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
     ares = astarte_bson_serializer_append_int64(&bson, "type", (int64_t) data.tag);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
     ares = astarte_data_serialize(&bson, "data", data);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
     ares = astarte_bson_serializer_append_end_of_document(&bson);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
 
     int data_ser_len = 0;
     void *data_ser = (void *) astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
     if (!data_ser) {
         ASTARTE_LOG_ERR("Error during BSON serialization.");
-        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
     }
     if (data_ser_len < 0) {
         ASTARTE_LOG_ERR("BSON document is too long to be cached.");
-        ares = ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
     }
 
     ASTARTE_LOG_DBG("Inserting pair in storage. Key: %s", key);
@@ -127,9 +122,6 @@ astarte_result_t astarte_storage_property_store(astarte_storage_data_t *handle,
         ASTARTE_LOG_ERR("Error caching property: %s.", astarte_result_to_name(ares));
     }
 
-exit:
-    astarte_free(key);
-    astarte_bson_serializer_destroy(&bson);
     return ares;
 }
 
@@ -137,8 +129,6 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
     const char *interface_name, const char *path, uint32_t *out_major, astarte_data_t *data)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *key = NULL;
-    char *value = NULL;
 
     if (!handle || !handle->initialized) {
         ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
@@ -149,32 +139,29 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
 
     // Get the full key interface_name + ';' + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = astarte_calloc(key_len, sizeof(char));
+    scope_var(scoped_char, key)(key_len);
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     int snprintf_rc = snprintf(key, key_len, "%s;%s", interface_name, path);
     if (snprintf_rc != key_len - 1) {
         ASTARTE_LOG_ERR("Could not create the property key-value storage key.");
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", key);
     size_t value_len = 0;
     ares = astarte_key_value_find(&handle->prop_storage, key, NULL, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares; // 'key' is automatically freed here
     }
 
     // Allocate memory for BSON file to read
-    value = astarte_calloc(value_len, sizeof(char));
+    scope_var(scoped_char, value)(value_len);
     if (!value) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY; // Both 'key' and 'value' automatically freed
     }
 
     // Get the data from ZMS
@@ -182,7 +169,7 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
     ares = astarte_key_value_find(&handle->prop_storage, key, value, &value_len);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not get property from storage: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     ares = parse_property_bson(value, out_major, data);
@@ -190,9 +177,6 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
         ASTARTE_LOG_ERR("Could not parse data from storage: %s.", astarte_result_to_name(ares));
     }
 
-exit:
-    astarte_free(key);
-    astarte_free(value);
     return ares;
 }
 
@@ -205,7 +189,6 @@ astarte_result_t astarte_storage_property_delete(
     astarte_storage_data_t *handle, const char *interface_name, const char *path)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *key = NULL;
 
     if (!handle || !handle->initialized) {
         ASTARTE_LOG_ERR("Device caching handle is uninitialized or NULL.");
@@ -216,17 +199,15 @@ astarte_result_t astarte_storage_property_delete(
 
     // Get the full key interface_name + path
     size_t key_len = strlen(interface_name) + 1 + strlen(path) + 1;
-    key = astarte_calloc(key_len, sizeof(char));
+    scope_var(scoped_char, key)(key_len);
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     int snprintf_rc = snprintf(key, key_len, "%s;%s", interface_name, path);
     if (snprintf_rc != key_len - 1) {
         ASTARTE_LOG_ERR("Could not create the property key-value storage key.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     ASTARTE_LOG_DBG("Deleting pair from storage. Key: %s", key);
@@ -235,8 +216,6 @@ astarte_result_t astarte_storage_property_delete(
         ASTARTE_LOG_ERR("Error deleting cached property: %s.", astarte_result_to_name(ares));
     }
 
-exit:
-    astarte_free(key);
     return ares;
 }
 
@@ -276,20 +255,17 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     char *interface_name, size_t *interface_name_size, char *path, size_t *path_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *key = NULL;
 
     // Check input parameters
     if (!interface_name_size || !path_size) {
         ASTARTE_LOG_ERR("Parameters interface_name_size and path_size can't be NULL.");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Check if one is NULL but the other isn't
     if ((interface_name == NULL) != (path == NULL)) {
         ASTARTE_LOG_ERR("Parameters interface_name and path can only be NULL at the same time.");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Get size of item key
@@ -298,29 +274,27 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     ares = astarte_key_value_iterator_get(&iter->kv_iter, NULL, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
-    key = astarte_calloc(key_size, sizeof(char));
+    scope_var(scoped_char, key)(key_size);
     if (!key) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ASTARTE_LOG_DBG("Getting the key data for the pair pointer by the storage iterator.");
     ares = astarte_key_value_iterator_get(&iter->kv_iter, key, &key_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Key-value storage iterator error: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     // Split interface name and path
     char *delimiter_ptr = strchr(key, ';');
     if (!delimiter_ptr) {
         ASTARTE_LOG_ERR("Corrupted property key in storage: missing ';' delimiter.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
     // Replace the ';' with a null terminator to split the string in two
     *delimiter_ptr = '\0';
@@ -334,13 +308,12 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     if (!interface_name) {
         *interface_name_size = read_interface_name_size;
         *path_size = read_path_size;
-        goto exit;
+        return ASTARTE_RESULT_OK;
     }
 
     if ((*interface_name_size < read_interface_name_size) || (*path_size < read_path_size)) {
         ASTARTE_LOG_ERR("Insufficient buff size in astarte_storage_property_iterator_get.");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     *interface_name_size = read_interface_name_size;
@@ -350,9 +323,7 @@ astarte_result_t astarte_storage_property_iterator_get(astarte_storage_property_
     memcpy(interface_name, read_interface_name, read_interface_name_size);
     memcpy(path, read_path, read_path_size);
 
-exit:
-    astarte_free(key);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_storage_property_iterator_delete(astarte_storage_property_iter_t *iter)
@@ -380,13 +351,11 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_storage_property_iter_t iter = { 0 };
     size_t string_size = 0U;
-    char *interface_name = NULL;
-    char *path = NULL;
 
     ares = astarte_storage_property_iterator_new(handle, &iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
-        goto error;
+        return ares;
     }
 
     if (output) {
@@ -400,21 +369,22 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
             &iter, NULL, &interface_name_size, NULL, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto error;
+            return ares;
         }
 
-        interface_name = astarte_calloc(interface_name_size, sizeof(char));
-        path = astarte_calloc(path_size, sizeof(char));
+        scope_var(scoped_char, interface_name)(interface_name_size);
+        scope_var(scoped_char, path)(path_size);
+
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            goto error;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
 
         ares = astarte_storage_property_iterator_get(
             &iter, interface_name, &interface_name_size, path, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto error;
+            return ares;
         }
 
         ares = append_property_to_string(
@@ -422,29 +392,19 @@ astarte_result_t astarte_storage_property_get_device_string(astarte_storage_data
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed appending the property to the string: %s", astarte_result_to_name(ares));
-            goto error;
+            return ares;
         }
-
-        astarte_free(interface_name);
-        interface_name = NULL;
-        astarte_free(path);
-        path = NULL;
 
         ares = astarte_storage_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_ERR("Iterator next error: %s", astarte_result_to_name(ares));
-            goto error;
+            return ares;
         }
     }
 
     *output_size = string_size;
 
     return ASTARTE_RESULT_OK;
-
-error:
-    astarte_free(interface_name);
-    astarte_free(path);
-    return ares;
 }
 
 /************************************************

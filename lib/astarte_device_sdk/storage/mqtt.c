@@ -15,6 +15,41 @@
 ASTARTE_LOG_MODULE_DECLARE(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_LOG_LEVEL);
 
 /************************************************
+ *        Defines, constants and typedef        *
+ ***********************************************/
+
+/** @brief Context to hold the temporary allocations during the find operation. */
+typedef struct
+{
+    /** @cond INTERNAL_HIDDEN */
+    uint8_t *buffer;
+    char *topic;
+    void *data;
+    /** @endcond */
+} mqtt_find_cleanup_ctx_t;
+
+/**
+ * @brief Custom cleanup function for mqtt find operation.
+ *
+ * @param[in] ctx Pointer to the mqtt find cleanup context.
+ */
+static void cleanup_mqtt_find(mqtt_find_cleanup_ctx_t *ctx)
+{
+    if (ctx) {
+        astarte_free(ctx->buffer);
+        ctx->buffer = NULL;
+        astarte_free(ctx->topic);
+        ctx->topic = NULL;
+        astarte_free(ctx->data);
+        ctx->data = NULL;
+    }
+}
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_mqtt_find, mqtt_find_cleanup_ctx_t *);
+/** @endcond */
+
+/************************************************
  *         Global functions definitions         *
  ***********************************************/
 
@@ -40,7 +75,7 @@ astarte_result_t astarte_storage_mqtt_insert(astarte_storage_data_t *handle,
     size_t total_size = sizeof(message->type) + sizeof(message->qos) + sizeof(topic_len)
         + sizeof(message->data_size) + topic_len + message->data_size;
 
-    uint8_t *buffer = astarte_calloc(total_size, sizeof(uint8_t));
+    scope_var(scoped_uint8, buffer)(total_size);
     if (!buffer) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -74,7 +109,6 @@ astarte_result_t astarte_storage_mqtt_insert(astarte_storage_data_t *handle,
     astarte_result_t ares = astarte_key_value_direct_insert(
         &handle->zms_fs, direction_to_alternate(direction), identifier, buffer, total_size);
 
-    astarte_free(buffer);
     return ares;
 }
 
@@ -83,95 +117,85 @@ astarte_result_t astarte_storage_mqtt_find_alloc(astarte_storage_data_t *handle,
     astarte_storage_mqtt_message_t *message)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *buffer = NULL;
-    char *topic = NULL;
-    void *data = NULL;
 
     if (!handle || !message) {
         ASTARTE_LOG_ERR("NULL parameters provided");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto error;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
+
+    mqtt_find_cleanup_ctx_t ctx = { 0 };
+    scope_defer(cleanup_mqtt_find)(&ctx);
 
     // First, query the required buffer size by passing NULL
     size_t value_size = 0;
     ares = astarte_key_value_direct_find(
         &handle->zms_fs, direction_to_alternate(direction), identifier, NULL, &value_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
-        goto error;
-    } else if (ares != ASTARTE_RESULT_OK) {
+        return ares;
+    }
+    if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in finding the size of the MQTT message from storage");
-        goto error;
+        return ares;
     }
 
-    buffer = astarte_calloc(value_size, sizeof(uint8_t));
-    if (!buffer) {
+    ctx.buffer = astarte_calloc(value_size, sizeof(uint8_t));
+    if (!ctx.buffer) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto error;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     // Read the actual serialized data
     ares = astarte_key_value_direct_find(
-        &handle->zms_fs, direction_to_alternate(direction), identifier, buffer, &value_size);
+        &handle->zms_fs, direction_to_alternate(direction), identifier, ctx.buffer, &value_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in extracting the MQTT message from storage");
-        goto error;
+        return ares;
     }
 
     size_t offset = 0;
     size_t topic_len = 0;
 
-    // Deserialize core fields
-    memcpy(&message->type, buffer + offset, sizeof(message->type));
+    // Deserialize core fields directly into the output message struct
+    memcpy(&message->type, ctx.buffer + offset, sizeof(message->type));
     offset += sizeof(message->type);
-
-    memcpy(&message->qos, buffer + offset, sizeof(message->qos));
+    memcpy(&message->qos, ctx.buffer + offset, sizeof(message->qos));
     offset += sizeof(message->qos);
-
-    memcpy(&topic_len, buffer + offset, sizeof(topic_len));
+    memcpy(&topic_len, ctx.buffer + offset, sizeof(topic_len));
     offset += sizeof(topic_len);
-
-    memcpy(&message->data_size, buffer + offset, sizeof(message->data_size));
+    memcpy(&message->data_size, ctx.buffer + offset, sizeof(message->data_size));
     offset += sizeof(message->data_size);
 
-    // Deserialize strings/payloads
+    // Deserialize strings/payloads into our context
     if (topic_len > 0) {
-        topic = astarte_calloc(topic_len + 1, sizeof(char));
-        if (!topic) {
+        ctx.topic = astarte_calloc(topic_len + 1, sizeof(char));
+        if (!ctx.topic) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            goto error;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
-        memcpy(topic, buffer + offset, topic_len);
-        topic[topic_len] = '\0';
-        message->topic = topic;
+        memcpy(ctx.topic, ctx.buffer + offset, topic_len);
+        ctx.topic[topic_len] = '\0';
         offset += topic_len;
-    } else {
-        message->topic = NULL;
     }
 
     if (message->data_size > 0) {
-        data = astarte_calloc(message->data_size, sizeof(uint8_t));
-        if (!data) {
+        ctx.data = astarte_calloc(message->data_size, sizeof(uint8_t));
+        if (!ctx.data) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            goto error;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
-        memcpy(data, buffer + offset, message->data_size);
-        message->data = data;
-    } else {
-        message->data = NULL;
+        memcpy(ctx.data, ctx.buffer + offset, message->data_size);
     }
 
-    astarte_free(buffer);
-    return ASTARTE_RESULT_OK;
+    // Transfer ownership safely
+    message->topic = ctx.topic;
+    message->data = ctx.data;
 
-error:
-    astarte_free(buffer);
-    astarte_free(topic);
-    astarte_free(data);
-    return ares;
+    // Disarm the pointers we want to keep.
+    // We leave ctx.buffer != NULL so it gets freed automatically by the macro.
+    ctx.topic = NULL;
+    ctx.data = NULL;
+
+    return ASTARTE_RESULT_OK;
 }
 
 void astarte_storage_mqtt_find_free(astarte_storage_mqtt_message_t *message)

@@ -49,7 +49,6 @@ astarte_result_t astarte_storage_introspection_check(
     astarte_storage_data_t *handle, const char *intr, size_t intr_size)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *read_intr = NULL;
     size_t read_intr_size = 0;
 
     if (!handle || !handle->initialized) {
@@ -62,24 +61,21 @@ astarte_result_t astarte_storage_introspection_check(
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
     ares = astarte_key_value_find(&handle->intro_storage, INTROSPECTION_KEY, NULL, &read_intr_size);
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
-        ares = ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
-        goto exit;
+        return ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
     }
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     if (read_intr_size != intr_size) {
-        ares = ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
-        goto exit;
+        return ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
     }
 
-    read_intr = astarte_calloc(read_intr_size, sizeof(char));
+    scope_var(scoped_char, read_intr)(read_intr_size);
     if (!read_intr) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ASTARTE_LOG_DBG("Searching for pair in storage. Key: '%s'", INTROSPECTION_KEY);
@@ -87,16 +83,13 @@ astarte_result_t astarte_storage_introspection_check(
         &handle->intro_storage, INTROSPECTION_KEY, read_intr, &read_intr_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Fetch error for cached introspection: %s.", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
 
     if (memcmp(intr, read_intr, MIN(read_intr_size, intr_size)) != 0) {
         ASTARTE_LOG_INF("Found outdated introspection: '%s' (%d).", read_intr, read_intr_size);
-        ares = ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
-        goto exit;
+        return ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION;
     }
 
-exit:
-    astarte_free(read_intr);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }

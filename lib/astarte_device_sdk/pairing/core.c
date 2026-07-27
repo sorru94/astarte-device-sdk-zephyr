@@ -95,6 +95,51 @@ BUILD_ASSERT(sizeof(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME) != 1, "Missing realm n
     (PAIRING_DEVICE_MGMT_URL_PREFIX_LEN + ASTARTE_DEVICE_ID_LEN                                    \
         + PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX_LEN)
 
+/** @brief Context to hold the buffers and a reference to the credentials for error rollback. */
+typedef struct
+{
+    /** @cond INTERNAL_HIDDEN */
+    unsigned char *csr_buf;
+    char *payload;
+    char *resp_buf;
+    astarte_tls_credentials_client_crt_t *client_crt_to_wipe;
+    /** @endcond */
+} pairing_crt_cleanup_ctx_t;
+
+/**
+ * @brief Custom cleanup function for pairing CRT.
+ *
+ * @param[in] ctx Pointer to the pairing CRT cleanup context.
+ */
+static void cleanup_pairing_crt(pairing_crt_cleanup_ctx_t *ctx)
+{
+    if (ctx) {
+        astarte_free(ctx->csr_buf);
+        ctx->csr_buf = NULL;
+        astarte_free(ctx->payload);
+        ctx->payload = NULL;
+        astarte_free(ctx->resp_buf);
+        ctx->resp_buf = NULL;
+
+        // If this pointer is still armed, an error occurred and we must rollback the crypto state
+        if (ctx->client_crt_to_wipe) {
+            psa_status_t psa_ret = psa_destroy_key(ctx->client_crt_to_wipe->privkey);
+            if (psa_ret != PSA_SUCCESS) {
+                ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
+            }
+            ctx->client_crt_to_wipe->privkey = PSA_KEY_ID_NULL;
+
+            memset(ctx->client_crt_to_wipe->privkey_pem, 0,
+                sizeof(ctx->client_crt_to_wipe->privkey_pem));
+            memset(ctx->client_crt_to_wipe->crt_pem, 0, sizeof(ctx->client_crt_to_wipe->crt_pem));
+        }
+    }
+}
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_pairing_crt, pairing_crt_cleanup_ctx_t *);
+/** @endcond */
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -205,15 +250,16 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     const char *cred_secr, astarte_tls_credentials_client_crt_t *client_crt)
 {
     astarte_result_t ares = ASTARTE_RESULT_INVALID_PARAM;
-    unsigned char *csr_buf = NULL;
-    char *payload = NULL;
-    char *resp_buf = NULL;
+
+    pairing_crt_cleanup_ctx_t ctx
+        = { .csr_buf = NULL, .payload = NULL, .resp_buf = NULL, .client_crt_to_wipe = client_crt };
+    scope_defer(cleanup_pairing_crt)(&ctx);
 
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
         ASTARTE_LOG_ERR(
             "Device ID has incorrect length, should be %d chars.", ASTARTE_DEVICE_ID_LEN);
-        goto error;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     // Step 2: create a private key and a CSR
@@ -221,21 +267,20 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         &client_crt->privkey, client_crt->privkey_pem, sizeof(client_crt->privkey_pem));
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a private key.");
-        goto error;
+        return ares;
     }
 
-    csr_buf = astarte_calloc(ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE, sizeof(unsigned char));
-    if (!csr_buf) {
+    ctx.csr_buf = astarte_calloc(ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE, sizeof(unsigned char));
+    if (!ctx.csr_buf) {
         ASTARTE_LOG_ERR("Failed to allocate memory for CSR buffer.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto error;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     ares = astarte_crypto_create_csr(
-        &client_crt->privkey, csr_buf, ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE);
+        &client_crt->privkey, ctx.csr_buf, ASTARTE_TLS_CREDENTIALS_CSR_BUFFER_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in creating a CSR.");
-        goto error;
+        return ares;
     }
 
     // Step 3: get the client certificate from the server
@@ -244,29 +289,26 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         AUTH_HEADER_BEARER_STR_START "%s" AUTH_HEADER_BEARER_STR_END, cred_secr);
     if (snprintf_rc != AUTH_HEADER_CRED_SECRET_SIZE - 1) {
         ASTARTE_LOG_ERR("Incorrect length/format for credential secret.");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto error;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
     const char *header_fields[] = { auth_header, NULL };
 
-    payload = astarte_calloc(GET_CLIENT_CRT_PAYLOAD_MAX_SIZE, sizeof(char));
-    if (!payload) {
+    ctx.payload = astarte_calloc(GET_CLIENT_CRT_PAYLOAD_MAX_SIZE, sizeof(char));
+    if (!ctx.payload) {
         ASTARTE_LOG_ERR("Failed to allocate memory for payload buffer.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto error;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     ares = astarte_pairing_serialize_get_client_certificate_payload(
-        csr_buf, payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
+        ctx.csr_buf, ctx.payload, GET_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
-        goto error;
+        return ares;
     }
 
-    resp_buf = astarte_calloc(GET_CLIENT_CRT_RESPONSE_MAX_SIZE, sizeof(char));
-    if (!resp_buf) {
+    ctx.resp_buf = astarte_calloc(GET_CLIENT_CRT_RESPONSE_MAX_SIZE, sizeof(char));
+    if (!ctx.resp_buf) {
         ASTARTE_LOG_ERR("Failed to allocate memory for response buffer.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto error;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     char url[PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN + 1] = { 0 };
@@ -274,21 +316,20 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
         PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_URL_SUFFIX, device_id);
     if (snprintf_rc != PAIRING_DEVICE_GET_DEVICE_CERT_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for get client certificate request.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto error;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
-    ares = astarte_http_post(
-        timeout_ms, url, header_fields, payload, resp_buf, GET_CLIENT_CRT_RESPONSE_MAX_SIZE);
+    ares = astarte_http_post(timeout_ms, url, header_fields, ctx.payload, ctx.resp_buf,
+        GET_CLIENT_CRT_RESPONSE_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
-        goto error;
+        return ares;
     }
 
     // Step 4: process the result
     ares = astarte_pairing_deserialize_get_client_certificate_response(
-        resp_buf, client_crt->crt_pem, ARRAY_SIZE(client_crt->crt_pem));
+        ctx.resp_buf, client_crt->crt_pem, ARRAY_SIZE(client_crt->crt_pem));
     if (ares != ASTARTE_RESULT_OK) {
-        goto error;
+        return ares;
     }
 
     // Step 5: convert the received certificate to a valid PEM certificate
@@ -304,34 +345,17 @@ astarte_result_t astarte_pairing_get_client_certificate(int32_t timeout_ms, cons
     ASTARTE_LOG_HEXDUMP_DBG(
         client_crt->crt_pem, strlen(client_crt->crt_pem), "Received client certificate:");
 
-    astarte_free(csr_buf);
-    astarte_free(payload);
-    astarte_free(resp_buf);
+    // Disarm the credentials wipe.
+    // We don't disarm the buffers because we want the cleanup macro to automatically free them.
+    ctx.client_crt_to_wipe = NULL;
 
     return ASTARTE_RESULT_OK;
-
-error:
-    astarte_free(csr_buf);
-    astarte_free(payload);
-    astarte_free(resp_buf);
-
-    // clear the credentials
-    psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
-    if (psa_ret != PSA_SUCCESS) {
-        ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
-    }
-    client_crt->privkey = PSA_KEY_ID_NULL;
-    memset(client_crt->privkey_pem, 0, ARRAY_SIZE(client_crt->privkey_pem));
-    memset(client_crt->crt_pem, 0, ARRAY_SIZE(client_crt->crt_pem));
-
-    return ares;
 }
 
 astarte_result_t astarte_pairing_verify_client_certificate(
     int32_t timeout_ms, const char *device_id, const char *cred_secr, const char *crt_pem)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *payload = NULL;
 
     // Step 1: check the configuration and input parameters
     if (strlen(device_id) != ASTARTE_DEVICE_ID_LEN) {
@@ -351,7 +375,7 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     const char *header_fields[] = { auth_header, NULL };
 
     // Dynamically allocate the payload buffer
-    payload = astarte_calloc(VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE, sizeof(char));
+    scope_var(scoped_char, payload)(VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (!payload) {
         ASTARTE_LOG_ERR("Failed to allocate memory for payload buffer.");
         return ASTARTE_RESULT_INTERNAL_ERROR;
@@ -360,7 +384,7 @@ astarte_result_t astarte_pairing_verify_client_certificate(
     ares = astarte_pairing_serialize_verify_client_certificate_payload(
         crt_pem, payload, VERIFY_CLIENT_CRT_PAYLOAD_MAX_SIZE);
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
 
     char url[PAIRING_DEVICE_CERT_CHECK_URL_LEN + 1] = { 0 };
@@ -368,23 +392,17 @@ astarte_result_t astarte_pairing_verify_client_certificate(
         PAIRING_DEVICE_MGMT_URL_PREFIX "%s" PAIRING_DEVICE_CERT_CHECK_URL_SUFFIX, device_id);
     if (snprintf_rc != PAIRING_DEVICE_CERT_CHECK_URL_LEN) {
         ASTARTE_LOG_ERR("Error encoding URL for verify client certificate request.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     char resp_buf[VERIFY_CLIENT_CRT_RESPONSE_MAX_SIZE] = { 0 };
     ares = astarte_http_post(timeout_ms, url, header_fields, payload, resp_buf, sizeof(resp_buf));
     if (ares != ASTARTE_RESULT_OK) {
-        goto exit;
+        return ares;
     }
 
     // Step 3: process the result
-    ares = astarte_pairing_deserialize_verify_client_certificate_response(resp_buf);
-
-exit:
-    // Free the buffer regardless of success or failure
-    astarte_free(payload);
-    return ares;
+    return astarte_pairing_deserialize_verify_client_certificate_response(resp_buf);
 }
 
 /************************************************

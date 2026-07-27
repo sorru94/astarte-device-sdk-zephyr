@@ -17,6 +17,10 @@
 
 #include <stddef.h>
 
+#include <zephyr/sys/util.h>
+
+#include "cleanup.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,6 +61,22 @@ void *astarte_realloc(void *ptr, size_t size);
  * @param[in] ptr Pointer to the memory block to be freed. If NULL, no operation is performed.
  */
 void astarte_free(void *ptr);
+
+/************************************************
+ *              Scope-based cleanup            *
+ ***********************************************/
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_free, void *);
+
+// Scoped char* that allocates 'size' bytes
+SCOPE_VAR_DEFINE(scoped_char, char *, astarte_free(_T), (char *) astarte_calloc(size, sizeof(char)),
+    size_t size);
+
+// Scoped uint8_t* that allocates 'size' bytes
+SCOPE_VAR_DEFINE(scoped_uint8, uint8_t *, astarte_free(_T),
+    (uint8_t *) astarte_calloc(size, sizeof(uint8_t)), size_t size);
+/** @endcond */
 
 #ifdef __cplusplus
 }

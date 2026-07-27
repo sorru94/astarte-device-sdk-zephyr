@@ -11,25 +11,30 @@
 #endif
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(readability-math-missing-parentheses)
 K_HEAP_DEFINE(astarte_sdk_heap, CONFIG_ASTARTE_DEVICE_SDK_HEAP_SIZE);
+// NOLINTEND(readability-math-missing-parentheses)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 #endif
 
 void *astarte_malloc(size_t size)
 {
-#ifndef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
-    return k_malloc(size);
-#else
     if (size == 0) {
         return NULL;
     }
-
+#ifndef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
+    return k_malloc(size);
+#else
     return k_heap_alloc(&astarte_sdk_heap, size, K_NO_WAIT);
 #endif
 }
 
 void *astarte_calloc(size_t nmemb, size_t size)
 {
+    if (nmemb == 0 || size == 0) {
+        return NULL;
+    }
 #ifndef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
     return k_calloc(nmemb, size);
 #else

@@ -12,6 +12,7 @@
 #endif
 
 #include "alloc.h"
+#include "cleanup.h"
 #include "device/core.h"
 #include "device/dispatcher.h"
 #include "mqtt/pubsub.h"
@@ -27,6 +28,22 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
 static astarte_result_t initialize_introspection(
     astarte_device_handle_t device, const astarte_interface_t **interfaces, size_t interfaces_size);
 static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device);
+
+// Helper to safely destroy a partially initialized device
+static void cleanup_device_creation(astarte_device_handle_t *handle_ptr)
+{
+    if (handle_ptr && *handle_ptr) {
+        astarte_device_handle_t handle = *handle_ptr;
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+        astarte_storage_destroy(&handle->caching);
+#endif
+        introspection_free(handle->introspection);
+        astarte_free(handle);
+        handle = NULL;
+    }
+}
+
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_device_creation, astarte_device_handle_t *);
 
 /************************************************
  *       Callbacks declaration/definition       *
@@ -82,23 +99,23 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
 
 astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    astarte_device_handle_t handle = NULL;
-
     ASTARTE_LOG_DBG("Creating a new device instance");
 
     if (!cfg || !device) {
         ASTARTE_LOG_ERR("Received NULL reference for configuration or device handle");
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto failure;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
+
+    astarte_device_handle_t handle = NULL;
+    scope_defer(cleanup_device_creation)(&handle);
 
     handle = astarte_calloc(1, sizeof(struct astarte_device));
     if (!handle) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto failure;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
+
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     handle->http_timeout_ms = cfg->http_timeout_ms;
     memcpy(handle->device_id, cfg->device_id, ASTARTE_DEVICE_ID_LEN + 1);
@@ -110,40 +127,37 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->property_set_cbk = cfg->property_set_cbk;
     handle->property_unset_cbk = cfg->property_unset_cbk;
     handle->cbk_user_data = cfg->cbk_user_data;
+    handle->connection_state = DEVICE_DISCONNECTED;
+    handle->synchronization_completed = false;
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
     ares = astarte_storage_init(&handle->caching);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Storage initialization failure %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
-#endif
 
-    // Initializing the connection hashmap and status flags
-    handle->synchronization_completed = false;
-#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
     ASTARTE_LOG_DBG("Getting stored synchronization");
     ares
         = astarte_storage_synchronization_get(&handle->caching, &handle->synchronization_completed);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Synchronization state getter failure %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
     ASTARTE_LOG_DBG("Done fetching device synchronization '%d'", handle->synchronization_completed);
 #endif
-    handle->connection_state = DEVICE_DISCONNECTED;
 
     ASTARTE_LOG_DBG("Initializing introspection");
     ares = initialize_introspection(handle, cfg->interfaces, cfg->interfaces_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Introspection initialization failure %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
 
     ares = initialize_mqtt_topics(handle);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed initialization for MQTT topics %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
 
     ASTARTE_LOG_DBG("Initializing Astarte MQTT client");
@@ -168,7 +182,7 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         astarte_mqtt_config.broker_port);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed in parsing the MQTT broker URL %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
 
     ASTARTE_LOG_DBG("Getting MQTT broker client ID");
@@ -176,15 +190,14 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
         CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s", handle->device_id);
     if (snprintf_rc != ASTARTE_MQTT_CLIENT_ID_LEN) {
         ASTARTE_LOG_ERR("Error encoding MQTT client ID");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto failure;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     ares = astarte_mqtt_init(&astarte_mqtt_config, &handle->astarte_mqtt);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR(
             "Failure intializing the Astarte MQTT client %s", astarte_result_to_name(ares));
-        goto failure;
+        return ares;
     }
 
     // Initialize the handle data to be used during the handshake with Astarte
@@ -193,22 +206,13 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     backoff_init(&handle->backoff_ctx, CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 
+    // Transfer ownership and disarm
     *device = handle;
+    handle = NULL;
 
     ASTARTE_LOG_DBG("Device instance creation completed");
 
-    return ares;
-
-failure:
-
-    if (handle) {
-#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
-        astarte_storage_destroy(&handle->caching);
-#endif
-        introspection_free(handle->introspection);
-    }
-    astarte_free(handle);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_device_destroy(astarte_device_handle_t device)

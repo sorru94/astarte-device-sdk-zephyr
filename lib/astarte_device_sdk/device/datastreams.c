@@ -237,17 +237,17 @@ void astarte_device_datastreams_handle_incoming(astarte_device_handle_t device,
         on_datastream_individual(device, base_event, data_deserialized);
         astarte_data_destroy_deserialized(data_deserialized);
     } else {
-        astarte_object_entry_t *entries = NULL;
-        size_t entries_length = 0;
+        astarte_object_entries_ctx_t cleanup_ctx = { .entries = NULL, .length = 0 };
+        scope_defer(astarte_cleanup_object_entries)(&cleanup_ctx);
+
         astarte_result_t ares = astarte_object_entries_deserialize(
-            v_elem, interface, path, &entries, &entries_length);
+            v_elem, interface, path, &cleanup_ctx.entries, &cleanup_ctx.length);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Failed in parsing the received BSON file. Interface: %s, path: %s.",
                 interface->name, path);
             return;
         }
-        on_datastream_aggregated(device, base_event, entries, entries_length);
-        astarte_object_entries_destroy_deserialized(entries, entries_length);
+        on_datastream_aggregated(device, base_event, cleanup_ctx.entries, cleanup_ctx.length);
     }
 }
 

@@ -279,10 +279,8 @@ int data_expected_object(const char *interface_name, const char *path,
 
     message_t *expected = spsc_peek(&map_value->messages);
     CHECK_RET_1(expected == NULL, "No more expected messages");
-
     CHECK_RET_1(expected->type != OBJECT, "Expected an object but got a different message type");
     CHECK_RET_1(strcmp(expected->path, path) != 0, "Received path does not match expected one");
-
     // Compare the expected message payload with the received one
     CHECK_RET_1(!astarte_objects_are_equal(
                     expected->entries, expected->entries_length, entries, entries_length),

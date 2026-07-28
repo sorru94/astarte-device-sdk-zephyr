@@ -138,5 +138,4 @@ void astarte_object_entries_destroy_deserialized(
         astarte_data_destroy_deserialized(entries[i].data);
     }
     astarte_free(entries);
-    entries = NULL;
 }

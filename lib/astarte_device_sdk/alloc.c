@@ -40,10 +40,6 @@ void *astarte_calloc(size_t nmemb, size_t size)
 #else
     size_t total_size = nmemb * size;
 
-    if (total_size == 0) {
-        return NULL;
-    }
-
     void *ptr = k_heap_alloc(&astarte_sdk_heap, total_size, K_NO_WAIT);
 
     if (ptr != NULL) {
@@ -56,18 +52,20 @@ void *astarte_calloc(size_t nmemb, size_t size)
 
 void *astarte_realloc(void *ptr, size_t size)
 {
-#ifndef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
-    return k_realloc(ptr, size);
-#else
+    // standard realloc behavior for NULL pointers
     if (ptr == NULL) {
         return astarte_malloc(size);
     }
 
+    // standard realloc behavior for 0 size
     if (size == 0) {
         astarte_free(ptr);
         return NULL;
     }
 
+#ifndef CONFIG_ASTARTE_DEVICE_SDK_ENABLE_HEAP
+    return k_realloc(ptr, size);
+#else
     return k_heap_realloc(&astarte_sdk_heap, ptr, size, K_NO_WAIT);
 #endif
 }

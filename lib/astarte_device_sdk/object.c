@@ -61,76 +61,74 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
     const astarte_interface_t *interface, const char *path, astarte_object_entry_t **entries,
     size_t *entries_length)
 {
-    astarte_object_entry_t *tmp_entries = NULL;
-    size_t deserialize_idx = 0;
     astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    // Init context and register the deferred cleanup
+    astarte_object_entries_ctx_t cleanup_ctx = { .entries = NULL, .length = 0 };
+    scope_defer(astarte_cleanup_object_entries)(&cleanup_ctx);
 
     // Step 1: extract the document from the BSON and calculate its length
     if (bson_elem.type != ASTARTE_BSON_TYPE_DOCUMENT) {
         ASTARTE_LOG_ERR("Received BSON element that is not a document.");
-        ares = ASTARTE_RESULT_BSON_DESERIALIZER_ERROR;
-        goto failure;
+        return ASTARTE_RESULT_BSON_DESERIALIZER_ERROR;
     }
     astarte_bson_document_t bson_doc = astarte_bson_deserializer_element_to_document(bson_elem);
 
     size_t bson_doc_length = 0;
     ares = astarte_bson_deserializer_doc_count_elements(bson_doc, &bson_doc_length);
     if (ares != ASTARTE_RESULT_OK) {
-        goto failure;
+        return ares;
     }
     if (bson_doc_length == 0) {
         ASTARTE_LOG_ERR("BSON document can't be empty.");
-        ares = ASTARTE_RESULT_BSON_EMPTY_DOCUMENT_ERROR;
-        goto failure;
+        return ASTARTE_RESULT_BSON_EMPTY_DOCUMENT_ERROR;
     }
 
     // Step 2: Allocate sufficient memory for all the astarte object entries
-    tmp_entries = astarte_calloc(bson_doc_length, sizeof(astarte_object_entry_t));
-    if (!tmp_entries) {
+    cleanup_ctx.entries = astarte_calloc(bson_doc_length, sizeof(astarte_object_entry_t));
+    if (!cleanup_ctx.entries) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto failure;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     // Step 3: Fill the allocated memory
     astarte_bson_element_t inner_elem = { 0 };
     ares = astarte_bson_deserializer_first_element(bson_doc, &inner_elem);
     if (ares != ASTARTE_RESULT_OK) {
-        goto failure;
+        return ares;
     }
 
     const astarte_mapping_t *mapping = NULL;
-    while ((ares != ASTARTE_RESULT_NOT_FOUND) && (deserialize_idx < bson_doc_length)) {
-        tmp_entries[deserialize_idx].path = inner_elem.name;
+    while ((ares != ASTARTE_RESULT_NOT_FOUND) && (cleanup_ctx.length < bson_doc_length)) {
+        cleanup_ctx.entries[cleanup_ctx.length].path = inner_elem.name;
         ares = astarte_interface_get_mapping_from_paths(interface, path, inner_elem.name, &mapping);
         if (ares != ASTARTE_RESULT_OK) {
-            goto failure;
+            return ares;
         }
         ares = astarte_data_deserialize(
-            inner_elem, mapping->type, &(tmp_entries[deserialize_idx].data));
+            inner_elem, mapping->type, &(cleanup_ctx.entries[cleanup_ctx.length].data));
         if (ares != ASTARTE_RESULT_OK) {
-            goto failure;
+            return ares;
         }
-        deserialize_idx++;
+
+        // Increment count only after successful deserialization
+        cleanup_ctx.length++;
+
         ares = astarte_bson_deserializer_next_element(bson_doc, inner_elem, &inner_elem);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
-            goto failure;
+            return ares;
         }
     }
 
     // Step 4: fill in the output variables
-    *entries = tmp_entries;
+    *entries = cleanup_ctx.entries;
     *entries_length = bson_doc_length;
 
+    // Disable cleanup on success to prevent deallocation.
+    // This is performed by a check in the cleanup function
+    cleanup_ctx.entries = NULL;
+
     return ASTARTE_RESULT_OK;
-
-failure:
-    for (size_t j = 0; j < deserialize_idx; j++) {
-        astarte_data_destroy_deserialized(tmp_entries[j].data);
-    }
-    astarte_free(tmp_entries);
-
-    return ares;
 }
 
 void astarte_object_entries_destroy_deserialized(

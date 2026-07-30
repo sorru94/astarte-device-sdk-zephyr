@@ -14,6 +14,10 @@
 
 #include "astarte_device_sdk/result.h"
 
+#include <zephyr/sys/util.h>
+
+#include "cleanup.h"
+
 /** @brief Data struct for a serializer instance. */
 typedef struct
 {
@@ -50,6 +54,10 @@ astarte_result_t astarte_bson_serializer_init(astarte_bson_serializer_t *bson);
  * @param[in, out] bson a valid handle for the serializer instance that will be destroyed.
  */
 void astarte_bson_serializer_destroy(astarte_bson_serializer_t *bson);
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_bson_serializer_destroy, astarte_bson_serializer_t *);
+/** @endcond */
 
 /**
  * @brief Getter for the BSON serializer internal buffer.

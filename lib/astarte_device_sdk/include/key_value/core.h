@@ -32,6 +32,7 @@
  * - Iterating through all the stored key-value pairs.
  */
 
+#include <zephyr/sys/util.h>
 #include <zephyr/version.h>
 
 #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
@@ -42,6 +43,8 @@
 
 #include "astarte_device_sdk/astarte.h"
 #include "astarte_device_sdk/result.h"
+
+#include "cleanup.h"
 
 /** @brief The current major version for the key-value storage. */
 #define ASTARTE_KEY_VALUE_FORMAT_VERSION_MAJOR 0
@@ -165,6 +168,10 @@ astarte_result_t astarte_key_value_new(
  * @param[inout] kv_storage The storage instance to destroy.
  */
 void astarte_key_value_destroy(astarte_key_value_t *kv_storage);
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_key_value_destroy, astarte_key_value_t *);
+/** @endcond */
 
 /**
  * @brief Insert or update a new key-value pair into storage.

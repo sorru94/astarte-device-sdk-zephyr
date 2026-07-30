@@ -150,15 +150,14 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
 {
     device->subscription_failure = false;
 
-    char *intr_str = NULL;
     size_t intr_str_size = introspection_get_string_size(&device->introspection);
 
-    intr_str = astarte_calloc(intr_str_size, sizeof(char));
+    scope_var(scoped_char, intr_str)(intr_str_size);
     if (!intr_str) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-        goto exit;
+        return;
     }
     introspection_fill_string(&device->introspection, intr_str, intr_str_size);
 
@@ -169,21 +168,21 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
         if (ares == ASTARTE_RESULT_OK) {
             ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE");
             device->connection_state = DEVICE_END_HANDSHAKE;
-            goto exit;
+            return;
         }
     }
 #else
     if ((device->mqtt_session_present_flag != 0) && device->synchronization_completed) {
         ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE");
         device->connection_state = DEVICE_END_HANDSHAKE;
-        goto exit;
+        return;
     }
 #endif
 
     if (setup_subscriptions(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-        goto exit;
+        return;
     }
     send_introspection(device, intr_str);
     send_emptycache(device);
@@ -191,29 +190,25 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     if (astarte_device_properties_send_purge(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-        goto exit;
+        return;
     }
     if (astarte_device_properties_send_device_owned(device) != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-        goto exit;
+        return;
     }
 #endif
     ASTARTE_LOG_DBG("Device connection state -> END_HANDSHAKE");
     device->connection_state = DEVICE_END_HANDSHAKE;
-
-exit:
-    astarte_free(intr_str);
 }
 
 static void state_machine_end_handshake_run(astarte_device_handle_t device)
 {
-    char *intr_str = NULL;
     if (device->subscription_failure) {
         ASTARTE_LOG_ERR("Subscription request has been denied");
         ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
         device->connection_state = DEVICE_HANDSHAKE_ERROR;
-        goto exit;
+        return;
     }
     if (!astarte_mqtt_has_pending_outgoing(&device->astarte_mqtt)) {
         ASTARTE_LOG_DBG("Device synchronization completed");
@@ -228,12 +223,12 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         }
 
         size_t intr_str_size = introspection_get_string_size(&device->introspection);
-        intr_str = astarte_calloc(intr_str_size, sizeof(char));
+        scope_var(scoped_char, intr_str)(intr_str_size);
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
             device->connection_state = DEVICE_HANDSHAKE_ERROR;
-            goto exit;
+            return;
         }
         introspection_fill_string(&device->introspection, intr_str, intr_str_size);
 
@@ -255,9 +250,6 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
             device->connection_cbk(event);
         }
     }
-
-exit:
-    astarte_free(intr_str);
 }
 
 static void state_machine_handshake_error_run(astarte_device_handle_t device)
@@ -302,6 +294,7 @@ static astarte_result_t setup_subscriptions(astarte_device_handle_t device)
             size_t topic_len = strlen(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "///#")
                 + ASTARTE_DEVICE_ID_LEN + strlen(interface->name);
             char *topic = astarte_calloc(topic_len + 1, sizeof(char));
+            scope_defer(astarte_free)(topic);
             if (!topic) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
                 return ASTARTE_RESULT_OUT_OF_MEMORY;
@@ -312,13 +305,11 @@ static astarte_result_t setup_subscriptions(astarte_device_handle_t device)
                     device->device_id, interface->name);
             if (ret != topic_len) {
                 ASTARTE_LOG_ERR("Error encoding MQTT topic");
-                astarte_free(topic);
                 return ASTARTE_RESULT_INTERNAL_ERROR;
             }
 
             ASTARTE_LOG_DBG("Subscribing to: %s", topic);
             astarte_mqtt_subscribe(&device->astarte_mqtt, topic, 2, NULL);
-            astarte_free(topic);
         }
     }
     return ASTARTE_RESULT_OK;

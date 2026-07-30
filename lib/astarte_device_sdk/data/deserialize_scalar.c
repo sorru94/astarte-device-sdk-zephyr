@@ -111,52 +111,46 @@ astarte_result_t astarte_data_deserialize_scalar(
 static astarte_result_t deserialize_binaryblob(
     astarte_bson_element_t bson_elem, astarte_data_t *data)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    uint8_t *dyn_deserialized = NULL;
-
     uint32_t deserialized_len = 0;
     const uint8_t *deserialized
         = astarte_bson_deserializer_element_to_binary(bson_elem, &deserialized_len);
 
-    dyn_deserialized = astarte_calloc(deserialized_len, sizeof(uint8_t));
-    if (!dyn_deserialized) {
+    scope_var(scoped_uint8, deserialized_buf)(deserialized_len);
+    if (!deserialized_buf) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto failure;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
-    memcpy(dyn_deserialized, deserialized, deserialized_len);
-    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
-    *data = astarte_data_from_binaryblob((const void *) dyn_deserialized, deserialized_len);
-    return ares;
+    memcpy(deserialized_buf, deserialized, deserialized_len);
 
-failure:
-    astarte_free(dyn_deserialized);
-    return ares;
+    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
+    *data = astarte_data_from_binaryblob((const void *) deserialized_buf, deserialized_len);
+
+    // Transfer ownership and disarm the auto-cleanup
+    deserialized_buf = NULL;
+
+    return ASTARTE_RESULT_OK;
 }
 
 static astarte_result_t deserialize_string(astarte_bson_element_t bson_elem, astarte_data_t *data)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *dyn_deserialized = NULL;
-
     uint32_t deserialized_len = 0;
     const char *deserialized
         = astarte_bson_deserializer_element_to_string(bson_elem, &deserialized_len);
 
-    dyn_deserialized = astarte_calloc(deserialized_len + 1, sizeof(char));
-    if (!dyn_deserialized) {
+    scope_var(scoped_char, deserialized_buf)(deserialized_len + 1);
+    if (!deserialized_buf) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto failure;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
-    strncpy(dyn_deserialized, deserialized, deserialized_len);
-    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
-    *data = astarte_data_from_string(dyn_deserialized);
-    return ares;
+    strncpy(deserialized_buf, deserialized, deserialized_len);
 
-failure:
-    astarte_free(dyn_deserialized);
-    return ares;
+    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
+    *data = astarte_data_from_string(deserialized_buf);
+
+    // Transfer ownership and disarm the auto-cleanup
+    deserialized_buf = NULL;
+
+    return ASTARTE_RESULT_OK;
 }

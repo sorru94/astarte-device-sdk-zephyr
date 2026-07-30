@@ -28,6 +28,58 @@ struct allow_node
     const char *property;
 };
 
+// Context to hold the device properties heap allocated variables.
+typedef struct
+{
+    char *interface_name;
+    char *path;
+    astarte_data_t data;
+} device_props_cleanup_ctx_t;
+
+// Device properties cleanup function
+static void cleanup_device_props(device_props_cleanup_ctx_t *ctx)
+{
+    if (ctx) {
+        astarte_free(ctx->interface_name);
+        ctx->interface_name = NULL;
+        astarte_free(ctx->path);
+        ctx->path = NULL;
+        astarte_storage_property_destroy_loaded(ctx->data);
+    }
+}
+
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_device_props, device_props_cleanup_ctx_t *);
+
+// Context to hold the purge properties heap allocated variables.
+typedef struct
+{
+    char *decomp_data;
+    sys_slist_t *allow_list;
+} purge_cleanup_ctx_t;
+
+// Custom purge properties cleanup function.
+static void cleanup_purge_ctx(purge_cleanup_ctx_t *ctx)
+{
+    if (ctx) {
+        // free all nodes that were added to the list
+        if (ctx->allow_list) {
+            sys_snode_t *node = NULL;
+            sys_snode_t *safe_node = NULL;
+            SYS_SLIST_FOR_EACH_NODE_SAFE(ctx->allow_list, node, safe_node)
+            {
+                struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
+                astarte_free(allow_node);
+                allow_node = NULL;
+            }
+        }
+        // free the main buffer
+        astarte_free(ctx->decomp_data);
+        ctx->decomp_data = NULL;
+    }
+}
+
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_purge_ctx, purge_cleanup_ctx_t *);
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -75,29 +127,26 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
 astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *intr_str = NULL;
-    uint8_t *payload = NULL;
 
     size_t intr_str_size = 0U;
     ares = astarte_storage_property_get_device_string(
         &device->caching, &device->introspection, NULL, &intr_str_size);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Error getting stored properties string: %s", astarte_result_to_name(ares));
-        goto exit;
+        return ares;
     }
+    scope_var(scoped_char, intr_str)(intr_str_size);
     if (intr_str_size != 0) {
-        intr_str = astarte_calloc(intr_str_size, sizeof(char));
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            goto exit;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
 
         ares = astarte_storage_property_get_device_string(
             &device->caching, &device->introspection, intr_str, &intr_str_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Can't get stored properties string: %s", astarte_result_to_name(ares));
-            goto exit;
+            return ares;
         }
     }
 
@@ -105,13 +154,12 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
     char *compression_input = intr_str;
     size_t compression_input_len = (compression_input) ? (intr_str_size - 1) : 0;
     uLongf compressed_len = compressBound(compression_input_len);
-    // Allocate enough memory for the payload
     size_t payload_size = 4 + compressed_len;
-    payload = astarte_calloc(payload_size, sizeof(uint8_t));
+
+    scope_var(scoped_uint8, payload)(payload_size);
     if (!payload) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     // Fill the first 32 bits of the payload
     uint32_t raw_len = __builtin_bswap32(compression_input_len);
@@ -121,17 +169,14 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
         (char unsigned *) compression_input, compression_input_len);
     if (compress_res != Z_OK) {
         ASTARTE_LOG_ERR("Error compressing the purge properties message %d.", compress_res);
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
     // 'astarte_zlib_compress' updates 'compressed_len' to the actual size of the compressed data
     payload_size = 4 + compressed_len;
     // Check if payload is not too large for a MQTT message
     if (payload_size > INT_MAX) {
-        // MQTT supports sending a maximum payload length of INT_MAX
         ASTARTE_LOG_ERR("Purge properties payload is too long for a single MQTT message.");
-        ares = ASTARTE_RESULT_MQTT_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_MQTT_ERROR;
     }
 
     // Transmit the payload
@@ -141,124 +186,115 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
         (compression_input) ? compression_input : "");
     astarte_mqtt_publish(&device->astarte_mqtt, topic, payload, payload_size, qos, NULL);
 
-exit:
-    astarte_free(intr_str);
-    astarte_free(payload);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_device_properties_send_device_owned(astarte_device_handle_t device)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_storage_property_iter_t iter = { 0 };
-    char *interface_name = NULL;
-    char *path = NULL;
-    astarte_data_t data = { 0 };
 
     ares = astarte_storage_property_iterator_new(&device->caching, &iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
-        goto end;
+        return ares;
     }
 
     while (ares != ASTARTE_RESULT_NOT_FOUND) {
+        device_props_cleanup_ctx_t ctx = { 0 };
+        scope_defer(cleanup_device_props)(&ctx);
+
         size_t interface_name_size = 0U;
         size_t path_size = 0U;
         ares = astarte_storage_property_iterator_get(
             &iter, NULL, &interface_name_size, NULL, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto end;
+            return ares; // Safely triggers loop-scoped cleanup
         }
 
-        // Allocate space for the name and path
-        interface_name = astarte_calloc(interface_name_size, sizeof(char));
-        path = astarte_calloc(path_size, sizeof(char));
-        if (!interface_name || !path) {
+        ctx.interface_name = astarte_calloc(interface_name_size, sizeof(char));
+        ctx.path = astarte_calloc(path_size, sizeof(char));
+        if (!ctx.interface_name || !ctx.path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            goto end;
+            return ASTARTE_RESULT_OUT_OF_MEMORY; // Safely triggers loop-scoped cleanup
         }
 
         ares = astarte_storage_property_iterator_get(
-            &iter, interface_name, &interface_name_size, path, &path_size);
+            &iter, ctx.interface_name, &interface_name_size, ctx.path, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto end;
+            return ares;
         }
 
         uint32_t major = 0U;
-        ares = astarte_storage_property_load(&device->caching, interface_name, path, &major, &data);
+        ares = astarte_storage_property_load(
+            &device->caching, ctx.interface_name, ctx.path, &major, &ctx.data);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties load property error: %s", astarte_result_to_name(ares));
-            goto end;
+            return ares;
         }
 
-        send_device_owned_property(device, &iter, interface_name, path, major, data);
-
-        astarte_free(interface_name);
-        interface_name = NULL;
-        astarte_free(path);
-        path = NULL;
-        astarte_storage_property_destroy_loaded(data);
-        data = (astarte_data_t){ 0 };
+        send_device_owned_property(device, &iter, ctx.interface_name, ctx.path, major, ctx.data);
 
         ares = astarte_storage_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_ERR("Iterator next error: %s", astarte_result_to_name(ares));
-            goto end;
+            return ares;
         }
     }
 
-end:
-    // Free all data
-    astarte_free(interface_name);
-    astarte_free(path);
-    astarte_storage_property_destroy_loaded(data);
     return (ares == ASTARTE_RESULT_NOT_FOUND) ? ASTARTE_RESULT_OK : ares;
 }
 
 void astarte_device_properties_handle_purge(
     astarte_device_handle_t device, const char *data, size_t data_len)
 {
-    char *decomp_data = NULL;
+    if (data_len < 4) {
+        ASTARTE_LOG_WRN("Payload too small for a purge message.");
+        return;
+    }
+
     sys_slist_t allow_list = { 0 };
     sys_slist_init(&allow_list);
+
+    purge_cleanup_ctx_t ctx = { .decomp_data = NULL, .allow_list = &allow_list };
+    scope_defer(cleanup_purge_ctx)(&ctx);
 
     uint32_t raw_len = 0;
     memcpy(&raw_len, data, sizeof(raw_len));
     uLongf decomp_data_len = __builtin_bswap32(raw_len);
 
-    decomp_data = astarte_calloc(decomp_data_len + 1, sizeof(char));
-    if (!decomp_data) {
+    ctx.decomp_data = astarte_calloc(decomp_data_len + 1, sizeof(char));
+    if (!ctx.decomp_data) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        goto exit;
+        return;
     }
 
     if (decomp_data_len != 0) {
-        int uncompress_res = uncompress((char unsigned *) decomp_data, &decomp_data_len,
+        int uncompress_res = uncompress((char unsigned *) ctx.decomp_data, &decomp_data_len,
             (char unsigned *) data + 4, data_len - 4);
         if (uncompress_res != Z_OK) {
             ASTARTE_LOG_ERR("Decompression error %d.", uncompress_res);
-            goto exit;
+            return;
         }
     }
 
-    ASTARTE_LOG_DBG("Received purge properties: '%s'", decomp_data);
+    ASTARTE_LOG_DBG("Received purge properties: '%s'", ctx.decomp_data);
 
     // Parse the received message and fill a list of properties
     if (decomp_data_len != 0) {
         char *saveptr = NULL;
-        char *property = strtok_r(decomp_data, ";", &saveptr);
+        char *property = strtok_r(ctx.decomp_data, ";", &saveptr);
         if (!property) {
-            ASTARTE_LOG_ERR("Error parsing the purge property message %s.", decomp_data);
-            goto exit;
+            ASTARTE_LOG_ERR("Error parsing the purge property message %s.", ctx.decomp_data);
+            return;
         }
         do {
             struct allow_node *allow_node = astarte_calloc(1, sizeof(struct allow_node));
             if (!allow_node) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-                goto exit;
+                return;
             }
             allow_node->property = property;
             sys_slist_append(&allow_list, &allow_node->node);
@@ -268,16 +304,6 @@ void astarte_device_properties_handle_purge(
 
     // Iterate over the stored properties and purge the ones not in the allow list
     purge_server_properties(device, &allow_list);
-
-exit:
-    sys_snode_t *node = NULL;
-    sys_snode_t *safe_node = NULL;
-    SYS_SLIST_FOR_EACH_NODE_SAFE(&allow_list, node, safe_node)
-    {
-        struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
-        astarte_free(allow_node);
-    }
-    astarte_free(decomp_data);
 }
 
 /************************************************
@@ -288,13 +314,11 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_storage_property_iter_t iter = { 0 };
-    char *interface_name = NULL;
-    char *path = NULL;
 
     ares = astarte_storage_property_iterator_new(&device->caching, &iter);
     if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
         ASTARTE_LOG_ERR("Properties iterator init failed: %s", astarte_result_to_name(ares));
-        goto end;
+        return;
     }
 
     while (ares != ASTARTE_RESULT_NOT_FOUND) {
@@ -304,42 +328,33 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
             &iter, NULL, &interface_name_size, NULL, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto end;
+            return;
         }
 
-        // Allocate space for the name and path
-        interface_name = astarte_calloc(interface_name_size, sizeof(char));
-        path = astarte_calloc(path_size, sizeof(char));
+        scope_var(scoped_char, interface_name)(interface_name_size);
+        scope_var(scoped_char, path)(path_size);
+
         if (!interface_name || !path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            goto end;
+            return;
         }
 
         ares = astarte_storage_property_iterator_get(
             &iter, interface_name, &interface_name_size, path, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            goto end;
+            return;
         }
 
         // Purge the property if not in the allow list
         purge_server_property(device, &iter, interface_name, path, allow_list);
 
-        astarte_free(interface_name);
-        interface_name = NULL;
-        astarte_free(path);
-        path = NULL;
-
         ares = astarte_storage_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
             ASTARTE_LOG_ERR("Iterator next error: %s", astarte_result_to_name(ares));
-            goto end;
+            return;
         }
     }
-
-end:
-    astarte_free(interface_name);
-    astarte_free(path);
 }
 
 static void purge_server_property(astarte_device_handle_t device,
@@ -347,7 +362,6 @@ static void purge_server_property(astarte_device_handle_t device,
     sys_slist_t *allow_list)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *property = NULL;
 
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
@@ -358,25 +372,25 @@ static void purge_server_property(astarte_device_handle_t device,
             ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK,
                 "Failed deleting the cached property: %s", astarte_result_to_name(ares));
         }
-        goto end;
+        return;
     }
 
     if (interface->ownership != ASTARTE_INTERFACE_OWNERSHIP_SERVER) {
-        goto end;
+        return;
     }
 
     // Concatenate the interface_name and path
-    property = astarte_calloc(strlen(interface_name) + strlen(path) + 1, sizeof(char));
+    scope_var(scoped_char, property)(strlen(interface_name) + strlen(path) + 1);
     if (!property) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        goto end;
+        return;
     }
     int snprintf_rc = snprintf(
         property, strlen(interface_name) + strlen(path) + 1, "%s%s", interface_name, path);
     if (snprintf_rc != strlen(interface_name) + strlen(path)) {
         ASTARTE_LOG_ERR("Error encoding interface name '%s' and path '%s' in a single string.",
             interface_name, path);
-        goto end;
+        return;
     }
 
     // Iterate over the allow list
@@ -385,7 +399,7 @@ static void purge_server_property(astarte_device_handle_t device,
     {
         struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
         if (strcmp(allow_node->property, property) == 0) {
-            goto end;
+            return;
         }
     }
 
@@ -396,9 +410,6 @@ static void purge_server_property(astarte_device_handle_t device,
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed deleting the cached property: %s",
             astarte_result_to_name(ares));
     }
-
-end:
-    astarte_free(property);
 }
 
 static void send_device_owned_property(astarte_device_handle_t device,

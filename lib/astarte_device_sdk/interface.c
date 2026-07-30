@@ -58,27 +58,23 @@ astarte_result_t astarte_interface_get_mapping_from_paths(const astarte_interfac
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     const size_t fullpath_size = strlen(path1) + 1 + strlen(path2) + 1;
-    char *fullpath = astarte_calloc(fullpath_size, sizeof(char));
+    scope_var(scoped_char, fullpath)(fullpath_size);
     if (!fullpath) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
     if (snprintf(fullpath, fullpath_size, "%s/%s", path1, path2) != fullpath_size - 1) {
         ASTARTE_LOG_ERR("Failure in formatting the full path.");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
     ares = astarte_interface_get_mapping_from_path(interface, fullpath, mapping);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR(
             "For path '%s' could not find mapping in interface '%s'.", fullpath, interface->name);
-        ares = ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
-        goto exit;
+        return ASTARTE_RESULT_MAPPING_NOT_IN_INTERFACE;
     }
 
-exit:
-    astarte_free(fullpath);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_interface_get_qos(

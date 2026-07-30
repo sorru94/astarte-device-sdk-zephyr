@@ -24,6 +24,21 @@ struct mqtt_caching_map_entry
     astarte_storage_mqtt_message_t message;
 };
 
+// Centralized cleanup for a map entry
+static void astarte_mqtt_caching_map_entry_free(struct mqtt_caching_map_entry *entry)
+{
+    if (entry) {
+        astarte_free(entry->message.topic);
+        entry->message.topic = NULL;
+        astarte_free(entry->message.data);
+        entry->message.data = NULL;
+        astarte_free(entry);
+        entry = NULL;
+    }
+}
+
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_mqtt_caching_map_entry_free, struct mqtt_caching_map_entry *);
+
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
@@ -71,51 +86,50 @@ uint16_t astarte_mqtt_caching_get_available_message_id(astarte_mqtt_caching_t *c
 void astarte_mqtt_caching_insert_message(
     astarte_mqtt_caching_t *caching, uint16_t identifier, astarte_storage_mqtt_message_t message)
 {
-    char *topic_cpy = NULL;
-    uint8_t *data_cpy = NULL;
-    struct mqtt_caching_map_entry *map_entry = NULL;
     ASTARTE_LOG_DBG("Adding message to map, id: %d.", identifier);
 
     if (sys_hashmap_contains_key(&caching->map, identifier)) {
         ASTARTE_LOG_ERR("Message already cached, id: %d.", identifier);
-        goto error;
+        return;
     }
 
-    map_entry = astarte_calloc(1, sizeof(struct mqtt_caching_map_entry));
+    struct mqtt_caching_map_entry *map_entry
+        = astarte_calloc(1, sizeof(struct mqtt_caching_map_entry));
     if (!map_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        goto error;
-    }
-
-    if (message.topic) {
-        topic_cpy = astarte_calloc(strlen(message.topic) + 1, sizeof(char));
-        if (!topic_cpy) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            goto error;
-        }
-        strncpy(topic_cpy, message.topic, strlen(message.topic) + 1);
-    }
-
-    if (message.data && (message.data_size != 0)) {
-        data_cpy = astarte_calloc(message.data_size, sizeof(uint8_t));
-        if (!data_cpy) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            goto error;
-        }
-        memcpy(data_cpy, message.data, message.data_size);
+        return;
     }
 
     map_entry->end_of_validity = sys_timepoint_calc(K_SECONDS(CONFIG_MQTT_KEEPALIVE));
     map_entry->message.type = message.type;
-    map_entry->message.topic = topic_cpy;
-    map_entry->message.data = data_cpy;
     map_entry->message.data_size = message.data_size;
     map_entry->message.qos = message.qos;
+
+    if (message.topic) {
+        map_entry->message.topic = astarte_calloc(strlen(message.topic) + 1, sizeof(char));
+        if (!map_entry->message.topic) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            astarte_mqtt_caching_map_entry_free(map_entry); // Manual cleanup
+            return;
+        }
+        strncpy(map_entry->message.topic, message.topic, strlen(message.topic) + 1);
+    }
+
+    if (message.data && (message.data_size != 0)) {
+        map_entry->message.data = astarte_calloc(message.data_size, sizeof(uint8_t));
+        if (!map_entry->message.data) {
+            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+            astarte_mqtt_caching_map_entry_free(map_entry); // Manual cleanup
+            return;
+        }
+        memcpy(map_entry->message.data, message.data, message.data_size);
+    }
 
     int ret = sys_hashmap_insert(&caching->map, identifier, POINTER_TO_UINT(map_entry), NULL);
     if (ret != 1) {
         ASTARTE_LOG_ERR("Failed adding entry to the hashmap. Err: %d", ret);
-        goto error;
+        astarte_mqtt_caching_map_entry_free(map_entry);
+        return;
     }
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
@@ -125,13 +139,6 @@ void astarte_mqtt_caching_insert_message(
         ASTARTE_LOG_ERR("Failed to persist message %d to flash. Err: %d", identifier, ares);
     }
 #endif
-
-    return;
-
-error:
-    astarte_free(topic_cpy);
-    astarte_free(data_cpy);
-    astarte_free(map_entry);
 }
 
 bool astarte_mqtt_caching_find_message(astarte_mqtt_caching_t *caching, uint16_t message_id)
@@ -186,9 +193,8 @@ void astarte_mqtt_caching_remove_message(astarte_mqtt_caching_t *caching, uint16
     if (sys_hashmap_remove(&caching->map, message_id, &value)) {
         // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(value);
-        astarte_free(map_entry->message.topic);
-        astarte_free(map_entry->message.data);
-        astarte_free(map_entry);
+
+        astarte_mqtt_caching_map_entry_free(map_entry);
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
         // Delete also from flash
         astarte_result_t ares
@@ -215,9 +221,8 @@ void astarte_mqtt_caching_clear_messages(astarte_mqtt_caching_t *caching)
         iter.next(&iter);
         // NOLINTNEXTLINE(performance-no-int-to-ptr) Unavoidable due to the hashmap structure
         struct mqtt_caching_map_entry *map_entry = UINT_TO_POINTER(iter.value);
-        astarte_free(map_entry->message.topic);
-        astarte_free(map_entry->message.data);
-        astarte_free(map_entry);
+
+        astarte_mqtt_caching_map_entry_free(map_entry);
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
         // Remove also from flash
         astarte_result_t ares

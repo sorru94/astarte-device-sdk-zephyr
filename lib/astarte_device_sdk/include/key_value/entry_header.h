@@ -18,6 +18,7 @@
 
 #include "astarte_device_sdk/result.h"
 
+#include <zephyr/sys/util.h>
 #include <zephyr/version.h>
 
 #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
@@ -25,6 +26,8 @@
 #else
 #include <zephyr/fs/zms.h>
 #endif
+
+#include "cleanup.h"
 
 /** @brief Size in bytes of the namespace string length field. */
 #define ASTARTE_KEY_VALUE_ENTRY_HEADER_NAMESPACE_LEN_BYTES 2
@@ -96,6 +99,11 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
  * @param[inout] header The entry header struct to free strings from.
  */
 void astarte_key_value_entry_header_free(struct astarte_key_value_entry_header *header);
+
+/** @cond INTERNAL_HIDDEN */
+ASTARTE_SCOPE_DEFER_DEFINE(
+    astarte_key_value_entry_header_free, struct astarte_key_value_entry_header *);
+/** @endcond */
 
 /**
  * @brief Reads only the fixed portion of an entry header from ZMS.

@@ -132,43 +132,34 @@ void astarte_device_dispatcher_on_incoming(astarte_mqtt_t *astarte_mqtt, const c
 astarte_result_t astarte_device_dispatcher_publish_data(astarte_device_handle_t device,
     const char *interface_name, const char *path, const void *data, int data_size, int qos)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-    char *topic = NULL;
-
     if (path[0] != '/') {
         ASTARTE_LOG_ERR("Invalid path: %s (must be start with /)", path);
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     if (qos < 0 || qos > 2) {
         ASTARTE_LOG_ERR("Invalid QoS: %d (must be 0, 1 or 2)", qos);
-        ares = ASTARTE_RESULT_INVALID_PARAM;
-        goto exit;
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     size_t topic_len = strlen(CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "//") + ASTARTE_DEVICE_ID_LEN
         + strlen(interface_name) + strlen(path);
-    topic = astarte_calloc(topic_len + 1, sizeof(char));
+    scope_var(scoped_char, topic)(topic_len + 1);
     if (!topic) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-        goto exit;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     int ret = snprintf(topic, topic_len + 1, CONFIG_ASTARTE_DEVICE_SDK_REALM_NAME "/%s/%s%s",
         device->device_id, interface_name, path);
     if (ret != topic_len) {
         ASTARTE_LOG_ERR("Error encoding MQTT topic");
-        ares = ASTARTE_RESULT_INTERNAL_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
 
     astarte_mqtt_publish(&device->astarte_mqtt, topic, (void *) data, data_size, qos, NULL);
 
-exit:
-    astarte_free(topic);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 /************************************************

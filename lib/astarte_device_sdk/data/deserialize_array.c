@@ -75,6 +75,60 @@ static inline int64_t extract_int64(astarte_bson_element_t elem)
         : astarte_bson_deserializer_element_to_int64(elem);
 }
 
+/** @brief Context to hold both arrays and the current item count for binary blobs cleanup. */
+typedef struct
+{
+    /** @cond INTERNAL_HIDDEN */
+    uint8_t **array;
+    size_t *sizes;
+    size_t count;
+    /** @endcond */
+} binblob_array_cleanup_ctx_t;
+
+/** @brief Context to hold the string array and the item count for strings cleanup. */
+typedef struct
+{
+    /** @cond INTERNAL_HIDDEN */
+    char **array;
+    size_t count;
+    /** @endcond */
+} string_array_cleanup_ctx_t;
+
+// Binary blob array cleanup function
+static void cleanup_binblob_array(binblob_array_cleanup_ctx_t *ctx)
+{
+    if (ctx) {
+        if (ctx->array) {
+            for (size_t i = 0; i < ctx->count; i++) {
+                astarte_free(ctx->array[i]);
+                ctx->array[i] = NULL;
+            }
+            astarte_free((void *) ctx->array);
+            ctx->array = NULL;
+        }
+        if (ctx->sizes) {
+            astarte_free((void *) ctx->sizes);
+            ctx->sizes = NULL;
+        }
+    }
+}
+
+// String array cleanup function
+static void cleanup_string_array(string_array_cleanup_ctx_t *ctx)
+{
+    if (ctx && ctx->array) {
+        for (size_t i = 0; i < ctx->count; i++) {
+            astarte_free(ctx->array[i]);
+            ctx->array[i] = NULL;
+        }
+        astarte_free((void *) ctx->array);
+        ctx->array = NULL;
+    }
+}
+
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_binblob_array, binblob_array_cleanup_ctx_t *);
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_string_array, string_array_cleanup_ctx_t *);
+
 /************************************************
  *         Static functions declaration         *
  ***********************************************/
@@ -160,13 +214,14 @@ static astarte_result_t deserialize_array_binblob(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     size_t capacity = 4;
-    size_t count = 0;
 
-    uint8_t **array = (uint8_t **) astarte_calloc(capacity, sizeof(uint8_t *));
-    size_t *sizes = (size_t *) astarte_calloc(capacity, sizeof(size_t));
-    if (!array || !sizes) {
-        astarte_free((void *) array);
-        astarte_free((void *) sizes);
+    binblob_array_cleanup_ctx_t ctx = { .array = NULL, .sizes = NULL, .count = 0 };
+    scope_defer(cleanup_binblob_array)(&ctx);
+
+    ctx.array = (uint8_t **) astarte_calloc(capacity, sizeof(uint8_t *));
+    ctx.sizes = (size_t *) astarte_calloc(capacity, sizeof(size_t));
+
+    if (!ctx.array || !ctx.sizes) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
@@ -176,59 +231,61 @@ static astarte_result_t deserialize_array_binblob(
 
     while (ares == ASTARTE_RESULT_OK) {
         if (!astarte_mapping_bson_is_compatible(ASTARTE_MAPPING_TYPE_BINARYBLOB, elem.type)) {
-            ares = ASTARTE_RESULT_BSON_DESERIALIZER_TYPES_ERROR;
-            break;
+            return ASTARTE_RESULT_BSON_DESERIALIZER_TYPES_ERROR;
         }
-        if (count >= capacity) {
+
+        // capacity expansion
+        if (ctx.count >= capacity) {
             capacity *= 2;
+
             uint8_t **new_array
-                = (uint8_t **) astarte_realloc((void *) array, capacity * sizeof(uint8_t *));
-            size_t *new_sizes
-                = (size_t *) astarte_realloc((void *) sizes, capacity * sizeof(size_t));
+                = (uint8_t **) astarte_realloc((void *) ctx.array, capacity * sizeof(uint8_t *));
             if (new_array) {
-                array = new_array;
+                ctx.array = new_array;
             }
+            size_t *new_sizes
+                = (size_t *) astarte_realloc((void *) ctx.sizes, capacity * sizeof(size_t));
             if (new_sizes) {
-                sizes = new_sizes;
+                ctx.sizes = new_sizes;
             }
             if (!new_array || !new_sizes) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-                ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-                break;
+                return ASTARTE_RESULT_OUT_OF_MEMORY;
             }
         }
         uint32_t len = 0;
         const uint8_t *blob = astarte_bson_deserializer_element_to_binary(elem, &len);
-        array[count] = astarte_calloc(len, sizeof(uint8_t));
-        if (!array[count]) {
+
+        ctx.array[ctx.count] = astarte_calloc(len, sizeof(uint8_t));
+        if (!ctx.array[ctx.count]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            break;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
-        memcpy(array[count], blob, len);
-        sizes[count] = len;
-        count++;
+
+        memcpy(ctx.array[ctx.count], blob, len);
+        ctx.sizes[ctx.count] = len;
+        ctx.count++;
+
         ares = astarte_bson_deserializer_next_element(bson_doc, elem, &elem);
     }
 
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
-        if (count == 0) {
-            astarte_free((void *) array);
-            astarte_free((void *) sizes);
+        if (ctx.count == 0) {
             return initialize_empty_array(ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY, data);
         }
+
         data->tag = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY;
-        data->data.binaryblob_array.count = count;
-        data->data.binaryblob_array.sizes = sizes;
-        data->data.binaryblob_array.blobs = (const void **) array;
+        data->data.binaryblob_array.count = ctx.count;
+        data->data.binaryblob_array.sizes = ctx.sizes;
+        data->data.binaryblob_array.blobs = (const void **) ctx.array;
+
+        // Disarm the cleanup so the memory isn't destroyed
+        ctx.array = NULL;
+        ctx.sizes = NULL;
+
         return ASTARTE_RESULT_OK;
     }
 
-    for (size_t i = 0; i < count; i++) {
-        astarte_free(array[i]);
-    }
-    astarte_free((void *) array);
-    astarte_free((void *) sizes);
     return ares;
 }
 
@@ -248,9 +305,12 @@ static astarte_result_t deserialize_array_string(
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     size_t capacity = 4;
-    size_t count = 0;
-    char **array = (char **) astarte_calloc(capacity, sizeof(char *));
-    if (!array) {
+
+    string_array_cleanup_ctx_t ctx = { .array = NULL, .count = 0 };
+    scope_defer(cleanup_string_array)(&ctx);
+
+    ctx.array = (char **) astarte_calloc(capacity, sizeof(char *));
+    if (!ctx.array) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
@@ -260,46 +320,46 @@ static astarte_result_t deserialize_array_string(
 
     while (ares == ASTARTE_RESULT_OK) {
         if (!astarte_mapping_bson_is_compatible(ASTARTE_MAPPING_TYPE_STRING, elem.type)) {
-            ares = ASTARTE_RESULT_BSON_DESERIALIZER_TYPES_ERROR;
-            break;
+            return ASTARTE_RESULT_BSON_DESERIALIZER_TYPES_ERROR;
         }
-        if (count >= capacity) {
+
+        if (ctx.count >= capacity) {
             capacity *= 2;
-            char **new_array = (char **) astarte_realloc((void *) array, capacity * sizeof(char *));
+            char **new_array
+                = (char **) astarte_realloc((void *) ctx.array, capacity * sizeof(char *));
             if (!new_array) {
                 ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-                ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-                break;
+                return ASTARTE_RESULT_OUT_OF_MEMORY;
             }
-            array = new_array;
+            ctx.array = new_array;
         }
         uint32_t len = 0;
         const char *str = astarte_bson_deserializer_element_to_string(elem, &len);
-        array[count] = astarte_calloc(len + 1, sizeof(char));
-        if (!array[count]) {
+
+        ctx.array[ctx.count] = astarte_calloc(len + 1, sizeof(char));
+        if (!ctx.array[ctx.count]) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            ares = ASTARTE_RESULT_OUT_OF_MEMORY;
-            break;
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
-        strncpy(array[count], str, len);
-        count++;
+        strncpy(ctx.array[ctx.count], str, len);
+        ctx.count++;
+
         ares = astarte_bson_deserializer_next_element(bson_doc, elem, &elem);
     }
 
     if (ares == ASTARTE_RESULT_NOT_FOUND) {
-        if (count == 0) {
-            astarte_free((void *) array);
+        if (ctx.count == 0) {
             return initialize_empty_array(ASTARTE_MAPPING_TYPE_STRINGARRAY, data);
         }
         data->tag = ASTARTE_MAPPING_TYPE_STRINGARRAY;
-        data->data.string_array.len = count;
-        data->data.string_array.buf = (const char **) array;
+        data->data.string_array.len = ctx.count;
+        data->data.string_array.buf = (const char **) ctx.array;
+
+        // Disarm the cleanup to prevent deallocation
+        ctx.array = NULL;
+
         return ASTARTE_RESULT_OK;
     }
 
-    for (size_t i = 0; i < count; i++) {
-        astarte_free(array[i]);
-    }
-    astarte_free((void *) array);
     return ares;
 }

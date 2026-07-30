@@ -40,6 +40,22 @@ struct dns_resolve_ctx
     bool addr_found;
 };
 
+// Helper to lock and assert
+void astarte_mqtt_sys_mutex_lock_helper(struct sys_mutex *mtx)
+{
+    int mutex_rc = sys_mutex_lock(mtx, K_FOREVER);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+}
+
+// Helper to unlock and assert
+void astarte_mqtt_sys_mutex_unlock_helper(struct sys_mutex *mtx)
+{
+    int mutex_rc = sys_mutex_unlock(mtx);
+    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
+    __ASSERT_NO_MSG(mutex_rc == 0);
+}
+
 /************************************************
  *       Callbacks declaration/definition       *
  ***********************************************/
@@ -280,24 +296,19 @@ astarte_result_t astarte_mqtt_init(astarte_mqtt_config_t *cfg, astarte_mqtt_t *a
 
 astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
     // Lock the mutex for the Astarte MQTT wrapper
-    int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
     if ((astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)
         && (astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)) {
         ASTARTE_LOG_ERR("Connection request while the client is non idle will be ignored.");
-        ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
-        goto exit;
+        return ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
     }
 
-    ares = astarte_mqtt->refresh_client_cert_cbk(astarte_mqtt);
+    astarte_result_t ares = astarte_mqtt->refresh_client_cert_cbk(astarte_mqtt);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Refreshing client certificate failed");
-        goto exit;
+        return ares;
     }
 
     // Attempt DNS resolution for the MQTT broker
@@ -312,15 +323,13 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
         k_sem_take(&dns_ctx.sem, K_FOREVER);
     } else {
         ASTARTE_LOG_ERR("Failed to initiate DNS resolution (err: %d)", resolve_rc);
-        ares = ASTARTE_RESULT_SOCKET_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     if (!dns_ctx.addr_found) {
         ASTARTE_LOG_ERR("DNS resolution failed to find any IPv4 addresses for %s",
             astarte_mqtt->broker_hostname);
-        ares = ASTARTE_RESULT_SOCKET_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_SOCKET_ERROR;
     }
 
     // Convert string port into an integer and set it
@@ -370,8 +379,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);
     if (mqtt_rc != 0) {
         ASTARTE_LOG_ERR("MQTT connection error (%d)", mqtt_rc);
-        ares = ASTARTE_RESULT_MQTT_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_MQTT_ERROR;
     }
 
     // Set a timepoint to be used to check if the connection timeout will have elapsed
@@ -381,12 +389,7 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     // Set connecting flag
     astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTING;
 
-exit:
-    // Unlock the mutex
-    mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt)
@@ -396,25 +399,19 @@ bool astarte_mqtt_is_connected(astarte_mqtt_t *astarte_mqtt)
 
 astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
     // Lock the mutex for the Astarte MQTT wrapper
-    int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
     switch (astarte_mqtt->connection_state) {
         case ASTARTE_MQTT_CONNECTION_ERROR:
             astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTED;
-            goto exit;
+            return ASTARTE_RESULT_OK;
         case ASTARTE_MQTT_DISCONNECTED:
             ASTARTE_LOG_ERR("Disconnection request for a disconnected client will be ignored.");
-            ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
-            goto exit;
+            return ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
         case ASTARTE_MQTT_DISCONNECTING:
             ASTARTE_LOG_ERR("Disconnection request for a disconnecting client will be ignored.");
-            ares = ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
-            goto exit;
+            return ASTARTE_RESULT_MQTT_CLIENT_NOT_READY;
         default:
             break;
     }
@@ -423,108 +420,108 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
     int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client, NULL);
     if (mqtt_rc < 0) {
         ASTARTE_LOG_ERR("Device disconnection failure %d", mqtt_rc);
-        ares = ASTARTE_RESULT_MQTT_ERROR;
-        goto exit;
+        return ASTARTE_RESULT_MQTT_ERROR;
     }
+
     astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTING;
 
-exit:
-    // Unlock the mutex
-    mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_mqtt_poll(astarte_mqtt_t *astarte_mqtt)
 {
-    astarte_result_t ares = ASTARTE_RESULT_OK;
+    int32_t timeout = 0;
+    struct zsock_pollfd socket_fd = { 0 };
+    bool should_poll = false;
 
-    // Lock the mutex for the Astarte MQTT wrapper
-    int mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
+    // CRITICAL SECTION 1: State Checks and Keepalive
+    // the mutex automatically unlocks at the end of this block
+    {
+        scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
-    // If in the connecting phase check that the connection timeout has not elapsed
-    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
-        && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->connection_timepoint), K_NO_WAIT)) {
-        astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
-        mqtt_disconnect(&astarte_mqtt->client, NULL);
-        ASTARTE_LOG_ERR("Connection attempt has timed out!");
-        goto exit;
-    }
+        // If in the connecting phase check that the connection timeout has not elapsed
+        if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTING)
+            && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->connection_timepoint), K_NO_WAIT)) {
+            astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
+            mqtt_disconnect(&astarte_mqtt->client, NULL);
+            ASTARTE_LOG_ERR("Connection attempt has timed out!");
+            return ASTARTE_RESULT_OK; // Guard automatically unlocks here!
+        }
 
-    // If the device is recovering from an unexpected disconnection and backoff time has elapsed
-    // try to reconnect
-    if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTION_ERROR)
-        && K_TIMEOUT_EQ(sys_timepoint_timeout(astarte_mqtt->reconnection_timepoint), K_NO_WAIT)) {
+        // If the device is recovering from an unexpected disconnection and backoff time has elapsed
+        // try to reconnect
+        if ((astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTION_ERROR)
+            && K_TIMEOUT_EQ(
+                sys_timepoint_timeout(astarte_mqtt->reconnection_timepoint), K_NO_WAIT)) {
 
-        // Update reconnection timepoint to the next backoff value
-        uint64_t next_backoff_ms = backoff_get_next_delay(&astarte_mqtt->backoff_ctx);
-        astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
+            // Update reconnection timepoint to the next backoff value
+            uint64_t next_backoff_ms = backoff_get_next_delay(&astarte_mqtt->backoff_ctx);
+            astarte_mqtt->reconnection_timepoint = sys_timepoint_calc(K_MSEC(next_backoff_ms));
 
-        // Attempt reconnection
-        ASTARTE_LOG_INF("Attempting a reconnection");
-        if (astarte_mqtt_connect(astarte_mqtt) != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Failed establishing a new connection!");
-            goto exit; // Exit with ASTARTE_RESULT_OK.
+            // Attempt reconnection
+            ASTARTE_LOG_INF("Attempting a reconnection");
+            if (astarte_mqtt_connect(astarte_mqtt) != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Failed establishing a new connection!");
+                return ASTARTE_RESULT_OK; // Guard automatically unlocks here!
+            }
+        }
+
+        // Only poll if device is connecting, disconnecting or connected
+        if ((astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)
+            && (astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)) {
+
+            if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTED) {
+                astarte_mqtt_caching_retransmit_cbk_t retransmit_out_msg_cbk
+                    = mqtt_caching_retransmit_out_msg_handler;
+                astarte_mqtt_caching_check_message_expiry(
+                    &astarte_mqtt->out_msgs, retransmit_out_msg_cbk);
+                astarte_mqtt_caching_retransmit_cbk_t retransmit_in_msg_cbk
+                    = mqtt_caching_retransmit_in_msg_handler;
+                astarte_mqtt_caching_check_message_expiry(
+                    &astarte_mqtt->in_msgs, retransmit_in_msg_cbk);
+            }
+
+            // Check connection and ensure to periodically ping the broker using mqtt_live
+            int mqtt_rc = mqtt_live(&astarte_mqtt->client);
+            if ((mqtt_rc != 0) && (mqtt_rc != -EAGAIN)) {
+                ASTARTE_LOG_WRN(
+                    "Fail keep alive MQTT connection: %s, %d", strerror(-mqtt_rc), mqtt_rc);
+            }
+
+            // Extract the socket variables we need before we release the lock
+            socket_fd.fd = astarte_mqtt->client.transport.tls.sock;
+            socket_fd.events = ZSOCK_POLLIN;
+            int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
+            timeout = MIN(astarte_mqtt->poll_timeout_ms, keepalive);
+            should_poll = true;
         }
     }
 
-    // Only poll if device is connecting, disconnecting or connected
-    if ((astarte_mqtt->connection_state != ASTARTE_MQTT_CONNECTION_ERROR)
-        && (astarte_mqtt->connection_state != ASTARTE_MQTT_DISCONNECTED)) {
+    if (!should_poll) {
+        return ASTARTE_RESULT_OK;
+    }
 
-        if (astarte_mqtt->connection_state == ASTARTE_MQTT_CONNECTED) {
-            astarte_mqtt_caching_retransmit_cbk_t retransmit_out_msg_cbk
-                = mqtt_caching_retransmit_out_msg_handler;
-            astarte_mqtt_caching_check_message_expiry(
-                &astarte_mqtt->out_msgs, retransmit_out_msg_cbk);
-            astarte_mqtt_caching_retransmit_cbk_t retransmit_in_msg_cbk
-                = mqtt_caching_retransmit_in_msg_handler;
-            astarte_mqtt_caching_check_message_expiry(
-                &astarte_mqtt->in_msgs, retransmit_in_msg_cbk);
-        }
+    // Poll the socket safely without deadlocking other threads
+    int socket_rc = zsock_poll(&socket_fd, 1, timeout);
 
-        // Check connection and ensure to periodically ping the broker using mqtt_live
-        int mqtt_rc = mqtt_live(&astarte_mqtt->client);
-        if ((mqtt_rc != 0) && (mqtt_rc != -EAGAIN)) {
-            ASTARTE_LOG_WRN("Fail keep alive MQTT connection: %s, %d", strerror(-mqtt_rc), mqtt_rc);
-        }
+    // CRITICAL SECTION 2: Process MQTT Input
+    {
+        scope_guard(astarte_mqtt_sys_mutex)(&astarte_mqtt->mutex);
 
-        // Poll the socket (unlocking the mutex)
-        struct zsock_pollfd socket_fd
-            = { .fd = astarte_mqtt->client.transport.tls.sock, .events = ZSOCK_POLLIN };
-        int32_t keepalive = mqtt_keepalive_time_left(&astarte_mqtt->client);
-        int32_t timeout = MIN(astarte_mqtt->poll_timeout_ms, keepalive);
-        mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-        ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-        __ASSERT_NO_MSG(mutex_rc == 0);
-        int socket_rc = zsock_poll(&socket_fd, 1, timeout);
-        mutex_rc = sys_mutex_lock(&astarte_mqtt->mutex, K_FOREVER);
-        ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex lock failed with %d", mutex_rc);
-        __ASSERT_NO_MSG(mutex_rc == 0);
         if (socket_rc < 0) {
             ASTARTE_LOG_ERR("Poll error: %d", errno);
             astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
-            ares = ASTARTE_RESULT_SOCKET_ERROR;
-            goto exit;
+            return ASTARTE_RESULT_SOCKET_ERROR;
         }
         if (socket_rc != 0) {
             // Process the MQTT response
-            int mqtt_rc = mqtt_input(&astarte_mqtt->client);
-            if ((mqtt_rc != 0) && (mqtt_rc != -ENOTCONN)) {
-                ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_rc);
-                ares = ASTARTE_RESULT_MQTT_ERROR;
-                goto exit;
+            int mqtt_in_rc = mqtt_input(&astarte_mqtt->client);
+            if ((mqtt_in_rc != 0) && (mqtt_in_rc != -ENOTCONN)) {
+                ASTARTE_LOG_ERR("MQTT input failed (%d)", mqtt_in_rc);
+                return ASTARTE_RESULT_MQTT_ERROR;
             }
         }
     }
 
-exit:
-    // Unlock the mutex
-    mutex_rc = sys_mutex_unlock(&astarte_mqtt->mutex);
-    ASTARTE_LOG_COND_ERR(mutex_rc != 0, "System mutex unlock failed with %d", mutex_rc);
-    __ASSERT_NO_MSG(mutex_rc == 0);
-    return ares;
+    return ASTARTE_RESULT_OK;
 }

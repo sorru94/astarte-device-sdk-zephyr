@@ -15,6 +15,7 @@ config ASTARTE_DEVICE_SDK
 	depends on BASE64
 	depends on SYS_HASH_MAP
 	depends on UUID
+	depends on EVENTS
 	select ZLIB
 	help
 	  This option enables the Astarte device SDK library
@@ -140,6 +141,29 @@ config ASTARTE_DEVICE_SDK_HEAP_SIZE
 	help
 	  Define the size of the heap used by the Astarte device for memory allocations.
 
+config ASTARTE_DEVICE_SDK_WORKER_THREAD_STACK_SIZE
+	int "Worker thread stack size for Astarte device"
+	depends on ASTARTE_DEVICE_SDK
+	default 4096
+	help
+	  Defines the stack size of the worker thread used by the Astarte device.
+
+config ASTARTE_DEVICE_SDK_WORKER_THREAD_PRIORITY
+	int "Worker thread priority for Astarte device"
+	depends on ASTARTE_DEVICE_SDK
+	default 7
+	help
+	  Define the priority of the worker thread used by the Astarte device.
+
+config ASTARTE_DEVICE_SDK_TRANSMISSION_QUEUE_SIZE
+	int "Size of the transmission queue"
+	depends on ASTARTE_DEVICE_SDK
+	default 32
+	help
+	  This is the maximum amount of items that can be stored in the heap allocated section of
+	  the transmission queue.
+	  This section is used to retain messages with retention volatile only.
+
 menu "Development options"
 
 config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP
@@ -194,6 +218,16 @@ config ASTARTE_DEVICE_SDK_ADVANCED_MQTT_CACHING_HASMAPS_SIZE
 	  messages and the last one for outgoing publish messages.
 	  Increase this value when sending/receiving large bursts of messages with high QoS on slow
 	  networks.
+
+config ASTARTE_DEVICE_SDK_ADVANCED_PERMANENT_STORAGE_UTILIZATION_BOUND
+	int "Upper bound utilization (in percentage) for the Astarte partition"
+	depends on ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+	default 50
+	help
+	  This is the maximum percentage of the storage partition that Astarte is allowed to occupy
+	  with messages and properties. Note that this does not account for the underlying file system
+	  overhead. It is strongly suggested to maintain this at around 50% or lower to ensure
+	  sufficient memory is always available for critical information to be stored in flash.
 
 menu "Code generation"
 

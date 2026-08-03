@@ -231,14 +231,20 @@ static void device_thread_entry_point(void *unused1, void *unused2, void *unused
     CHECK_ASTARTE_OK_HALT(astarte_device_connect(device_handle), "Device connection failure.");
 
     while (!atomic_test_bit(&device_thread_flags, DEVICE_THREAD_TERMINATION_FLAG)) {
-        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
-
-        astarte_result_t res = astarte_device_poll(device_handle);
-        if (res != ASTARTE_RESULT_TIMEOUT && res != ASTARTE_RESULT_OK) {
-            LOG_WRN("Device poll failure: %d", res);
+        astarte_device_error_event_t error_event = { 0 };
+        astarte_result_t get_res
+            = astarte_device_get_error_event(device_handle, &error_event, K_MSEC(100));
+        if ((get_res != ASTARTE_RESULT_OK) && (get_res != ASTARTE_RESULT_TIMEOUT)) {
+            LOG_ERR("Error event retrieval failure: %s", astarte_result_to_name(get_res));
+            continue;
         }
 
-        k_sleep(sys_timepoint_timeout(timepoint));
+        if (get_res == ASTARTE_RESULT_OK) {
+            // NOLINTNEXTLINE
+            LOG_ERR("Astarte internal device error: %s (Context: %s)",
+                astarte_result_to_name(error_event.result),
+                error_event.context ? error_event.context : "Unknown");
+        }
     }
 
     LOG_INF("Disconnecting Astarte device...");

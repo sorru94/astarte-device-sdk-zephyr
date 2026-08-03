@@ -5,6 +5,11 @@
 #ifndef BACKOFF_H
 #define BACKOFF_H
 
+/**
+ * @file backoff.h
+ * @brief Utility functions to implement an exponential backoff
+ */
+
 #include <stdint.h>
 
 /** @brief Struct for generating exponential backoff delays with jitter. */

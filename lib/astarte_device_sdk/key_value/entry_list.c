@@ -38,10 +38,15 @@ astarte_result_t astarte_key_value_entry_list_compute_next_and_prev_ids(
         astarte_result_t internal_ares
             = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
         if (internal_ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Failed reading head and tail IDs: %s.", astarte_result_to_name(internal_ares));
             return internal_ares;
         }
         *prev_id = tail_id;
         *next_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    }
+    if (ares != ASTARTE_RESULT_OK && ares != ASTARTE_RESULT_NOT_FOUND) {
+        ASTARTE_LOG_ERR("Failed reading fixed header: %s.", astarte_result_to_name(ares));
     }
     return ares;
 }
@@ -84,16 +89,19 @@ astarte_result_t astarte_key_value_entry_list_update_next_id(
 {
     ssize_t raw_entry_size = zms_get_data_length(zms_fs, idx);
     if (raw_entry_size <= 0) {
+        ASTARTE_LOG_ERR("Error getting raw entry size: %d", (int) raw_entry_size);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
+        ASTARTE_LOG_ERR("Error getting raw entry: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -103,6 +111,7 @@ astarte_result_t astarte_key_value_entry_list_update_next_id(
 
     ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
+        ASTARTE_LOG_ERR("Error writing new raw entry: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -114,16 +123,19 @@ astarte_result_t astarte_key_value_entry_list_update_prev_id(
 {
     ssize_t raw_entry_size = zms_get_data_length(zms_fs, idx);
     if (raw_entry_size <= 0) {
+        ASTARTE_LOG_ERR("Error getting raw entry size: %d", (int) raw_entry_size);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
     scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ssize_t ret = zms_read(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret != raw_entry_size) {
+        ASTARTE_LOG_ERR("Error getting raw entry: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -134,6 +146,7 @@ astarte_result_t astarte_key_value_entry_list_update_prev_id(
 
     ret = zms_write(zms_fs, idx, raw_entry, raw_entry_size);
     if (ret < 0) {
+        ASTARTE_LOG_ERR("Error writing new raw entry: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 

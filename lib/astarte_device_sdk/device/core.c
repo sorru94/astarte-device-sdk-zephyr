@@ -15,11 +15,28 @@
 #include "cleanup.h"
 #include "device/core.h"
 #include "device/dispatcher.h"
+#include "device/session_manager.h"
 #include "mqtt/pubsub.h"
 #include "pairing/core.h"
 
 #include "log.h"
 ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
+
+#define POLLING_ERROR_RETRY_DELAY_MS 50
+#define TRANSMISSION_PACING_MAX_TOKENS 10
+#define TRANSMISSION_PACING_TOKEN_VALUE_MS 20
+#define TRANSMISSION_EMPTY_QUEUE_WAITING_MS 100
+#define TRANSMISSION_EVENT_WAITING_MS 50
+#define TRANSMISSION_ERROR_RETRY_DELAY_MS 50
+
+/************************************************
+ *         Static variables declaration         *
+ ***********************************************/
+
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+static struct astarte_device device_instance = { 0 };
+static bool device_initialized = false;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 /************************************************
  *         Static functions declaration         *
@@ -28,19 +45,31 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG
 static astarte_result_t initialize_introspection(
     astarte_device_handle_t device, const astarte_interface_t **interfaces, size_t interfaces_size);
 static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device);
+static void astarte_device_worker_thread_entry(void *par1, void * /*par2*/, void * /*par3*/);
+
+static void refill_transmission_tokens(uint32_t *tokens, int64_t *last_refill);
+static void process_transmission_queue(
+    struct astarte_device *device, uint32_t *tokens, int64_t last_refill);
 
 // Helper to safely destroy a partially initialized device
 static void cleanup_device_creation(astarte_device_handle_t *handle_ptr)
 {
-    if (handle_ptr && *handle_ptr) {
-        astarte_device_handle_t handle = *handle_ptr;
-#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
-        astarte_storage_destroy(&handle->caching);
-#endif
-        introspection_free(handle->introspection);
-        astarte_free(handle);
-        handle = NULL;
+    if (!handle_ptr) {
+        return;
     }
+
+    astarte_device_handle_t handle = *handle_ptr;
+    if (!handle) {
+        return;
+    }
+
+    astarte_transmission_queue_clear(&handle->transmission_queue);
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+    astarte_storage_destroy(&handle->caching);
+#endif
+    introspection_free(handle->introspection);
+
+    device_initialized = false;
 }
 
 ASTARTE_SCOPE_DEFER_DEFINE(cleanup_device_creation, astarte_device_handle_t *);
@@ -100,22 +129,22 @@ static astarte_result_t refresh_client_cert_handler(astarte_mqtt_t *astarte_mqtt
 astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device_handle_t *device)
 {
     ASTARTE_LOG_DBG("Creating a new device instance");
+    astarte_result_t ares = ASTARTE_RESULT_OK;
 
     if (!cfg || !device) {
         ASTARTE_LOG_ERR("Received NULL reference for configuration or device handle");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    astarte_device_handle_t handle = NULL;
-    scope_defer(cleanup_device_creation)(&handle);
-
-    handle = astarte_calloc(1, sizeof(struct astarte_device));
-    if (!handle) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    if (device_initialized) {
+        ASTARTE_LOG_ERR("Device is already initialized. Only a single instance is allowed.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    astarte_result_t ares = ASTARTE_RESULT_OK;
+    memset(&device_instance, 0, sizeof(struct astarte_device));
+
+    astarte_device_handle_t handle = &device_instance;
+    scope_defer(cleanup_device_creation)(&handle);
 
     handle->http_timeout_ms = cfg->http_timeout_ms;
     memcpy(handle->device_id, cfg->device_id, ASTARTE_DEVICE_ID_LEN + 1);
@@ -206,9 +235,36 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     backoff_init(&handle->backoff_ctx, CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_MULT_COEFF_MS,
         CONFIG_ASTARTE_DEVICE_SDK_RECONNECTION_BACKOFF_CUTOFF_COEFF_MS);
 
+    // Initialize the transmission queue
+#ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
+    ares = astarte_transmission_queue_init(&handle->transmission_queue, &handle->caching);
+#else
+    ares = astarte_transmission_queue_init(&handle->transmission_queue);
+#endif
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR(
+            "Failure intializing the transmission queue %s", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    // Initialize the error event queue
+    k_msgq_init(&handle->error_queue, handle->error_queue_buffer,
+        sizeof(astarte_device_error_event_t), ASTARTE_DEVICE_ERROR_QUEUE_SIZE);
+
+    ASTARTE_LOG_DBG("Initializing Astarte worker thread");
+
+    k_event_init(&handle->events);
+    k_thread_create(&handle->worker_thread, handle->worker_thread_stack,
+        K_THREAD_STACK_SIZEOF(handle->worker_thread_stack),
+        (k_thread_entry_t) astarte_device_worker_thread_entry, handle, NULL, NULL,
+        K_PRIO_PREEMPT(CONFIG_ASTARTE_DEVICE_SDK_WORKER_THREAD_PRIORITY), 0, K_NO_WAIT);
+
     // Transfer ownership and disarm
     *device = handle;
     handle = NULL;
+
+    // Device is now initialized
+    device_initialized = true;
 
     ASTARTE_LOG_DBG("Device instance creation completed");
 
@@ -223,6 +279,11 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
 
     if (!device) {
         return ASTARTE_RESULT_OK;
+    }
+
+    if (!device_initialized) {
+        ASTARTE_LOG_ERR("Device is not initialized. Cannot destroy it.");
+        return ASTARTE_RESULT_INVALID_PARAM;
     }
 
     if (device->connection_state != DEVICE_DISCONNECTED) {
@@ -241,12 +302,18 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device)
         return ares;
     }
 
+    // Signal the transmission thread to exit and wait for it to cleanly terminate
+    ASTARTE_LOG_DBG("Stopping the Astarte worker thread");
+    k_event_post(&device->events, ASTARTE_DEVICE_DESTROY_EVENT_BIT);
+    k_thread_join(&device->worker_thread, K_FOREVER);
+
+    astarte_transmission_queue_clear(&device->transmission_queue);
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
     astarte_storage_destroy(&device->caching);
 #endif
-
     introspection_free(device->introspection);
-    astarte_free(device);
+
+    device_initialized = false;
 
     ASTARTE_LOG_DBG("Astarte device instance destroyed");
 
@@ -262,6 +329,20 @@ astarte_result_t astarte_device_add_interface(
     }
     ASTARTE_LOG_DBG("Adding interface %s to the Astarte device", interface->name);
     return introspection_update(&device->introspection, interface);
+}
+
+astarte_result_t astarte_device_get_error_event(
+    astarte_device_handle_t device, astarte_device_error_event_t *event, k_timeout_t timeout)
+{
+    if (!device || !event) {
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    if (k_msgq_get(&device->error_queue, event, timeout) == 0) {
+        return ASTARTE_RESULT_OK;
+    }
+
+    return ASTARTE_RESULT_TIMEOUT;
 }
 
 /************************************************
@@ -324,4 +405,129 @@ static astarte_result_t initialize_mqtt_topics(astarte_device_handle_t device)
         return ASTARTE_RESULT_INTERNAL_ERROR;
     }
     return ASTARTE_RESULT_OK;
+}
+
+static void astarte_device_worker_thread_entry(void *par1, void * /*par2*/, void * /*par3*/)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    struct astarte_device *device = (struct astarte_device *) par1;
+
+    // Initialize token bucket state
+    uint32_t transmission_tokens = TRANSMISSION_PACING_MAX_TOKENS;
+    int64_t last_token_refill = k_uptime_get();
+
+    while (true) {
+        // Check if a destroy was requested before doing anything else
+        uint32_t events = k_event_test(&device->events, ASTARTE_DEVICE_DESTROY_EVENT_BIT);
+        if (events & ASTARTE_DEVICE_DESTROY_EVENT_BIT) {
+            break;
+        }
+
+        // Poll the state machine and MQTT client
+        ares = astarte_device_internal_poll(device);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Error polling the device: %s", astarte_result_to_name(ares));
+
+            astarte_device_error_event_t err_ev
+                = { .result = ares, .context = "astarte_device_internal_poll" };
+            k_msgq_put(&device->error_queue, &err_ev, K_NO_WAIT);
+
+            k_msleep(POLLING_ERROR_RETRY_DELAY_MS);
+            continue;
+        }
+
+        // Wait for connection
+        events = k_event_wait(&device->events,
+            ASTARTE_DEVICE_CONNECTION_EVENT_BIT | ASTARTE_DEVICE_DESTROY_EVENT_BIT, false,
+            K_MSEC(TRANSMISSION_EVENT_WAITING_MS));
+
+        // If the device is being destroyed, break the loop
+        if (events & ASTARTE_DEVICE_DESTROY_EVENT_BIT) {
+            break;
+        }
+
+        // If we timed out waiting for a connection, loop back and poll again
+        if (!(events & ASTARTE_DEVICE_CONNECTION_EVENT_BIT)) {
+            continue;
+        }
+
+        // Refill tokens and process the transmission queue
+        refill_transmission_tokens(&transmission_tokens, &last_token_refill);
+        process_transmission_queue(device, &transmission_tokens, last_token_refill);
+    }
+}
+
+static void refill_transmission_tokens(uint32_t *tokens, int64_t *last_refill)
+{
+    int64_t now = k_uptime_get();
+    int64_t elapsed = now - *last_refill;
+
+    // Generate tokens based on elapsed time
+    if (elapsed >= TRANSMISSION_PACING_TOKEN_VALUE_MS) {
+        int64_t generated_tokens = elapsed / TRANSMISSION_PACING_TOKEN_VALUE_MS;
+        if (*tokens + generated_tokens > TRANSMISSION_PACING_MAX_TOKENS) {
+            *tokens = TRANSMISSION_PACING_MAX_TOKENS;
+        } else {
+            *tokens += (uint32_t) generated_tokens;
+        }
+
+        // No more widening warning: generated_tokens is already int64_t
+        *last_refill += generated_tokens * TRANSMISSION_PACING_TOKEN_VALUE_MS;
+    }
+}
+
+static void process_transmission_queue(
+    struct astarte_device *device, uint32_t *tokens, int64_t last_refill)
+{
+    struct astarte_device_transmission_queue_msg msg = { 0 };
+    astarte_result_t ares = astarte_transmission_queue_peek(&device->transmission_queue, &msg);
+    if (ares != ASTARTE_RESULT_OK) {
+        // Prevent CPU starvation when the queue is empty
+        k_msleep(TRANSMISSION_EMPTY_QUEUE_WAITING_MS);
+        goto exit;
+    }
+
+    // Check if we have tokens to transmit
+    if (*tokens == 0) {
+        // Out of tokens: calculate exact time until the next token is ready and sleep
+        int64_t wait_ms = TRANSMISSION_PACING_TOKEN_VALUE_MS - (k_uptime_get() - last_refill);
+        if (wait_ms > 0) {
+            if (wait_ms > INT32_MAX) {
+                ASTARTE_LOG_ERR("Wait time exceeds maximum value for k_msleep");
+                wait_ms = INT32_MAX;
+            }
+            k_msleep((int32_t) wait_ms);
+        }
+        goto exit;
+    }
+
+    ASTARTE_LOG_DBG("Transmitting message for %s%s", msg.interface_name, msg.path);
+    ASTARTE_LOG_HEXDUMP_DBG(msg.payload, msg.payload_len, "Payload: ");
+
+    ares = astarte_device_dispatcher_publish_data(
+        device, msg.interface_name, msg.path, msg.payload, msg.payload_len, msg.qos);
+    if (ares == ASTARTE_RESULT_OK) {
+        ares = astarte_transmission_queue_discard_by_retention(
+            &device->transmission_queue, msg.retention);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Failed to remove message from queue: %s", astarte_result_to_name(ares));
+        }
+        // Consume a token for the successful transmission
+        (*tokens)--;
+
+    } else {
+        ASTARTE_LOG_ERR("Failed to transmit message: %s", astarte_result_to_name(ares));
+
+        astarte_device_error_event_t err_ev
+            = { .result = ares, .context = "process_transmission_queue" };
+        k_msgq_put(&device->error_queue, &err_ev, K_NO_WAIT);
+
+        // Message safely remains at the head of the queue
+        // Sleep for a short duration to back off before the loop retries.
+        k_msleep(TRANSMISSION_ERROR_RETRY_DELAY_MS);
+    }
+
+exit:
+    astarte_transmission_queue_msg_cleanup(&msg);
 }

@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "device/core.h"
+#include "device/session_manager.h"
 
 #include "alloc.h"
 #include "device/properties.h"
@@ -85,11 +85,7 @@ astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_tim
             ASTARTE_LOG_WRN("Polling for outgoing MQTT messages timed out");
             return ASTARTE_RESULT_TIMEOUT;
         }
-        astarte_result_t ares = astarte_device_poll(device);
-        if (ares != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Poll failure during disconnection %s", astarte_result_to_name(ares));
-            return ares;
-        }
+        // Polling is handled by the transmission thread, so we just yield and wait.
         k_sleep(K_MSEC(100));
     }
 
@@ -112,7 +108,7 @@ astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device)
     return astarte_mqtt_disconnect(&device->astarte_mqtt);
 }
 
-astarte_result_t astarte_device_poll(astarte_device_handle_t device)
+astarte_result_t astarte_device_internal_poll(astarte_device_handle_t device)
 {
     if (!device) {
         ASTARTE_LOG_ERR("Received NULL reference for device handle");
@@ -151,6 +147,13 @@ static void state_machine_start_handshake_run(astarte_device_handle_t device)
     device->subscription_failure = false;
 
     size_t intr_str_size = introspection_get_string_size(&device->introspection);
+
+    if (intr_str_size == 0) {
+        ASTARTE_LOG_ERR("Invalid state: Introspection string size cannot be zero");
+        ASTARTE_LOG_DBG("Device connection state -> HANDSHAKE_ERROR");
+        device->connection_state = DEVICE_HANDSHAKE_ERROR;
+        return;
+    }
 
     scope_var(scoped_char, intr_str)(intr_str_size);
     if (!intr_str) {
@@ -215,6 +218,8 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         device->synchronization_completed = true;
         ASTARTE_LOG_DBG("Device connection state -> CONNECTED");
         device->connection_state = DEVICE_CONNECTED;
+
+        k_event_post(&device->events, ASTARTE_DEVICE_CONNECTION_EVENT_BIT);
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
         astarte_result_t ares = astarte_storage_synchronization_set(&device->caching, true);

@@ -44,6 +44,10 @@ void astarte_device_dispatcher_on_disconnected(astarte_mqtt_t *astarte_mqtt)
     ASTARTE_LOG_DBG("Device connection state -> DISCONNECTED");
     device->connection_state = DEVICE_DISCONNECTED;
 
+    k_event_clear(&device->events, ASTARTE_DEVICE_CONNECTION_EVENT_BIT);
+
+    astarte_transmission_queue_purge_discard(&device->transmission_queue);
+
     if (device->disconnection_cbk) {
         astarte_device_disconnection_event_t event = {
             .device = device,

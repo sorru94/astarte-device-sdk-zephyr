@@ -7,7 +7,9 @@
 
 #include "alloc.h"
 #include "bson/deserializer.h"
+#include "bson/serializer.h"
 #include "data/deserialize.h"
+#include "data/serialize.h"
 #include "device/datastreams.h"
 #include "device/dispatcher.h"
 #include "mqtt/pubsub.h"
@@ -35,13 +37,11 @@ static void on_set_property(
 astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data)
 {
+    const int qos = 2;
+
     if (!device || !interface_name || !path) {
         ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter");
         return ASTARTE_RESULT_INVALID_PARAM;
-    }
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called set property function when the device is not connected");
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
     const astarte_interface_t *interface = introspection_get(
@@ -51,7 +51,14 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
         return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
-    astarte_result_t ares = astarte_validation_set_property(interface, path, data);
+    const astarte_mapping_t *mapping = NULL;
+    astarte_result_t ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not find mapping for path %s in interface %s", path, interface_name);
+        return ares;
+    }
+
+    ares = astarte_validation_set_property(interface, path, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Property data validation failed");
         return ares;
@@ -65,19 +72,70 @@ astarte_result_t astarte_device_set_property(astarte_device_handle_t device,
     }
 #endif
 
-    return astarte_device_send_individual(device, interface_name, path, data, NULL);
+    // We discard messages when the device is disconnected, as properties are sent on reconnection.
+    if ((device->connection_state != DEVICE_CONNECTED)
+        && (device->connection_state != DEVICE_END_HANDSHAKE)) {
+        ASTARTE_LOG_WRN("Device disconnected. Discarding message for %s%s", interface_name, path);
+        return ASTARTE_RESULT_OK;
+    }
+
+    astarte_bson_serializer_t bson = { 0 };
+    scope_defer(astarte_bson_serializer_destroy)(&bson);
+
+    ares = astarte_bson_serializer_init(&bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not initialize the BSON serializer");
+        return ares;
+    }
+    ares = astarte_data_serialize(&bson, "v", data);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed serializing data in BSON");
+        return ares;
+    }
+
+    ares = astarte_bson_serializer_append_end_of_document(&bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed appending end of document to BSON");
+        return ares;
+    }
+
+    int data_ser_len = 0;
+    const void *data_ser = astarte_bson_serializer_get_serialized(&bson, &data_ser_len);
+    if (!data_ser) {
+        ASTARTE_LOG_ERR("Failed getting serialized BSON");
+        return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+    }
+    if (data_ser_len < 0) {
+        ASTARTE_LOG_ERR("BSON document is too long for MQTT publish");
+        ASTARTE_LOG_ERR("Interface: %s, path: %s", interface_name, path);
+        return ASTARTE_RESULT_BSON_SERIALIZER_ERROR;
+    }
+
+    struct astarte_device_transmission_queue_msg queue_msg = {
+        .interface_name = (char *) interface_name,
+        .path = (char *) path,
+        .payload = (void *) data_ser,
+        .payload_len = data_ser_len,
+        .qos = qos,
+        .retention = ASTARTE_MAPPING_RETENTION_STORED,
+    };
+    ares = astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed inserting message in transmission queue");
+        return ares;
+    }
+
+    return ASTARTE_RESULT_OK;
 }
 
 astarte_result_t astarte_device_unset_property(
     astarte_device_handle_t device, const char *interface_name, const char *path)
 {
+    const int qos = 2;
+
     if (!device || !interface_name || !path) {
         ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter");
         return ASTARTE_RESULT_INVALID_PARAM;
-    }
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called unset property function when the device is not connected");
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
     }
 
     const astarte_interface_t *interface = introspection_get(
@@ -100,7 +158,27 @@ astarte_result_t astarte_device_unset_property(
     }
 #endif
 
-    return astarte_device_dispatcher_publish_data(device, interface_name, path, "", 0, 2);
+    // We discard messages when the device is disconnected, as properties are sent on reconnection.
+    if ((device->connection_state != DEVICE_CONNECTED)
+        && (device->connection_state != DEVICE_END_HANDSHAKE)) {
+        ASTARTE_LOG_WRN("Device disconnected. Discarding message for %s%s", interface_name, path);
+        return ares;
+    }
+
+    struct astarte_device_transmission_queue_msg queue_msg = {
+        .interface_name = (char *) interface_name,
+        .path = (char *) path,
+        .payload = "",
+        .payload_len = 0,
+        .qos = qos,
+        .retention = ASTARTE_MAPPING_RETENTION_STORED,
+    };
+    ares = astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed inserting unset message in transmission queue");
+    }
+
+    return ares;
 }
 
 void astarte_device_properties_handle_incoming(astarte_device_handle_t device,

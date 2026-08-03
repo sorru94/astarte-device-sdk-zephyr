@@ -7,6 +7,10 @@
 #ifndef DATA_DESERIALIZE_ARRAY_H
 #define DATA_DESERIALIZE_ARRAY_H
 
+/**
+ * @file data/deserialize_array.h
+ * @brief Deserialization functions for Astarte data types (array types)
+ */
 #include "data/deserialize.h"
 
 #include "bson/deserializer.h"

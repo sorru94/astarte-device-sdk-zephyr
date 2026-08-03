@@ -97,18 +97,24 @@ typedef enum
     ASTARTE_RESULT_MQTT_CLIENT_NOT_READY = 32,
     /** @brief Internal error from the MQTT library. */
     ASTARTE_RESULT_MQTT_ERROR = 33,
+    /** @brief Error while locking a mutex. */
+    ASTARTE_RESULT_MUTEX_LOCK_ERROR = 34,
     /** @brief The resource was not found. */
-    ASTARTE_RESULT_NOT_FOUND = 34,
+    ASTARTE_RESULT_NOT_FOUND = 35,
     /** @brief The operation caused an out of memory error */
-    ASTARTE_RESULT_OUT_OF_MEMORY = 35,
+    ASTARTE_RESULT_OUT_OF_MEMORY = 36,
+    /** @brief Out of space in persistent storage. */
+    ASTARTE_RESULT_OUT_OF_SPACE = 37,
     /** @brief Error during TCP socket creation. */
-    ASTARTE_RESULT_SOCKET_ERROR = 36,
+    ASTARTE_RESULT_SOCKET_ERROR = 38,
+    /** @brief Persistent storage is corrupted. */
+    ASTARTE_RESULT_STORAGE_CORRUPTED_ERROR = 39,
     /** @brief Operation timed out. */
-    ASTARTE_RESULT_TIMEOUT = 37,
+    ASTARTE_RESULT_TIMEOUT = 40,
     /** @brief Error from the TLS credential zephyr module. */
-    ASTARTE_RESULT_TLS_ERROR = 38,
+    ASTARTE_RESULT_TLS_ERROR = 41,
     /** @brief Error while reading/writing an ZMS entry. */
-    ASTARTE_RESULT_ZMS_ERROR = 39
+    ASTARTE_RESULT_ZMS_ERROR = 42
 } astarte_result_t;
 
 #ifdef __cplusplus

@@ -438,13 +438,22 @@ static void device_rx_thread_entry_point(void *device_handle, void *unused1, voi
         return;
     }
 
-    while (true) {
-        res = astarte_device_poll(device);
-        if (res != ASTARTE_RESULT_OK) {
-            printk("Err: '%s'.\n", astarte_result_to_name(res));
-            return;
+    while(true) {
+        astarte_device_error_event_t error_event = { 0 };
+        astarte_result_t get_res = astarte_device_get_error_event(
+            device, &error_event, K_MSEC(100));
+
+        if ((get_res != ASTARTE_RESULT_OK) && (get_res != ASTARTE_RESULT_TIMEOUT)) {
+            LOG_ERR("Error event retrieval failure: %s", astarte_result_to_name(get_res));
+            continue;
         }
-        k_sleep(K_MSEC(100));
+
+        if (get_res == ASTARTE_RESULT_OK) {
+            // NOLINTNEXTLINE
+            LOG_ERR("Astarte internal device error: %s (Context: %s)",
+                astarte_result_to_name(error_event.result),
+                error_event.context ? error_event.context : "Unknown");
+        }
     }
 }
 ```

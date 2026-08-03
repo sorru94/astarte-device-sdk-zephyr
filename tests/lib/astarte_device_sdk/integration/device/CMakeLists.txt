@@ -8,7 +8,6 @@ project(astarte_device_sdk_integration_device_caching)
 
 target_include_directories(app PRIVATE
     ${ZEPHYR_BASE}/../astarte-device-sdk-zephyr/lib/astarte_device_sdk/include
-    ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 FILE(GLOB app_sources ${CMAKE_CURRENT_LIST_DIR}/src/*.c)

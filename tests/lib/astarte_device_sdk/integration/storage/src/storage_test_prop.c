@@ -4,32 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <stdlib.h>
-
-#include <zephyr/drivers/flash.h>
-#include <zephyr/storage/flash_map.h>
-#include <zephyr/ztest.h>
-
-#include "astarte_device_sdk/data.h"
-#include "astarte_device_sdk/result.h"
-
-#include "alloc.h"
 #include "generated_interfaces.h"
-#include "storage/core.h"
-#include "storage/introsp.h"
 #include "storage/prop.h"
-#include "storage/sync.h"
-
-struct astarte_device_sdk_storage_fixture
-{
-    const struct device *flash_device;
-    introspection_t introspection;
-    off_t flash_offset;
-    uint16_t flash_sector_size;
-    uint16_t flash_sector_count;
-    struct k_mutex test_mutex;
-    astarte_storage_data_t caching_handle;
-};
+#include "test_storage_common.h"
 
 struct property
 {
@@ -39,213 +16,7 @@ struct property
     astarte_data_t data;
 };
 
-static void *astarte_storage_test_setup(void)
-{
-    struct flash_pages_info fp_info;
-    const struct device *device = PARTITION_DEVICE(astarte_partition);
-    off_t offset = PARTITION_OFFSET(astarte_partition);
-    zassert(device_is_ready(device), "Flash device is not ready.");
-    zassert_equal(flash_get_page_info_by_offs(device, offset, &fp_info), 0, "Can't get page info.");
-
-    struct astarte_device_sdk_storage_fixture *fixture
-        = astarte_calloc(1, sizeof(struct astarte_device_sdk_storage_fixture));
-    zassert_not_null(fixture, "Failed allocating test fixture");
-
-    (void) introspection_init(&fixture->introspection);
-    (void) introspection_add(
-        &fixture->introspection, &org_astarteplatform_zephyr_examples_DeviceProperty);
-    (void) introspection_add(
-        &fixture->introspection, &org_astarteplatform_zephyr_examples_ServerProperty);
-    fixture->flash_device = PARTITION_DEVICE(astarte_partition);
-    fixture->flash_offset = PARTITION_OFFSET(astarte_partition);
-    fixture->flash_sector_count = PARTITION_SIZE(astarte_partition) / fp_info.size;
-    fixture->flash_sector_size = fp_info.size;
-    k_mutex_init(&fixture->test_mutex);
-
-    return fixture;
-}
-
-static void astarte_storage_test_before(void *f)
-{
-    struct astarte_device_sdk_storage_fixture *fixture
-        = (struct astarte_device_sdk_storage_fixture *) f;
-
-    k_mutex_lock(&fixture->test_mutex, K_FOREVER);
-
-    struct zms_fs zms_fs;
-    zms_fs.flash_device = fixture->flash_device;
-    zms_fs.offset = fixture->flash_offset;
-    zms_fs.sector_size = fixture->flash_sector_size;
-    zms_fs.sector_count = fixture->flash_sector_count;
-
-    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
-    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
-
-    astarte_result_t ares = astarte_storage_init(&fixture->caching_handle);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Init failed: %s", astarte_result_to_name(ares));
-}
-
-static void astarte_storage_test_after(void *f)
-{
-    struct astarte_device_sdk_storage_fixture *fixture
-        = (struct astarte_device_sdk_storage_fixture *) f;
-
-    astarte_storage_destroy(&fixture->caching_handle);
-
-    struct zms_fs zms_fs;
-    zms_fs.flash_device = fixture->flash_device;
-    zms_fs.offset = fixture->flash_offset;
-    zms_fs.sector_size = fixture->flash_sector_size;
-    zms_fs.sector_count = fixture->flash_sector_count;
-
-    zassert_equal(zms_mount(&zms_fs), 0, "ZMS mounting failed.");
-    zassert_equal(zms_clear(&zms_fs), 0, "ZMS clear failed.");
-
-    k_mutex_unlock(&fixture->test_mutex);
-}
-
-static void astarte_storage_test_teardown(void *f)
-{
-    struct astarte_device_sdk_storage_fixture *fixture
-        = (struct astarte_device_sdk_storage_fixture *) f;
-
-    astarte_free(fixture);
-}
-
-static bool astarte_data_is_equal(astarte_data_t first, astarte_data_t second)
-{
-    if (first.tag != second.tag) {
-        return false;
-    }
-    switch (first.tag) {
-        case ASTARTE_MAPPING_TYPE_BOOLEAN:
-            if (first.data.boolean != second.data.boolean) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_DATETIME:
-            if (first.data.datetime != second.data.datetime) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_DOUBLE:
-            if (first.data.dbl != second.data.dbl) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_INTEGER:
-            if (first.data.integer != second.data.integer) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_LONGINTEGER:
-            if (first.data.longinteger != second.data.longinteger) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_STRING:
-            if (strcmp(first.data.string, second.data.string) != 0) {
-                return false;
-            }
-            break;
-        case ASTARTE_MAPPING_TYPE_BINARYBLOB:
-        case ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY:
-        case ASTARTE_MAPPING_TYPE_BOOLEANARRAY:
-        case ASTARTE_MAPPING_TYPE_DATETIMEARRAY:
-        case ASTARTE_MAPPING_TYPE_DOUBLEARRAY:
-        case ASTARTE_MAPPING_TYPE_INTEGERARRAY:
-        case ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY:
-        case ASTARTE_MAPPING_TYPE_STRINGARRAY:
-            return false; // Implement when needed
-            break;
-        default:
-            break;
-    }
-    return true;
-}
-
-ZTEST_SUITE(astarte_device_sdk_storage, NULL, astarte_storage_test_setup,
-    astarte_storage_test_before, astarte_storage_test_after,
-    astarte_storage_test_teardown); // NOLINT
-
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_synchronization) // NOLINT
-{
-    bool sync = false;
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
-    ares = astarte_storage_synchronization_get(&fixture->caching_handle, &sync);
-    zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(sync, false, "sync variable has been modified");
-
-    sync = true;
-    ares = astarte_storage_synchronization_get(&fixture->caching_handle, &sync);
-    zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(sync, true, "sync variable has been modified");
-
-    sync = true;
-    ares = astarte_storage_synchronization_set(&fixture->caching_handle, sync);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    sync = false;
-    ares = astarte_storage_synchronization_get(&fixture->caching_handle, &sync);
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-    zassert_equal(sync, true, "Sync variable not set correctly");
-}
-
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_introspection) // NOLINT
-{
-    astarte_result_t ares = ASTARTE_RESULT_OK;
-
-    const char intr_1_str[] = "interface1;interface2;interface3";
-    const char intr_2_str[] = "interface2;interface3";
-    const char intr_3_str[] = "interface1;interface2;interface3;interface4";
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_1_str, ARRAY_SIZE(intr_1_str));
-    zassert_equal(ares, ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION, "Res:%s",
-        astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_store(
-        &fixture->caching_handle, intr_1_str, ARRAY_SIZE(intr_1_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_1_str, ARRAY_SIZE(intr_1_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_store(
-        &fixture->caching_handle, intr_2_str, ARRAY_SIZE(intr_2_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_1_str, ARRAY_SIZE(intr_1_str));
-    zassert_equal(ares, ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION, "Res:%s",
-        astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_2_str, ARRAY_SIZE(intr_2_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_store(
-        &fixture->caching_handle, intr_3_str, ARRAY_SIZE(intr_3_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_1_str, ARRAY_SIZE(intr_1_str));
-    zassert_equal(ares, ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION, "Res:%s",
-        astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_2_str, ARRAY_SIZE(intr_2_str));
-    zassert_equal(ares, ASTARTE_RESULT_DEVICE_CACHING_OUTDATED_INTROSPECTION, "Res:%s",
-        astarte_result_to_name(ares));
-
-    ares = astarte_storage_introspection_check(
-        &fixture->caching_handle, intr_3_str, ARRAY_SIZE(intr_3_str));
-    zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
-}
-
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_load_property) // NOLINT
+ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_load_property)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     int32_t read_major = 0;
@@ -312,7 +83,6 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_load_prope
 
     astarte_storage_property_destroy_loaded(read_data);
 
-    // The first property has been overwritten by the last one
     read_major = 0;
     read_data = (astarte_data_t){ 0 };
     ares = astarte_storage_property_load(&fixture->caching_handle, property_4.interface_name,
@@ -324,7 +94,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_store_load_prope
     astarte_storage_property_destroy_loaded(read_data);
 }
 
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate) // NOLINT
+ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char interface_name_buffer[100] = { 0 };
@@ -435,7 +205,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate) // NOLI
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
 }
 
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate_empty) // NOLINT
+ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate_empty)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
@@ -444,7 +214,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_iterate_empty) /
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
 }
 
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLINT
+ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
     char interface_name_buffer[100] = { 0 };
@@ -535,7 +305,6 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     zassert_mem_equal(path_buffer, property_3.path, strlen(property_3.path) + 1);
 
     // Delete a stored property using the safe mid-iteration delete call.
-    // It deletes the current entry (property_3)
     ares = astarte_storage_property_iterator_delete(&iter);
     zassert_equal(ares, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ares));
 
@@ -638,7 +407,7 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_delete) // NOLIN
     zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Res:%s", astarte_result_to_name(ares));
 }
 
-ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_get_properties_string) // NOLINT
+ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_get_properties_string)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
@@ -679,7 +448,6 @@ ZTEST_F(astarte_device_sdk_storage, test_device_astarte_storage_get_properties_s
         .data = astarte_data_from_boolean(false),
     };
 
-    // Note the string generation follows the true insertion iteration order.
     const char properties_string[]
         = "org.astarteplatform.zephyr.examples.DeviceProperty/12/integer_endpoint;"
           "org.astarteplatform.zephyr.examples.DeviceProperty/24/boolean_endpoint;"

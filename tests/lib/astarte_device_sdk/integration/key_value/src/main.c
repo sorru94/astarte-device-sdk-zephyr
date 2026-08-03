@@ -129,7 +129,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_hash_collision_probing)
     };
 
     zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&zms_fs, namespace, &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, namespace, 0, &key_value), ASTARTE_RESULT_OK);
 
     // Hardcoded keys known to collide at Target Hash: 2432505520
     const char *k1 = "key_2533606";
@@ -174,7 +174,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_storage_exhaustion)
     };
 
     zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&zms_fs, "exhaust_ns", &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, "exhaust_ns", 0, &key_value), ASTARTE_RESULT_OK);
 
     char key[16];
     char val[] = "v";
@@ -209,7 +209,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_linked_list_head_tail)
     };
 
     zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&zms_fs, "ll_ns", &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, "ll_ns", 0, &key_value), ASTARTE_RESULT_OK);
 
     uint32_t head_id, tail_id;
 
@@ -252,7 +252,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_deletion_shift_back)
     };
 
     zassert_equal(astarte_key_value_open(cfg, &zms_fs), ASTARTE_RESULT_OK);
-    zassert_equal(astarte_key_value_new(&zms_fs, ns, &key_value), ASTARTE_RESULT_OK);
+    zassert_equal(astarte_key_value_new(&zms_fs, ns, 0, &key_value), ASTARTE_RESULT_OK);
 
     // Hardcoded keys known to collide at Target Hash: 2425929905
     const char *k1 = "key_2533606";
@@ -292,7 +292,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_iterator_safe_deletion)
     };
 
     astarte_key_value_open(cfg, &zms_fs);
-    astarte_key_value_new(&zms_fs, "iter_del_ns", &key_value);
+    astarte_key_value_new(&zms_fs, "iter_del_ns", 0, &key_value);
 
     astarte_key_value_insert(&key_value, "A", "1", 2);
     astarte_key_value_insert(&key_value, "B", "2", 2);
@@ -336,7 +336,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_key_value_invalid_buffer_sizes)
     };
 
     astarte_key_value_open(cfg, &zms_fs);
-    astarte_key_value_new(&zms_fs, "err_ns", &key_value);
+    astarte_key_value_new(&zms_fs, "err_ns", 0, &key_value);
 
     const char *long_val = "this_is_a_long_value";
     astarte_key_value_insert(&key_value, "k1", long_val, strlen(long_val) + 1);
@@ -391,7 +391,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_store_and_f
     astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, 0, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -523,7 +523,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_read_sizes)
     astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, 0, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -594,7 +594,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_overwrite)
     astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, 0, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -676,7 +676,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration)
     astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, 0, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs
@@ -770,7 +770,7 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_iteration_e
     astarte_result_t ret = astarte_key_value_open(astarte_storage_cfg, &zms_fs);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
-    ret = astarte_key_value_new(&zms_fs, namespace, &kv_storage);
+    ret = astarte_key_value_new(&zms_fs, namespace, 0, &kv_storage);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Iterate over storage
@@ -799,13 +799,13 @@ ZTEST_F(astarte_device_sdk_key_value, test_astarte_storage_key_value_multiple_na
     // Initialize first storage driver
     astarte_key_value_t kv_astarte_storage_1 = { 0 };
     const char namespace_1[] = "first namespace";
-    ret = astarte_key_value_new(&zms_fs, namespace_1, &kv_astarte_storage_1);
+    ret = astarte_key_value_new(&zms_fs, namespace_1, 0, &kv_astarte_storage_1);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Initialize second storage driver
     astarte_key_value_t kv_astarte_storage_2 = { 0 };
     const char namespace_2[] = "second namespace";
-    ret = astarte_key_value_new(&zms_fs, namespace_2, &kv_astarte_storage_2);
+    ret = astarte_key_value_new(&zms_fs, namespace_2, 0, &kv_astarte_storage_2);
     zassert_equal(ret, ASTARTE_RESULT_OK, "Res:%s", astarte_result_to_name(ret));
 
     // Insert some key-value pairs with multiple namespaces

@@ -253,15 +253,6 @@ static void device_thread_entry_point(void *unused1, void *unused2, void *unused
         LOG_ERR("Device disconnection failure: %d", res);
     }
 
-    // Keep polling until the disconnection callback clears the flag.
-    // A 5-second timeout ensures the thread doesn't hang forever if the network drops completely.
-    k_timepoint_t timeout = sys_timepoint_calc(K_SECONDS(5));
-    while (atomic_test_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG)
-        && !sys_timepoint_expired(timeout)) {
-        astarte_device_poll(device_handle);
-        k_sleep(K_MSEC(100));
-    }
-
     LOG_INF("Exiting from the polling thread.");
 }
 

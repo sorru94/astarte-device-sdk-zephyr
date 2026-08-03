@@ -301,7 +301,7 @@ static void device_rx_thread_entry_point(void *device_id, void *cred_secr, void 
     k_msgq_put(&device_msgq, (void *) &device, K_NO_WAIT);
 
     while (!atomic_test_bit(&device_thread_flags, THREAD_FLAGS_RX_TERMINATION)) {
-        k_timepoint_t timepoint = sys_timepoint_calc(K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
+        astarte_device_error_event_t error_event = { 0 };
 
         astarte_result_t get_res = astarte_device_get_error_event(
             device, &error_event, K_MSEC(CONFIG_DEVICE_POLL_PERIOD_MS));
@@ -318,8 +318,6 @@ static void device_rx_thread_entry_point(void *device_id, void *cred_secr, void 
                 astarte_result_to_name(error_event.result),
                 error_event.context ? error_event.context : "Unknown");
         }
-
-        k_sleep(sys_timepoint_timeout(timepoint));
     }
 
     LOG_INF("End of loop, disconnection imminent."); // NOLINT

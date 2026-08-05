@@ -445,3 +445,117 @@ ZTEST_F(astarte_transmission_queue, test_transmission_queue_zero_payload)
 
     astarte_transmission_queue_msg_cleanup(&msg_peek);
 }
+
+ZTEST_F(astarte_transmission_queue, test_transmission_queue_invalid_interface_params)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+
+    // Test missing interface struct for an interface operation
+    struct astarte_device_transmission_queue_msg msg
+        = { .operation = ASTARTE_TRANSMISSION_OP_ADD_INTERFACE, .interface = NULL };
+
+    ares = astarte_transmission_queue_insert(&fixture->queue, &msg);
+    zassert_equal(
+        ares, ASTARTE_RESULT_INVALID_PARAM, "Expected INVALID_PARAM for NULL interface struct");
+}
+
+ZTEST_F(astarte_transmission_queue, test_transmission_queue_insert_and_peek_add_interface)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_interface_t mock_interface = { 0 };
+
+    struct astarte_device_transmission_queue_msg msg_in
+        = { .operation = ASTARTE_TRANSMISSION_OP_ADD_INTERFACE, .interface = &mock_interface };
+
+    // Insert message
+    ares = astarte_transmission_queue_insert(&fixture->queue, &msg_in);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Queue insert failed: %s", astarte_result_to_name(ares));
+
+    // Peek message
+    struct astarte_device_transmission_queue_msg msg_out = { 0 };
+    ares = astarte_transmission_queue_peek(&fixture->queue, &msg_out);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Queue peek failed: %s", astarte_result_to_name(ares));
+
+    // Verify data integrity
+    zassert_equal(msg_out.operation, ASTARTE_TRANSMISSION_OP_ADD_INTERFACE, "Operation mismatch");
+    zassert_equal(msg_out.interface, msg_in.interface, "Interface pointer mismatch");
+}
+
+ZTEST_F(astarte_transmission_queue, test_transmission_queue_insert_and_peek_remove_interface)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_interface_t mock_interface = { 0 };
+
+    struct astarte_device_transmission_queue_msg msg_in
+        = { .operation = ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE, .interface = &mock_interface };
+
+    // Insert message
+    ares = astarte_transmission_queue_insert(&fixture->queue, &msg_in);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Queue insert failed: %s", astarte_result_to_name(ares));
+
+    // Peek message
+    struct astarte_device_transmission_queue_msg msg_out = { 0 };
+    ares = astarte_transmission_queue_peek(&fixture->queue, &msg_out);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Queue peek failed: %s", astarte_result_to_name(ares));
+
+    // Verify data integrity
+    zassert_equal(
+        msg_out.operation, ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE, "Operation mismatch");
+    zassert_equal(msg_out.interface, msg_in.interface, "Interface pointer mismatch");
+}
+
+ZTEST_F(astarte_transmission_queue, test_transmission_queue_interface_ordering)
+{
+    astarte_result_t ares = ASTARTE_RESULT_OK;
+    astarte_interface_t mock_interface = { 0 };
+
+    struct astarte_device_transmission_queue_msg msg_interface
+        = { .operation = ASTARTE_TRANSMISSION_OP_ADD_INTERFACE, .interface = &mock_interface };
+
+    struct astarte_device_transmission_queue_msg msg_volatile
+        = { .operation = ASTARTE_TRANSMISSION_OP_DATA,
+              .interface_name = "org.astarteplatform.test.Volatile",
+              .path = "/data",
+              .payload = "data",
+              .payload_len = 4,
+              .qos = 1,
+              .retention = ASTARTE_MAPPING_RETENTION_VOLATILE };
+
+    // Insert interface message first
+    ares = astarte_transmission_queue_insert(&fixture->queue, &msg_interface);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Push to interface queue failed");
+
+    k_msleep(5);
+
+    // Insert volatile message second
+    ares = astarte_transmission_queue_insert(&fixture->queue, &msg_volatile);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Push to volatile queue failed");
+
+    struct astarte_device_transmission_queue_msg msg_out = { 0 };
+
+    // Peek should return the interface message (oldest)
+    ares = astarte_transmission_queue_peek(&fixture->queue, &msg_out);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Peek 1 failed");
+    zassert_equal(msg_out.operation, ASTARTE_TRANSMISSION_OP_ADD_INTERFACE,
+        "Expected oldest to be ADD_INTERFACE");
+
+    // Discard the interface message
+    ares = astarte_transmission_queue_discard_interface(&fixture->queue);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Discarding interface message failed");
+
+    // Peek should now return the volatile message
+    ares = astarte_transmission_queue_peek(&fixture->queue, &msg_out);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Peek 2 failed");
+    zassert_equal(
+        msg_out.retention, ASTARTE_MAPPING_RETENTION_VOLATILE, "Expected next to be VOLATILE");
+    astarte_transmission_queue_msg_cleanup(&msg_out);
+
+    // Discard the volatile message
+    ares = astarte_transmission_queue_discard_by_retention(
+        &fixture->queue, ASTARTE_MAPPING_RETENTION_VOLATILE);
+    zassert_equal(ares, ASTARTE_RESULT_OK, "Discarding volatile message failed");
+
+    // Queue should now be empty
+    ares = astarte_transmission_queue_peek(&fixture->queue, &msg_out);
+    zassert_equal(ares, ASTARTE_RESULT_NOT_FOUND, "Queue should be completely empty");
+}

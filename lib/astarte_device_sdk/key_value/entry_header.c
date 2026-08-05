@@ -70,6 +70,8 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
     astarte_result_t ares
         = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_NOT_FOUND, "Failed reading fixed header: %s.",
+            astarte_result_to_name(ares));
         return ares;
     }
 
@@ -84,6 +86,7 @@ astarte_result_t astarte_key_value_entry_header_read(struct zms_fs *zms_fs, uint
 
     ssize_t ret = zms_read(zms_fs, idx, ctx.raw_header, raw_header_size);
     if (ret != raw_header_size) {
+        ASTARTE_LOG_ERR("Failed reading raw header.");
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 

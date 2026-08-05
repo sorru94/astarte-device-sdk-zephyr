@@ -82,6 +82,10 @@ typedef struct
     char *namespace;
     /** @brief Persistent ZMS file system context */
     struct zms_fs *zms_fs;
+    /** @brief Maximum quota in bytes for this key-value instance. */
+    size_t max_quota_bytes;
+    /** @brief Current usage in bytes for this key-value instance. */
+    size_t current_usage_bytes;
 } astarte_key_value_t;
 
 /** @brief Iterator struct for the key-value pair storage. */
@@ -156,11 +160,12 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct z
  * @param[in,out] zms_fs The ZMS file system context to use. This should have been opened previously
  * using #astarte_key_value_open
  * @param[in] namespace The namespace to be used for this storage instance.
+ * @param[in] max_quota_pct The maximum quota percentage allowed for this namespace.
  * @param[out] kv_storage Data struct for the key-value storage instance to initialize.
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
-astarte_result_t astarte_key_value_new(
-    struct zms_fs *zms_fs, const char *namespace, astarte_key_value_t *kv_storage);
+astarte_result_t astarte_key_value_new(struct zms_fs *zms_fs, const char *namespace,
+    uint8_t max_quota_pct, astarte_key_value_t *kv_storage);
 
 /**
  * @brief Destroy an instance of the key-value pairs storage driver.

@@ -46,16 +46,13 @@ astarte_result_t astarte_key_value_entry_find_or_alloc(
         astarte_result_t ares = check_entry_match(zms_fs, curr_id, namespace, key);
         if (ares == ASTARTE_RESULT_NOT_FOUND) {
             if (!allocate) {
-                ASTARTE_LOG_DBG("Key not found at ID %d", curr_id);
                 return ares;
             }
-            ASTARTE_LOG_DBG("Found empty slot at ID %d", curr_id);
             *idx = curr_id;
             return ASTARTE_RESULT_OK;
         }
         if (ares == ASTARTE_RESULT_OK) {
             *idx = curr_id;
-            ASTARTE_LOG_DBG("Found matching entry at ID %d", curr_id);
             return ASTARTE_RESULT_OK;
         }
         if (ares != ASTARTE_RESULT_MISMATCH) {
@@ -119,6 +116,7 @@ astarte_result_t astarte_key_value_entry_write(struct zms_fs *zms_fs, uint32_t i
         : ASTARTE_KEY_VALUE_ENTRY_INTENT_UPDATING;
     ares = astarte_key_value_entry_intent_write(zms_fs, intent_state, idx, prev_id, next_id);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed writing intent: %s", astarte_result_to_name(ares));
         return ares;
     }
 
@@ -152,6 +150,8 @@ astarte_result_t astarte_key_value_entry_read_value(
     struct astarte_key_value_entry_header_fixed fixed_header = { 0 };
     ares = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_NOT_FOUND, "Failed reading fixed header: %s.",
+            astarte_result_to_name(ares));
         return ares;
     }
 
@@ -159,8 +159,8 @@ astarte_result_t astarte_key_value_entry_read_value(
     size_t header_size = ASTARTE_KEY_VALUE_ENTRY_HEADER_FIXED_HEADER_BYTES
         + fixed_header.namespace_len + fixed_header.key_len;
     if (header_size > raw_entry_size) {
-        ASTARTE_LOG_ERR("Error: Incomplete header at ID %d", idx);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        ASTARTE_LOG_ERR("Incomplete header at ID %d", idx);
+        return ASTARTE_RESULT_STORAGE_CORRUPTED_ERROR;
     }
 
     // Compute the value size and return it immediately if there is no output buffer
@@ -170,7 +170,7 @@ astarte_result_t astarte_key_value_entry_read_value(
         return ASTARTE_RESULT_OK;
     }
     if (*value_size < read_value_size) {
-        ASTARTE_LOG_ERR("Error: Value buffer too small at ID %d", idx);
+        ASTARTE_LOG_ERR("Value buffer too small at ID %d", idx);
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
@@ -213,7 +213,7 @@ astarte_result_t astarte_key_value_entry_read_key(
         goto exit;
     }
     if (*key_size < header.fixed_header.key_len + 1) {
-        ASTARTE_LOG_ERR("Error: Key buffer too small at ID %d", idx);
+        ASTARTE_LOG_ERR("Key buffer too small at ID %d", idx);
         ares = ASTARTE_RESULT_INVALID_PARAM;
         goto exit;
     }
@@ -247,6 +247,7 @@ astarte_result_t astarte_key_value_entry_check_namespace(
         goto exit;
     }
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed reading key value entry header: %s", astarte_result_to_name(ares));
         goto exit;
     }
 
@@ -272,6 +273,7 @@ astarte_result_t astarte_key_value_entry_get_next_id(
         astarte_result_t rd_res
             = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
         if (rd_res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Can't read head and tail IDs: %s", astarte_result_to_name(rd_res));
             return rd_res;
         }
         *next_id = head_id;
@@ -283,6 +285,7 @@ astarte_result_t astarte_key_value_entry_get_next_id(
     astarte_result_t ares
         = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Can't read fixed header at ID %d: %s", idx, astarte_result_to_name(ares));
         return ares;
     }
 
@@ -304,6 +307,7 @@ astarte_result_t astarte_key_value_entry_get_prev_id(
     astarte_result_t ares
         = astarte_key_value_entry_header_read_fixed(zms_fs, idx, &fixed_header, &raw_entry_size);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Can't read fixed header at ID %d: %s", idx, astarte_result_to_name(ares));
         return ares;
     }
 
@@ -322,12 +326,14 @@ static astarte_result_t update_list_tail(struct zms_fs *zms_fs, uint32_t new_tai
     astarte_result_t ares
         = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Can't read head and tail IDs: %s", astarte_result_to_name(ares));
         return ares;
     }
 
     if (tail_id != ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
         ares = astarte_key_value_entry_list_update_next_id(zms_fs, tail_id, new_tail_id);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Can't update next ID: %s", astarte_result_to_name(ares));
             return ares;
         }
     } else {
@@ -390,6 +396,8 @@ static astarte_result_t check_entry_match(
 
     ares = astarte_key_value_entry_header_read(zms_fs, idx, &header, &raw_size);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_NOT_FOUND, "Can't read header (ID %d): %s", idx,
+            astarte_result_to_name(ares));
         goto exit;
     }
 

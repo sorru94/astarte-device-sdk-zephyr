@@ -31,6 +31,8 @@ typedef struct
     astarte_key_value_t intro_storage;
     /** @brief Key value storage handle for device properties */
     astarte_key_value_t prop_storage;
+    /** @brief Key value storage handle for transmission data */
+    astarte_key_value_t trans_storage;
     /** @brief Flag to ensure we don't double-init or use uninitialized handles */
     bool initialized;
 } astarte_storage_data_t;

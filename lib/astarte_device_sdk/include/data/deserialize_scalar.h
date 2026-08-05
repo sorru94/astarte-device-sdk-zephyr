@@ -7,6 +7,10 @@
 #ifndef DATA_DESERIALIZE_SCALAR_H
 #define DATA_DESERIALIZE_SCALAR_H
 
+/**
+ * @file data/deserialize_scalar.h
+ * @brief Deserialization functions for Astarte data types (scalar types)
+ */
 #include "data/deserialize.h"
 
 #include "bson/deserializer.h"

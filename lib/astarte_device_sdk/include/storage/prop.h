@@ -63,6 +63,8 @@ astarte_result_t astarte_storage_property_load(astarte_storage_data_t *handle,
  * @brief Destroy data for a previously loaded property.
  *
  * @details Use this function to free the memory allocated by #astarte_storage_property_load.
+ * @note This function when called on an astarte_data_t instance that is not owned will do nothing.
+ * An astarte_data_t instance is owned if the #astarte_data_t::is_owned field is set to true.
  *
  * @param[out] data Astarte data loaded by #astarte_storage_property_load.
  */

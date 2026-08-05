@@ -22,6 +22,8 @@ ASTARTE_LOG_MODULE_DECLARE(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_
  *         Static functions declaration         *
  ***********************************************/
 
+static astarte_result_t serialize_individual_payload(
+    astarte_bson_serializer_t *bson, astarte_data_t data, const int64_t *timestamp);
 static astarte_result_t serialize_aggregated_payload(astarte_bson_serializer_t *outer_bson,
     astarte_object_entry_t *entries, size_t entries_len, const int64_t *timestamp);
 static void on_datastream_individual(
@@ -34,22 +36,6 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
  ***********************************************/
 
 astarte_result_t astarte_device_send_individual(astarte_device_handle_t device,
-    const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
-{
-    if (!device) {
-        ASTARTE_LOG_ERR("Received a NULL reference for a required input parameter");
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called stream individual function when the device is not connected");
-        return ASTARTE_RESULT_DEVICE_NOT_READY;
-    }
-
-    return astarte_device_send_individual_internal(device, interface_name, path, data, timestamp);
-}
-
-astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_data_t data, const int64_t *timestamp)
 {
     astarte_bson_serializer_t bson = { 0 };
@@ -69,6 +55,13 @@ astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t
         goto exit;
     }
 
+    const astarte_mapping_t *mapping = NULL;
+    ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not find mapping for path %s in interface %s", path, interface_name);
+        goto exit;
+    }
+
     ares = astarte_validation_individual_datastream(interface, path, data, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device individual data validation failed");
@@ -82,27 +75,16 @@ astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t
         goto exit;
     }
 
-    ares = astarte_bson_serializer_init(&bson);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Could not initialize the BSON serializer");
-        goto exit;
-    }
-    ares = astarte_data_serialize(&bson, "v", data);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed serializing data in BSON");
-        goto exit;
-    }
-
-    if (timestamp) {
-        ares = astarte_bson_serializer_append_datetime(&bson, "t", *timestamp);
-        if (ares != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Failed adding datetime to the BSON");
+    if (device->connection_state != DEVICE_CONNECTED) {
+        if (mapping->retention == ASTARTE_MAPPING_RETENTION_DISCARD) {
+            ASTARTE_LOG_WRN("Device disconnected. Discarding message for %s%s (retention: DISCARD)",
+                interface_name, path);
             goto exit;
         }
     }
-    ares = astarte_bson_serializer_append_end_of_document(&bson);
+
+    ares = serialize_individual_payload(&bson, data, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Failed appending end of document to BSON");
         goto exit;
     }
 
@@ -120,8 +102,18 @@ astarte_result_t astarte_device_send_individual_internal(astarte_device_handle_t
         goto exit;
     }
 
-    ares = astarte_device_dispatcher_publish_data(
-        device, interface_name, path, data_ser, data_ser_len, qos);
+    struct astarte_device_transmission_queue_msg queue_msg = {
+        .interface_name = (char *) interface_name,
+        .path = (char *) path,
+        .payload = (void *) data_ser,
+        .payload_len = data_ser_len,
+        .qos = qos,
+        .retention = mapping->retention,
+    };
+    ares = astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed inserting message in transission queue");
+    }
 
 exit:
     astarte_bson_serializer_destroy(&bson);
@@ -140,11 +132,6 @@ astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
         ares = ASTARTE_RESULT_INVALID_PARAM;
         goto exit;
     }
-    if (device->connection_state != DEVICE_CONNECTED) {
-        ASTARTE_LOG_ERR("Called stream aggregated function when the device is not connected.");
-        ares = ASTARTE_RESULT_DEVICE_NOT_READY;
-        goto exit;
-    }
 
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, interface_name);
@@ -160,11 +147,29 @@ astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
         goto exit;
     }
 
+    // All mappings are required to have the same retention policy, so we can check the first one.
+    const astarte_mapping_t *mapping = NULL;
+    astarte_object_entry_t *entry = &entries[0];
+    ares = astarte_interface_get_mapping_from_paths(interface, path, entry->path, &mapping);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Can't find mapping in interface %s for path %s/%s.", interface->name, path,
+            entry->path);
+        goto exit;
+    }
+
     ares = astarte_validation_aggregated_datastream(
         interface, path, entries, entries_len, timestamp);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Device aggregated data validation failed.");
         goto exit;
+    }
+
+    if (device->connection_state != DEVICE_CONNECTED) {
+        if (mapping->retention == ASTARTE_MAPPING_RETENTION_DISCARD) {
+            ASTARTE_LOG_WRN("Device disconnected. Discarding message for %s%s (retention: DISCARD)",
+                interface_name, path);
+            goto exit;
+        }
     }
 
     int qos = 0;
@@ -188,7 +193,18 @@ astarte_result_t astarte_device_send_object(astarte_device_handle_t device,
         goto exit;
     }
 
-    ares = astarte_device_dispatcher_publish_data(device, interface_name, path, data, len, qos);
+    struct astarte_device_transmission_queue_msg queue_msg = {
+        .interface_name = (char *) interface_name,
+        .path = (char *) path,
+        .payload = (void *) data,
+        .payload_len = len,
+        .qos = qos,
+        .retention = mapping->retention,
+    };
+    ares = astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed inserting message in transmission queue");
+    }
 
 exit:
     astarte_bson_serializer_destroy(&outer_bson);
@@ -254,6 +270,37 @@ void astarte_device_datastreams_handle_incoming(astarte_device_handle_t device,
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
+
+static astarte_result_t serialize_individual_payload(
+    astarte_bson_serializer_t *bson, astarte_data_t data, const int64_t *timestamp)
+{
+    astarte_result_t ares = astarte_bson_serializer_init(bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not initialize the BSON serializer");
+        return ares;
+    }
+
+    ares = astarte_data_serialize(bson, "v", data);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed serializing data in BSON");
+        return ares;
+    }
+
+    if (timestamp) {
+        ares = astarte_bson_serializer_append_datetime(bson, "t", *timestamp);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed adding datetime to the BSON");
+            return ares;
+        }
+    }
+
+    ares = astarte_bson_serializer_append_end_of_document(bson);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed appending end of document to BSON");
+    }
+
+    return ares;
+}
 
 static astarte_result_t serialize_aggregated_payload(astarte_bson_serializer_t *outer_bson,
     astarte_object_entry_t *entries, size_t entries_len, const int64_t *timestamp)

@@ -41,10 +41,9 @@ static void cleanup_device_props(device_props_cleanup_ctx_t *ctx)
 {
     if (ctx) {
         astarte_free(ctx->interface_name);
-        ctx->interface_name = NULL;
         astarte_free(ctx->path);
-        ctx->path = NULL;
         astarte_storage_property_destroy_loaded(ctx->data);
+        memset(ctx, 0, sizeof(device_props_cleanup_ctx_t));
     }
 }
 
@@ -135,7 +134,7 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
         ASTARTE_LOG_ERR("Error getting stored properties string: %s", astarte_result_to_name(ares));
         return ares;
     }
-    scope_var(scoped_char, intr_str)(intr_str_size);
+    scope_var(scoped_char, intr_str)(intr_str_size > 0 ? intr_str_size : 1);
     if (intr_str_size != 0) {
         if (!intr_str) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
@@ -152,7 +151,8 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
 
     // Estimate compression result size and payload size
     char *compression_input = intr_str;
-    size_t compression_input_len = (compression_input) ? (intr_str_size - 1) : 0;
+    size_t compression_input_len
+        = (compression_input && intr_str_size > 0) ? (intr_str_size - 1) : 0;
     uLongf compressed_len = compressBound(compression_input_len);
     size_t payload_size = 4 + compressed_len;
 
@@ -210,14 +210,14 @@ astarte_result_t astarte_device_properties_send_device_owned(astarte_device_hand
             &iter, NULL, &interface_name_size, NULL, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
-            return ares; // Safely triggers loop-scoped cleanup
+            return ares;
         }
 
         ctx.interface_name = astarte_calloc(interface_name_size, sizeof(char));
         ctx.path = astarte_calloc(path_size, sizeof(char));
         if (!ctx.interface_name || !ctx.path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            return ASTARTE_RESULT_OUT_OF_MEMORY; // Safely triggers loop-scoped cleanup
+            return ASTARTE_RESULT_OUT_OF_MEMORY;
         }
 
         ares = astarte_storage_property_iterator_get(
@@ -322,6 +322,9 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
     }
 
     while (ares != ASTARTE_RESULT_NOT_FOUND) {
+        device_props_cleanup_ctx_t ctx = { 0 };
+        scope_defer(cleanup_device_props)(&ctx);
+
         size_t interface_name_size = 0U;
         size_t path_size = 0U;
         ares = astarte_storage_property_iterator_get(
@@ -331,23 +334,24 @@ static void purge_server_properties(astarte_device_handle_t device, sys_slist_t 
             return;
         }
 
-        scope_var(scoped_char, interface_name)(interface_name_size);
-        scope_var(scoped_char, path)(path_size);
-
-        if (!interface_name || !path) {
+        // Allocate on the heap using 1-byte minimum safeguard
+        ctx.interface_name
+            = astarte_calloc(interface_name_size > 0 ? interface_name_size : 1, sizeof(char));
+        ctx.path = astarte_calloc(path_size > 0 ? path_size : 1, sizeof(char));
+        if (!ctx.interface_name || !ctx.path) {
             ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
             return;
         }
 
         ares = astarte_storage_property_iterator_get(
-            &iter, interface_name, &interface_name_size, path, &path_size);
+            &iter, ctx.interface_name, &interface_name_size, ctx.path, &path_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Properties iterator get error: %s", astarte_result_to_name(ares));
             return;
         }
 
         // Purge the property if not in the allow list
-        purge_server_property(device, &iter, interface_name, path, allow_list);
+        purge_server_property(device, &iter, ctx.interface_name, ctx.path, allow_list);
 
         ares = astarte_storage_property_iterator_next(&iter);
         if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
@@ -430,7 +434,7 @@ static void send_device_owned_property(astarte_device_handle_t device,
     }
 
     if (interface->ownership == ASTARTE_INTERFACE_OWNERSHIP_DEVICE) {
-        ares = astarte_device_send_individual_internal(device, interface_name, path, data, NULL);
+        ares = astarte_device_set_property(device, interface_name, path, data);
         ASTARTE_LOG_COND_ERR(ares != ASTARTE_RESULT_OK, "Failed sending cached property: %s",
             astarte_result_to_name(ares));
     }

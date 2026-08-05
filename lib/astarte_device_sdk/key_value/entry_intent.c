@@ -40,7 +40,7 @@ astarte_result_t astarte_key_value_entry_intent_write(struct zms_fs *zms_fs,
 
     ssize_t ret = zms_write(zms_fs, ASTARTE_KEY_VALUE_ENTRY_INTENT_ID, &intent, sizeof(intent));
     if (ret < 0) {
-        ASTARTE_LOG_ERR("Failed to write Intent Block: %d", (int) ret);
+        ASTARTE_LOG_ERR("Failed to write intent block: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -55,7 +55,7 @@ astarte_result_t astarte_key_value_entry_intent_clear(struct zms_fs *zms_fs)
 
     ssize_t ret = zms_write(zms_fs, ASTARTE_KEY_VALUE_ENTRY_INTENT_ID, &intent, sizeof(intent));
     if (ret < 0) {
-        ASTARTE_LOG_ERR("Failed to clear Intent Block: %d", (int) ret);
+        ASTARTE_LOG_ERR("Failed to clear intent block: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -73,7 +73,7 @@ astarte_result_t astarte_key_value_entry_intent_resolve(struct zms_fs *zms_fs)
         return ASTARTE_RESULT_OK;
     }
     if (ret != sizeof(intent)) {
-        ASTARTE_LOG_ERR("Failed to read Intent Block: %d", (int) ret);
+        ASTARTE_LOG_ERR("Failed to read intent block: %d", (int) ret);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 
@@ -144,6 +144,7 @@ static astarte_result_t resolve_insert_intent(
     uint32_t tail_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
     ares = astarte_key_value_entry_list_read_head_and_tail_ids(zms_fs, &head_id, &tail_id);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed reading head and tail IDs: %s.", astarte_result_to_name(ares));
         return ares;
     }
     if (tail_id == intent->target_id) {
@@ -273,6 +274,7 @@ static astarte_result_t resolve_delete_intent(
         // Safely delete the orphaned payload physically from ZMS
         ssize_t del_ret = zms_delete(zms_fs, intent->target_id);
         if (del_ret < 0) {
+            ASTARTE_LOG_ERR("Failed deleting orphaned entry");
             return ASTARTE_RESULT_ZMS_ERROR;
         }
     }
@@ -301,6 +303,7 @@ static astarte_result_t resolve_shift_intent(
             break;
         }
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed reading fixed header: %s.", astarte_result_to_name(ares));
             return ares;
         }
 

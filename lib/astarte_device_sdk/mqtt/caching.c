@@ -273,7 +273,7 @@ void astarte_mqtt_caching_restore_from_flash(astarte_mqtt_caching_t *caching)
         map_entry->end_of_validity = sys_timepoint_calc(K_NO_WAIT);
         map_entry->message = message;
 
-        // TODO: there is no check if this operation succeeds or fails!
+        // Insert the new entry in the hashmap
         int ret = sys_hashmap_insert(&caching->map, message_id, POINTER_TO_UINT(map_entry), NULL);
         if (ret != 1) {
             ASTARTE_LOG_ERR("Failed adding entry to the hashmap. Err: %d", ret);

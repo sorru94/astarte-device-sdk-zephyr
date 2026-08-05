@@ -45,6 +45,7 @@ astarte_result_t astarte_key_value_entry_delete(struct zms_fs *zms_fs, uint32_t 
         return ASTARTE_RESULT_OK;
     }
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed unlinking entry with ID %d: %s", idx, astarte_result_to_name(ares));
         return ares;
     }
 
@@ -52,11 +53,13 @@ astarte_result_t astarte_key_value_entry_delete(struct zms_fs *zms_fs, uint32_t 
     ares = astarte_key_value_entry_intent_write(zms_fs, ASTARTE_KEY_VALUE_ENTRY_INTENT_SHIFTING,
         idx, ASTARTE_KEY_VALUE_ENTRY_NULL_ID, ASTARTE_KEY_VALUE_ENTRY_NULL_ID);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed writing intent: %s", astarte_result_to_name(ares));
         return ares;
     }
 
     ares = astarte_key_value_entry_delete_resume_shift(zms_fs, idx);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed resuming the delete shifting: %s", astarte_result_to_name(ares));
         return ares;
     }
 
@@ -82,6 +85,7 @@ astarte_result_t astarte_key_value_entry_delete_resume_shift(
             break;
         }
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed shifting a single entry: %s", astarte_result_to_name(ares));
             return ares;
         }
 
@@ -141,7 +145,7 @@ static astarte_result_t shift_back_single_entry(
     scope_var(scoped_uint8, raw_entry)(raw_entry_size);
     if (!raw_entry) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
     }
 
     ssize_t ret = zms_read(zms_fs, source_id, raw_entry, raw_entry_size);
@@ -172,12 +176,14 @@ static astarte_result_t shift_back_single_entry(
         // Update linked list pointers of the physically moved entry's neighbors
         ares = update_shifted_entry_neighbors(zms_fs, &header, hole_id);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed updating shifted entry neighbors");
             return ares;
         }
 
         // Clean up the entry from its old position
         ret = zms_delete(zms_fs, source_id);
         if (ret < 0) {
+            ASTARTE_LOG_ERR("Failed in deleting entry with ID %d", source_id);
             return ASTARTE_RESULT_ZMS_ERROR;
         }
 
@@ -259,6 +265,7 @@ static astarte_result_t delete_and_unlink_single_entry(struct zms_fs *zms_fs, ui
     ares = astarte_key_value_entry_intent_write(
         zms_fs, ASTARTE_KEY_VALUE_ENTRY_INTENT_DELETING, idx, prev_id, next_id);
     if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in writing intent: %s", astarte_result_to_name(ares));
         return ares;
     }
 
@@ -275,6 +282,7 @@ static astarte_result_t delete_and_unlink_single_entry(struct zms_fs *zms_fs, ui
     if (prev_id != ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
         ares = astarte_key_value_entry_list_update_next_id(zms_fs, prev_id, next_id);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed updating next ID for entry with ID %d", prev_id);
             return ares;
         }
     } else {
@@ -287,6 +295,7 @@ static astarte_result_t delete_and_unlink_single_entry(struct zms_fs *zms_fs, ui
     if (next_id != ASTARTE_KEY_VALUE_ENTRY_NULL_ID) {
         ares = astarte_key_value_entry_list_update_prev_id(zms_fs, next_id, prev_id);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed updating previous ID for entry with ID %d", next_id);
             return ares;
         }
     } else {
@@ -298,6 +307,7 @@ static astarte_result_t delete_and_unlink_single_entry(struct zms_fs *zms_fs, ui
     if (update_head_tail_ids) {
         ares = astarte_key_value_entry_list_write_head_and_tail_ids(zms_fs, head_id, tail_id);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed updating head and tail IDs");
             return ares;
         }
     }
@@ -305,6 +315,7 @@ static astarte_result_t delete_and_unlink_single_entry(struct zms_fs *zms_fs, ui
     // Delete the entry
     ssize_t ret = zms_delete(zms_fs, idx);
     if (ret < 0) {
+        ASTARTE_LOG_ERR("Failed deleting entry with ID %d", idx);
         return ASTARTE_RESULT_ZMS_ERROR;
     }
 

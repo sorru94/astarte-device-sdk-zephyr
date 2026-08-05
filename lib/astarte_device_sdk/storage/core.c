@@ -44,6 +44,7 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_L
 #define SYNCHRONIZATION_NAMESPACE "synchronization_namespace"
 #define INTROSPECTION_NAMESPACE "introspection_namespace"
 #define PROPERTIES_NAMESPACE "properties_namespace"
+#define TRANSMISSION_NAMESPACE "transmission_namespace"
 
 #define VERSION_KEY "sdk_version"
 
@@ -97,23 +98,38 @@ astarte_result_t astarte_storage_init(astarte_storage_data_t *handle)
     }
 
     // Init Synchronization Storage
-    ares = astarte_key_value_new(&handle->zms_fs, SYNCHRONIZATION_NAMESPACE, &handle->sync_storage);
+    ares = astarte_key_value_new(
+        &handle->zms_fs, SYNCHRONIZATION_NAMESPACE, 0, &handle->sync_storage);
     if (ares != ASTARTE_RESULT_OK) {
         return ares;
     }
 
     // Init Introspection Storage
-    ares = astarte_key_value_new(&handle->zms_fs, INTROSPECTION_NAMESPACE, &handle->intro_storage);
+    ares = astarte_key_value_new(
+        &handle->zms_fs, INTROSPECTION_NAMESPACE, 0, &handle->intro_storage);
     if (ares != ASTARTE_RESULT_OK) {
-        astarte_key_value_destroy(&handle->sync_storage); // Rollback
+        astarte_key_value_destroy(&handle->sync_storage);
         return ares;
     }
 
     // Init Properties Storage
-    ares = astarte_key_value_new(&handle->zms_fs, PROPERTIES_NAMESPACE, &handle->prop_storage);
+    ares = astarte_key_value_new(&handle->zms_fs, PROPERTIES_NAMESPACE,
+        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_PERMANENT_STORAGE_UTILIZATION_BOUND,
+        &handle->prop_storage);
     if (ares != ASTARTE_RESULT_OK) {
         astarte_key_value_destroy(&handle->sync_storage);
         astarte_key_value_destroy(&handle->intro_storage);
+        return ares;
+    }
+
+    // Init Transmission Storage
+    ares = astarte_key_value_new(&handle->zms_fs, TRANSMISSION_NAMESPACE,
+        CONFIG_ASTARTE_DEVICE_SDK_ADVANCED_PERMANENT_STORAGE_UTILIZATION_BOUND,
+        &handle->trans_storage);
+    if (ares != ASTARTE_RESULT_OK) {
+        astarte_key_value_destroy(&handle->sync_storage);
+        astarte_key_value_destroy(&handle->intro_storage);
+        astarte_key_value_destroy(&handle->prop_storage);
         return ares;
     }
 
@@ -131,7 +147,7 @@ void astarte_storage_destroy(astarte_storage_data_t *handle)
     astarte_key_value_destroy(&handle->sync_storage);
     astarte_key_value_destroy(&handle->intro_storage);
     astarte_key_value_destroy(&handle->prop_storage);
-
+    astarte_key_value_destroy(&handle->trans_storage);
     handle->initialized = false;
 }
 

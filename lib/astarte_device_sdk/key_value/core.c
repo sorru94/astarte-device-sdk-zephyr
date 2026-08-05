@@ -13,6 +13,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/mutex.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/version.h>
 
 #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
@@ -25,6 +26,7 @@
 #include "key_value/entry.h"
 #include "key_value/entry_delete.h"
 #include "key_value/entry_intent.h"
+#include "key_value/mutex.h"
 #include "log.h"
 
 ASTARTE_LOG_MODULE_REGISTER(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VALUE_LOG_LEVEL);
@@ -33,36 +35,11 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_key_value, CONFIG_ASTARTE_DEVICE_SDK_KEY_VAL
  *        Defines, constants and typedef        *
  ***********************************************/
 
-// This mutex will be shared by all instances of this driver.
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static SYS_MUTEX_DEFINE(astarte_key_value_mutex);
-
 #define FULL_KEY(alternate, key) ((alternate) ? ((1U << 16U) + (uint32_t) (key)) : (uint32_t) (key))
 
-// Helper to lock and assert
-static inline void astarte_sys_mutex_lock_helper(struct sys_mutex *mtx)
-{
-    int rc_mutex = sys_mutex_lock(mtx, K_FOREVER);
-    ASTARTE_LOG_COND_ERR(rc_mutex != 0, "System mutex lock failed with %d", rc_mutex);
-    __ASSERT_NO_MSG(rc_mutex == 0);
-}
+ASTARTE_SCOPE_DEFER_DEFINE(astarte_key_value_mutex_unlock);
 
-// Helper to unlock and assert
-static inline void astarte_sys_mutex_unlock_helper(struct sys_mutex *mtx)
-{
-    int rc_mutex = sys_mutex_unlock(mtx);
-    ASTARTE_LOG_COND_ERR(rc_mutex != 0, "System mutex unlock failed with %d", rc_mutex);
-    __ASSERT_NO_MSG(rc_mutex == 0);
-}
-
-// Define the scope guard
-// _T represents the pointer passed into the scope_guard macro
-// NOLINTBEGIN(readability-identifier-length)
-SCOPE_GUARD_DEFINE(astarte_sys_mutex, struct sys_mutex *, astarte_sys_mutex_lock_helper(_T),
-    astarte_sys_mutex_unlock_helper(_T));
-// NOLINTEND(readability-identifier-length)
-
-static inline void astarte_auto_free_char_ptr(char **ptr)
+static inline void free_char_ptr(char **ptr)
 {
     if (ptr && *ptr) {
         astarte_free(*ptr);
@@ -70,7 +47,7 @@ static inline void astarte_auto_free_char_ptr(char **ptr)
     }
 }
 
-ASTARTE_SCOPE_DEFER_DEFINE(astarte_auto_free_char_ptr, char **);
+ASTARTE_SCOPE_DEFER_DEFINE(free_char_ptr, char **);
 
 /************************************************
  *         Static functions declaration         *
@@ -78,90 +55,14 @@ ASTARTE_SCOPE_DEFER_DEFINE(astarte_auto_free_char_ptr, char **);
 
 static astarte_result_t find_next_matching_id(
     astarte_key_value_iter_t *iter, uint32_t *next_id, bool *has_next);
+static astarte_result_t read_next_key(
+    astarte_key_value_iter_t *iter, uint32_t next_id, char **next_key);
+static astarte_result_t heal_iterator_post_delete(
+    astarte_key_value_iter_t *iter, const char *next_key);
 
 /************************************************
  *         Global functions definitions         *
  ***********************************************/
-
-astarte_result_t astarte_key_value_direct_insert(
-    struct zms_fs *zms_fs, bool alternate, uint16_t key, const void *value, size_t value_size)
-{
-    if (!value || value_size == 0) {
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
-
-    uint32_t full_key = FULL_KEY(alternate, key);
-
-    ssize_t ret = zms_write(zms_fs, full_key, value, value_size);
-    if (ret < 0) {
-        ASTARTE_LOG_ERR("Failed to insert direct key %d: %d", full_key, (int) ret);
-        return ASTARTE_RESULT_ZMS_ERROR;
-    }
-
-    return ASTARTE_RESULT_OK;
-}
-
-astarte_result_t astarte_key_value_direct_find(
-    struct zms_fs *zms_fs, bool alternate, uint16_t key, void *value, size_t *value_size)
-{
-    if (!value_size) {
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
-
-    uint32_t full_key = FULL_KEY(alternate, key);
-
-    ssize_t data_len = zms_get_data_length(zms_fs, full_key);
-
-    if (data_len == -ENOENT) {
-        return ASTARTE_RESULT_NOT_FOUND;
-    }
-    if (data_len < 0) {
-        ASTARTE_LOG_ERR("Failed to get data length for key %d: %d", key, (int) data_len);
-        return ASTARTE_RESULT_ZMS_ERROR;
-    }
-
-    if (!value) {
-        *value_size = data_len;
-        return ASTARTE_RESULT_OK;
-    }
-
-    if (*value_size < (size_t) data_len) {
-        ASTARTE_LOG_ERR(
-            "Buffer too small for key %d. Need %d, got %d", key, (int) data_len, *value_size);
-        return ASTARTE_RESULT_INVALID_PARAM;
-    }
-
-    ssize_t ret = zms_read(zms_fs, full_key, value, *value_size);
-    if (ret != data_len) {
-        ASTARTE_LOG_ERR("Failed to read direct key %d: %d", key, (int) ret);
-        return ASTARTE_RESULT_ZMS_ERROR;
-    }
-
-    *value_size = ret;
-
-    return ASTARTE_RESULT_OK;
-}
-
-astarte_result_t astarte_key_value_direct_delete(
-    struct zms_fs *zms_fs, bool alternate, uint16_t key)
-{
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
-
-    uint32_t full_key = FULL_KEY(alternate, key);
-    ssize_t ret = zms_delete(zms_fs, full_key);
-
-    // -ENOENT means it was already deleted, which is a successful state
-    if (ret < 0 && ret != -ENOENT) {
-        ASTARTE_LOG_ERR("Failed to delete direct key %d: %d", key, (int) ret);
-        return ASTARTE_RESULT_ZMS_ERROR;
-    }
-
-    return ASTARTE_RESULT_OK;
-}
 
 astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct zms_fs *zms_fs)
 {
@@ -174,8 +75,8 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct z
 
     int flash_rc = flash_get_page_info_by_offs(config.flash_device, config.flash_offset, &fp_info);
     if (flash_rc) {
-        ASTARTE_LOG_ERR("Unable to get page info: %d.", flash_rc);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
+        ASTARTE_LOG_ERR("Unable to get flash page info: %d.", flash_rc);
+        return ASTARTE_RESULT_INVALID_CONFIGURATION;
     }
 
     uint16_t flash_sector_count = (uint16_t) (config.flash_partition_size / fp_info.size);
@@ -244,8 +145,8 @@ astarte_result_t astarte_key_value_open(astarte_key_value_cfg_t config, struct z
     return ASTARTE_RESULT_OK;
 }
 
-astarte_result_t astarte_key_value_new(
-    struct zms_fs *zms_fs, const char *namespace, astarte_key_value_t *kv_storage)
+astarte_result_t astarte_key_value_new(struct zms_fs *zms_fs, const char *namespace,
+    uint8_t max_quota_pct, astarte_key_value_t *kv_storage)
 {
     size_t namespace_cpy_size = strlen(namespace) + 1;
 
@@ -258,6 +159,37 @@ astarte_result_t astarte_key_value_new(
 
     kv_storage->namespace = namespace_cpy;
     kv_storage->zms_fs = zms_fs;
+
+    size_t total_partition_bytes = zms_fs->sector_size * zms_fs->sector_count;
+    const size_t one_hundred_prc = 100;
+    size_t calculated_max_bytes = (total_partition_bytes * max_quota_pct) / one_hundred_prc;
+    kv_storage->max_quota_bytes = calculated_max_bytes;
+    kv_storage->current_usage_bytes = 0;
+
+    // If a quota is set, calculate current usage immediately
+    if (calculated_max_bytes > 0) {
+        astarte_result_t ares = astarte_key_value_mutex_lock();
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Failed to lock mutex");
+            return ares;
+        }
+        scope_defer(astarte_key_value_mutex_unlock)();
+
+        astarte_key_value_iter_t iter;
+        astarte_result_t iter_res = astarte_key_value_iterator_init(kv_storage, &iter);
+        while (iter_res == ASTARTE_RESULT_OK) {
+            size_t entry_size = 0;
+            astarte_result_t read_res = astarte_key_value_entry_read_value(
+                kv_storage->zms_fs, iter.current_id, NULL, &entry_size);
+            if (read_res == ASTARTE_RESULT_OK) {
+                kv_storage->current_usage_bytes += entry_size;
+            } else {
+                ASTARTE_LOG_WRN("Failed to read size for ID %d during quota init", iter.current_id);
+            }
+
+            iter_res = astarte_key_value_iterator_next(&iter);
+        }
+    }
 
     // Leave the memory intact for kv_storage
     namespace_cpy = NULL;
@@ -278,10 +210,16 @@ astarte_result_t astarte_key_value_insert(
     astarte_key_value_t *kv_storage, const char *key, const void *value, size_t value_size)
 {
     uint32_t entry_id = 0;
+    size_t old_value_size = 0;
 
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    astarte_result_t ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
-    astarte_result_t ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
+    ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Pre-operation integrity check failed: %s", astarte_result_to_name(ares));
         return ares;
@@ -294,6 +232,28 @@ astarte_result_t astarte_key_value_insert(
         return ares;
     }
 
+    // Check if this is an update and extract the old size if a quota is active
+    if (kv_storage->max_quota_bytes > 0) {
+        ares = astarte_key_value_entry_read_value(
+            kv_storage->zms_fs, entry_id, NULL, &old_value_size);
+        if ((ares != ASTARTE_RESULT_OK) && (ares != ASTARTE_RESULT_NOT_FOUND)) {
+            ASTARTE_LOG_ERR("Read failed %s.", astarte_result_to_name(ares));
+            return ares;
+        }
+
+        // Check if the size has been desyncronized
+        if (kv_storage->current_usage_bytes < old_value_size) {
+            // At least old_value_size bytes are used
+            kv_storage->current_usage_bytes = old_value_size;
+        }
+
+        size_t projected_size = (kv_storage->current_usage_bytes + value_size) - old_value_size;
+        if (projected_size > kv_storage->max_quota_bytes) {
+            ASTARTE_LOG_WRN("Namespace %s quota exceeded.", kv_storage->namespace);
+            return ASTARTE_RESULT_OUT_OF_SPACE;
+        }
+    }
+
     ares = astarte_key_value_entry_write(
         kv_storage->zms_fs, entry_id, kv_storage->namespace, key, value, value_size);
     if (ares != ASTARTE_RESULT_OK) {
@@ -301,6 +261,11 @@ astarte_result_t astarte_key_value_insert(
         return ares;
     }
 
+    // Safely update the RAM counter post-write
+    if (kv_storage->max_quota_bytes > 0) {
+        kv_storage->current_usage_bytes
+            = (kv_storage->current_usage_bytes + value_size) - old_value_size;
+    }
     return ASTARTE_RESULT_OK;
 }
 
@@ -309,9 +274,14 @@ astarte_result_t astarte_key_value_find(
 {
     uint32_t entry_id = 0;
 
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    astarte_result_t ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
-    astarte_result_t ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
+    ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Pre-operation integrity check failed: %s", astarte_result_to_name(ares));
         return ares;
@@ -336,10 +306,16 @@ astarte_result_t astarte_key_value_find(
 astarte_result_t astarte_key_value_delete(astarte_key_value_t *kv_storage, const char *key)
 {
     uint32_t entry_id = 0;
+    size_t deleted_value_size = 0;
 
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    astarte_result_t ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
-    astarte_result_t ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
+    ares = astarte_key_value_entry_intent_resolve(kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Pre-operation integrity check failed: %s", astarte_result_to_name(ares));
         return ares;
@@ -352,10 +328,29 @@ astarte_result_t astarte_key_value_delete(astarte_key_value_t *kv_storage, const
         return ares;
     }
 
+    // If a quota is active, grab the size of the entry before wiping it
+    if (kv_storage->max_quota_bytes > 0) {
+        astarte_result_t size_check_res = astarte_key_value_entry_read_value(
+            kv_storage->zms_fs, entry_id, NULL, &deleted_value_size);
+        if (size_check_res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_WRN("Failed to read size for ID %d prior to deletion", entry_id);
+            deleted_value_size = 0;
+        }
+    }
+
     ares = astarte_key_value_entry_delete(kv_storage->zms_fs, entry_id);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("ZMS Delete Error: %s.", astarte_result_to_name(ares));
         return ares;
+    }
+
+    // Safely update the RAM counter post-deletion
+    if (kv_storage->max_quota_bytes > 0 && deleted_value_size > 0) {
+        if (kv_storage->current_usage_bytes >= deleted_value_size) {
+            kv_storage->current_usage_bytes -= deleted_value_size;
+        } else {
+            kv_storage->current_usage_bytes = 0;
+        }
     }
 
     return ASTARTE_RESULT_OK;
@@ -374,9 +369,14 @@ astarte_result_t astarte_key_value_iterator_next(astarte_key_value_iter_t *iter)
 {
     bool matches = false;
 
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    astarte_result_t ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
-    astarte_result_t ares = astarte_key_value_entry_intent_resolve(iter->kv_storage->zms_fs);
+    ares = astarte_key_value_entry_intent_resolve(iter->kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Pre-operation integrity check failed: %s", astarte_result_to_name(ares));
         return ares;
@@ -410,9 +410,14 @@ astarte_result_t astarte_key_value_iterator_next(astarte_key_value_iter_t *iter)
 astarte_result_t astarte_key_value_iterator_get(
     astarte_key_value_iter_t *iter, void *key, size_t *key_size)
 {
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    astarte_result_t ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
-    astarte_result_t ares = astarte_key_value_entry_intent_resolve(iter->kv_storage->zms_fs);
+    ares = astarte_key_value_entry_intent_resolve(iter->kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Pre-operation integrity check failed: %s", astarte_result_to_name(ares));
         return ares;
@@ -427,16 +432,22 @@ astarte_result_t astarte_key_value_iterator_get(
 astarte_result_t astarte_key_value_iterator_delete(astarte_key_value_iter_t *iter)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
-    size_t next_key_size = 0;
+    size_t deleted_value_size = 0;
 
     if (!iter || iter->current_id == 0) {
+        ASTARTE_LOG_ERR("Invalid iterator for deletion operation");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    scope_guard(astarte_sys_mutex)(&astarte_key_value_mutex);
+    ares = astarte_key_value_mutex_lock();
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed to lock mutex");
+        return ares;
+    }
+    scope_defer(astarte_key_value_mutex_unlock)();
 
     char *next_key = NULL;
-    scope_defer(astarte_auto_free_char_ptr)(&next_key);
+    scope_defer(free_char_ptr)(&next_key);
 
     ares = astarte_key_value_entry_intent_resolve(iter->kv_storage->zms_fs);
     if (ares != ASTARTE_RESULT_OK) {
@@ -455,22 +466,21 @@ astarte_result_t astarte_key_value_iterator_delete(astarte_key_value_iter_t *ite
 
     // Get the key of the next matching element so we can re-find it if it shifts
     if (has_next) {
-        ares = astarte_key_value_entry_read_key(
-            iter->kv_storage->zms_fs, next_matching_id, NULL, &next_key_size);
+        ares = read_next_key(iter, next_matching_id, &next_key);
         if (ares != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Key size reading failure: %s", astarte_result_to_name(ares));
+            ASTARTE_LOG_ERR("Failed in reading the next key: %s", astarte_result_to_name(ares));
             return ares;
         }
-        next_key = astarte_calloc(next_key_size, sizeof(char));
-        if (!next_key) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            return ASTARTE_RESULT_OUT_OF_MEMORY;
-        }
-        ares = astarte_key_value_entry_read_key(
-            iter->kv_storage->zms_fs, next_matching_id, next_key, &next_key_size);
-        if (ares != ASTARTE_RESULT_OK) {
-            ASTARTE_LOG_ERR("Key reading failure: %s", astarte_result_to_name(ares));
-            return ares;
+    }
+
+    // If a quota is active, grab the size of the entry before wiping it
+    if (iter->kv_storage->max_quota_bytes > 0) {
+        astarte_result_t size_check_res = astarte_key_value_entry_read_value(
+            iter->kv_storage->zms_fs, iter->current_id, NULL, &deleted_value_size);
+        if (size_check_res != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_WRN(
+                "Failed to read size for ID %d prior to iterator deletion", iter->current_id);
+            deleted_value_size = 0;
         }
     }
 
@@ -481,32 +491,22 @@ astarte_result_t astarte_key_value_iterator_delete(astarte_key_value_iter_t *ite
         return ares;
     }
 
+    // Safely update the RAM counter post-deletion
+    if (iter->kv_storage->max_quota_bytes > 0 && deleted_value_size > 0) {
+        if (iter->kv_storage->current_usage_bytes >= deleted_value_size) {
+            iter->kv_storage->current_usage_bytes -= deleted_value_size;
+        } else {
+            iter->kv_storage->current_usage_bytes = 0;
+        }
+    }
+
     // We just deleted the very last element in this namespace.
     if (!has_next) {
         iter->current_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
         return ASTARTE_RESULT_OK;
     }
 
-    // Find the post-shift valid ZMS ID of the next matching element
-    uint32_t valid_next_matching_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-    ares = astarte_key_value_entry_find_or_alloc(iter->kv_storage->zms_fs,
-        iter->kv_storage->namespace, next_key, &valid_next_matching_id, false);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Could not find post-shift entry: %s.", astarte_result_to_name(ares));
-        return ares;
-    }
-    // Find the post-shift ZMS ID of the next element previous element
-    uint32_t new_prev_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
-    ares = astarte_key_value_entry_get_prev_id(
-        iter->kv_storage->zms_fs, valid_next_matching_id, &new_prev_id);
-    if (ares != ASTARTE_RESULT_OK) {
-        ASTARTE_LOG_ERR("Could not find post-shift prev id: %s.", astarte_result_to_name(ares));
-        return ares;
-    }
-    iter->current_id = new_prev_id;
-
-    // Memory is freed and the mutex is unlocked automatically
-    return ASTARTE_RESULT_OK;
+    return heal_iterator_post_delete(iter, next_key);
 }
 
 /************************************************
@@ -544,4 +544,63 @@ static astarte_result_t find_next_matching_id(
     }
 
     return ares;
+}
+
+static astarte_result_t read_next_key(
+    astarte_key_value_iter_t *iter, uint32_t next_id, char **next_key)
+{
+    size_t next_key_size = 0;
+    astarte_result_t ares
+        = astarte_key_value_entry_read_key(iter->kv_storage->zms_fs, next_id, NULL, &next_key_size);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Key size reading failure: %s", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    char *local_next_key = NULL;
+    scope_defer(free_char_ptr)(&local_next_key);
+
+    local_next_key = astarte_calloc(next_key_size, sizeof(char));
+    if (!local_next_key) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
+
+    ares = astarte_key_value_entry_read_key(
+        iter->kv_storage->zms_fs, next_id, local_next_key, &next_key_size);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Key reading failure: %s", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    *next_key = local_next_key;
+
+    // Disarm the auto-cleanup
+    local_next_key = NULL;
+
+    return ASTARTE_RESULT_OK;
+}
+
+static astarte_result_t heal_iterator_post_delete(
+    astarte_key_value_iter_t *iter, const char *next_key)
+{
+    // Find the post-shift valid ZMS ID of the next matching element
+    uint32_t valid_next_matching_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    astarte_result_t ares = astarte_key_value_entry_find_or_alloc(iter->kv_storage->zms_fs,
+        iter->kv_storage->namespace, next_key, &valid_next_matching_id, false);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not find post-shift entry: %s.", astarte_result_to_name(ares));
+        return ares;
+    }
+
+    // Find the post-shift ZMS ID of the next element previous element
+    uint32_t new_prev_id = ASTARTE_KEY_VALUE_ENTRY_NULL_ID;
+    ares = astarte_key_value_entry_get_prev_id(
+        iter->kv_storage->zms_fs, valid_next_matching_id, &new_prev_id);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Could not find post-shift prev id: %s.", astarte_result_to_name(ares));
+        return ares;
+    }
+    iter->current_id = new_prev_id;
+    return ASTARTE_RESULT_OK;
 }

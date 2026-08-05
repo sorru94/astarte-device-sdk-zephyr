@@ -16,10 +16,13 @@
 #include "astarte_device_sdk/device.h"
 #include "astarte_device_sdk/result.h"
 
+#include <zephyr/kernel.h>
+
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 #include "storage/core.h"
 #endif
 #include "backoff.h"
+#include "device/transmission_queue.h"
 #include "introspection.h"
 #include "mqtt/core.h"
 #include "tls_credentials.h"
@@ -61,6 +64,14 @@
 /** @brief Size in chars of the consumer properties control topic. */
 #define MQTT_CONTROL_PRODUCER_PROP_TOPIC_LEN                                                       \
     (MQTT_BASE_TOPIC_LEN + MQTT_CONTROL_PRODUCER_PROP_TOPIC_SUFFIX_LEN)
+
+/** @brief Event bit used to signal a connection event. */
+#define ASTARTE_DEVICE_CONNECTION_EVENT_BIT BIT(0U)
+/** @brief Event bit used to signal the transmission thread to exit gracefully. */
+#define ASTARTE_DEVICE_DESTROY_EVENT_BIT BIT(1U)
+
+/** @brief Number of elements in the error event queue. */
+#define ASTARTE_DEVICE_ERROR_QUEUE_SIZE 16
 
 /** @brief Connection statuses for the Astarte device. */
 enum connection_states
@@ -138,6 +149,18 @@ struct astarte_device
     /** @brief Device caching instance, used to acced non volatile storage. */
     astarte_storage_data_t caching;
 #endif
+    /** @brief Transmission queue for the device. */
+    struct astarte_device_transmission_queue transmission_queue;
+    /** @brief Events handler for internal device events. */
+    struct k_event events;
+    /** @brief Worker thread, handling the connection to Astarte and data transmission/reception. */
+    struct k_thread worker_thread;
+    /** @brief Stack for the worker thread. */
+    K_KERNEL_STACK_MEMBER(worker_thread_stack, CONFIG_ASTARTE_DEVICE_SDK_WORKER_THREAD_STACK_SIZE);
+    /** @brief User-facing error event queue. */
+    struct k_msgq error_queue;
+    /** @brief Buffer backing the error event queue. */
+    char error_queue_buffer[ASTARTE_DEVICE_ERROR_QUEUE_SIZE * sizeof(astarte_device_error_event_t)];
 };
 
 #endif // DEVICE_CORE_H

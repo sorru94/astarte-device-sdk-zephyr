@@ -117,6 +117,13 @@ typedef struct
 typedef void (*astarte_device_property_loader_cbk_t)(astarte_device_property_loader_event_t event);
 #endif
 
+/** @brief Context for a single error event. */
+typedef struct
+{
+    astarte_result_t result; /**< The error code. */
+    const char *context; /**< Optional string describing where the error occurred. */
+} astarte_device_error_event_t;
+
 /**
  * @brief Configuration struct for an Astarte device.
  *
@@ -164,13 +171,16 @@ extern "C" {
 #endif
 
 /**
- * @brief Allocate a new instance of an Astarte device.
+ * @brief Initialize the Astarte device.
  *
  * @details This function has to be called to initialize the device SDK before doing anything else.
- * If an error code is returned the astarte_device_free function must not be called.
+ * If an error code is returned the astarte_device_destroy function must not be called.
  *
- * @note A device can be instantiated and connected to Astarte only if it has been previously
+ * @note A device can be initialized and connected to Astarte only if it has been previously
  * registered on Astarte.
+ *
+ * @note A single device can be initialized at a time. If the device is already initialized, this
+ * function will return an error code.
  *
  * @param[in] cfg Configuration struct.
  * @param[out] device Device instance initialized.
@@ -239,14 +249,6 @@ astarte_result_t astarte_device_disconnect(astarte_device_handle_t device, k_tim
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_force_disconnect(astarte_device_handle_t device);
-
-/**
- * @brief Poll data from Astarte.
- *
- * @param[in] device Device instance to poll data from Astarte.
- * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
- */
-astarte_result_t astarte_device_poll(astarte_device_handle_t device);
 
 /**
  * @brief Send a value through the device connection.
@@ -320,6 +322,18 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
     const char *interface_name, const char *path, astarte_device_property_loader_cbk_t loader_cbk,
     void *user_data);
 #endif
+
+/**
+ * @brief Fetch the next error event from the Astarte device.
+ *
+ * @param[in] device Handle to the device instance.
+ * @param[out] event Pointer to the error event struct to populate.
+ * @param[in] timeout Zephyr timeout (e.g., K_FOREVER, K_NO_WAIT, or K_MSEC).
+ * @return ASTARTE_RESULT_OK if an event was received, ASTARTE_RESULT_TIMEOUT if the queue was
+ * empty.
+ */
+astarte_result_t astarte_device_get_error_event(
+    astarte_device_handle_t device, astarte_device_error_event_t *event, k_timeout_t timeout);
 
 #ifdef __cplusplus
 }

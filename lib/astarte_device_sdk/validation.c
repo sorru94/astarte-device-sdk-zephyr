@@ -50,12 +50,12 @@ astarte_result_t astarte_validation_individual_datastream(const astarte_interfac
 
     return ASTARTE_RESULT_OK;
 }
-
 astarte_result_t astarte_validation_aggregated_datastream(const astarte_interface_t *interface,
     const char *path, astarte_object_entry_t *entries, size_t entries_len, const int64_t *timestamp)
 {
     astarte_result_t ares = ASTARTE_RESULT_OK;
 
+    // Verify all provided entries are valid endpoints and contain valid data
     for (size_t i = 0; i < entries_len; i++) {
         const astarte_mapping_t *mapping = NULL;
         astarte_object_entry_t *entry = &entries[i];
@@ -85,6 +85,29 @@ astarte_result_t astarte_validation_aggregated_datastream(const astarte_interfac
                 interface->name, path);
             ares = ASTARTE_RESULT_MAPPING_EXPLICIT_TIMESTAMP_NOT_SUPPORTED;
             return ares;
+        }
+    }
+
+    // Verify all required endpoints are present in the payload
+    for (size_t i = 0; i < interface->mappings_length; i++) {
+        if (interface->mappings[i].required) {
+            bool endpoint_found = false;
+
+            for (size_t j = 0; j < entries_len; j++) {
+                const astarte_mapping_t *parsed_mapping = NULL;
+                astarte_interface_get_mapping_from_paths(
+                    interface, path, entries[j].path, &parsed_mapping);
+                if (parsed_mapping == &interface->mappings[i]) {
+                    endpoint_found = true;
+                    break;
+                }
+            }
+
+            if (!endpoint_found) {
+                ASTARTE_LOG_ERR("Required endpoint '%s' is missing from the aggregated object",
+                    interface->mappings[i].endpoint);
+                return ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+            }
         }
     }
 

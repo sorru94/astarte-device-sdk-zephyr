@@ -21,6 +21,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -28,6 +29,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -35,6 +37,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -42,6 +45,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -49,6 +53,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -56,6 +61,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -63,6 +69,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -70,6 +77,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -77,6 +85,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -84,6 +93,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -91,6 +101,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -98,6 +109,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -105,6 +117,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -112,6 +125,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceAggrega
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
 };
@@ -135,6 +149,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -142,6 +157,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -149,6 +165,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -156,6 +173,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -163,6 +181,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -170,6 +189,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -177,6 +197,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -184,6 +205,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -191,6 +213,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -198,6 +221,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -205,6 +229,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -212,6 +237,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -219,6 +245,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -226,6 +253,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_DeviceDatastr
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
 };
@@ -335,6 +363,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -342,6 +371,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -349,6 +379,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -356,6 +387,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -363,6 +395,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -370,6 +403,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -377,6 +411,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -384,6 +419,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -391,6 +427,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -398,6 +435,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -405,6 +443,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -412,6 +451,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -419,6 +459,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -426,6 +467,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerAggrega
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
 };
@@ -449,6 +491,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOB,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -456,6 +499,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_BINARYBLOBARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -463,6 +507,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_BOOLEAN,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -470,6 +515,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_BOOLEANARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -477,6 +523,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_DATETIME,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -484,6 +531,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_DATETIMEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -491,6 +539,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_DOUBLE,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -498,6 +547,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_DOUBLEARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = true,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -505,6 +555,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_INTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -512,6 +563,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_INTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -519,6 +571,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGER,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -526,6 +579,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_LONGINTEGERARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -533,6 +587,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_STRING,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
     {
@@ -540,6 +595,7 @@ static const astarte_mapping_t org_astarteplatform_zephyr_examples_ServerDatastr
         .type = ASTARTE_MAPPING_TYPE_STRINGARRAY,
         .reliability = ASTARTE_MAPPING_RELIABILITY_UNRELIABLE,
         .explicit_timestamp = false,
+        .required = false,
         .retention = ASTARTE_MAPPING_RETENTION_DISCARD,
     },
 };

@@ -21,9 +21,24 @@
 #include "storage/core.h"
 #include "storage/trans.h"
 
+/** @brief Enumeration of transmission operations. */
+typedef enum
+{
+    /** @brief Data transmission operation. */
+    ASTARTE_TRANSMISSION_OP_DATA = 0,
+    /** @brief Add interface operation. */
+    ASTARTE_TRANSMISSION_OP_ADD_INTERFACE,
+    /** @brief Remove interface operation. */
+    ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE,
+} astarte_transmission_operation_t;
+
 /** @brief Message structure for the transmission storage. */
 struct astarte_device_transmission_queue_msg
 {
+    /** @brief The queue operation to perform. */
+    astarte_transmission_operation_t operation;
+    /** @brief Pointer to the interface definition (used for interface operations). */
+    const astarte_interface_t *interface;
     /** @brief Name of the Astarte interface. */
     char *interface_name;
     /** @brief Path associated with the message. */
@@ -36,6 +51,19 @@ struct astarte_device_transmission_queue_msg
     int qos;
     /** @brief Retention policy for the message. */
     astarte_mapping_retention_t retention;
+};
+
+/** @brief Message structure for interface operations storage. */
+struct astarte_device_transmission_queue_interface_msg
+{
+    /** @brief The queue operation to perform. */
+    astarte_transmission_operation_t operation;
+    /** @brief Pointer to the interface definition. */
+    const astarte_interface_t *interface;
+    /** @brief Timestamp of the message. */
+    uint64_t timestamp;
+    /** @brief Sequence number to maintain ordering. */
+    uint64_t sequence_number;
 };
 
 /** @brief Message structure for the transmission storage. */
@@ -65,6 +93,11 @@ struct astarte_device_transmission_queue
     /** @brief Buffer backing the discard message queue. */
     char discard_msgq_buffer[CONFIG_ASTARTE_DEVICE_SDK_TRANSMISSION_QUEUE_SIZE
         * sizeof(struct astarte_device_transmission_queue_volatile_msg)];
+    /** @brief Message queue for interface operations. */
+    struct k_msgq interface_msgq;
+    /** @brief Buffer backing the interface message queue. */
+    char interface_msgq_buffer[CONFIG_ASTARTE_DEVICE_SDK_TRANSMISSION_QUEUE_SIZE
+        * sizeof(struct astarte_device_transmission_queue_interface_msg)];
     /** @brief Message queue for volatile messages. */
     struct k_msgq volatile_msgq;
     /** @brief Buffer backing the volatile message queue. */
@@ -145,6 +178,15 @@ astarte_result_t astarte_transmission_queue_peek(struct astarte_device_transmiss
  */
 astarte_result_t astarte_transmission_queue_discard_by_retention(
     struct astarte_device_transmission_queue *handle, astarte_mapping_retention_t retention);
+
+/**
+ * @brief Discards the oldest interface message from the transmission queue.
+ *
+ * @param[in] handle Pointer to the transmission queue.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_transmission_queue_discard_interface(
+    struct astarte_device_transmission_queue *handle);
 
 /**
  * @brief Frees the memory allocated for a transmission queue message payload and paths.

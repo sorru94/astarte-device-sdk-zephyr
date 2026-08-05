@@ -25,60 +25,16 @@ ASTARTE_LOG_MODULE_REGISTER(
  *         Static functions declaration         *
  ***********************************************/
 
-/**
- * @brief Function used to find a `introspection_node_t` from an interface_name
- *
- * @details The passed interface_name is used as key to search in the inner structure
- *
- * @param[in] introspection a pointer to an introspection struct
- * @param[in] interface_name Interface name used in the comparison
- * @return The node whose interface name matches the one passed, NULL if not such interface exists.
- */
 static introspection_node_t *find_node_by_name(
     introspection_t *introspection, const char *interface_name);
-
-/**
- * @brief Counts the number of digits of the passed paramter `num`
- *
- * @return The count of digits in num
- */
 static uint8_t get_digit_count(uint32_t num);
-
-/**
- * @brief Frees the node passed
- *
- * @details This function should be called only from a 'safe' context.
- * Nodes from the list should be freely removable
- *
- * @param[in] alloc_node a pointer to a dynamically allocated introspection_node_t
- */
 static inline void node_free(introspection_node_t *alloc_node);
-
-/**
- * @brief Check whether an interface is valid and compatible with this introspection
- *
- * @details The previous node gets returned in `introspection_node` parameter and should be
- * replaced with the new interface if it passes the check.
- *
- * @param[in] introspection a pointer to an introspection struct initialized using
- * #introspection_init
- * @param[in] interface the pointer to an interface struct
- * @param[out] introspection_node Output pointer that if not NULL will be set to the
- * to the location of the old node found, or NULL if there was no previous node matching
- * the passed interface->name
- * @return ASTARTE_RESULT_OK on success, otherwise an error code.
- */
+static astarte_result_t check_mapping_attributes(const astarte_interface_t *interface,
+    const astarte_mapping_t *old_mapping, const astarte_mapping_t *new_mapping);
+static astarte_result_t check_interface_mappings_update(
+    const astarte_interface_t *old_interface, const astarte_interface_t *interface);
 static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node);
-
-/**
- * @brief Allocates and append a new node to the introspection struct passed
- *
- * @param[in,out] introspection a pointer to an introspection struct initialized using
- * #introspection_init
- * @param[in] interface the pointer to an interface struct
- * @return ASTARTE_RESULT_OK on success, otherwise an error code.
- */
 static astarte_result_t append_introspection_node(
     introspection_t *introspection, const astarte_interface_t *interface);
 
@@ -298,6 +254,63 @@ static uint8_t get_digit_count(uint32_t num)
     return count;
 }
 
+static astarte_result_t check_mapping_attributes(const astarte_interface_t *interface,
+    const astarte_mapping_t *old_mapping, const astarte_mapping_t *new_mapping)
+{
+    if (old_mapping->type != new_mapping->type) {
+        ASTARTE_LOG_ERR("Interface mapping type conflict with the one in introspection");
+        return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+    }
+
+    if (interface->type == ASTARTE_INTERFACE_TYPE_DATASTREAM) {
+        if ((old_mapping->reliability != new_mapping->reliability)
+            || (old_mapping->explicit_timestamp != new_mapping->explicit_timestamp)
+            || (old_mapping->retention != new_mapping->retention)
+            || (old_mapping->expiry != new_mapping->expiry)) {
+            ASTARTE_LOG_ERR("Interface mapping attributes conflict with the one in introspection");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+        }
+    } else {
+        if (old_mapping->allow_unset != new_mapping->allow_unset) {
+            ASTARTE_LOG_ERR("Interface mapping attributes conflict with the one in introspection");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+        }
+    }
+
+    return ASTARTE_RESULT_OK;
+}
+
+static astarte_result_t check_interface_mappings_update(
+    const astarte_interface_t *old_interface, const astarte_interface_t *interface)
+{
+    for (size_t i = 0; i < old_interface->mappings_length; i++) {
+        const astarte_mapping_t *old_mapping = &old_interface->mappings[i];
+        bool endpoint_found = false;
+
+        for (size_t j = 0; j < interface->mappings_length; j++) {
+            const astarte_mapping_t *new_mapping = &interface->mappings[j];
+
+            if (strcmp(old_mapping->endpoint, new_mapping->endpoint) == 0) {
+                endpoint_found = true;
+
+                astarte_result_t ares
+                    = check_mapping_attributes(interface, old_mapping, new_mapping);
+                if (ares != ASTARTE_RESULT_OK) {
+                    return ares;
+                }
+                break;
+            }
+        }
+
+        if (!endpoint_found) {
+            ASTARTE_LOG_ERR("New interface is missing a mapping endpoint from the old interface");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+        }
+    }
+
+    return ASTARTE_RESULT_OK;
+}
+
 static astarte_result_t check_interface_update(introspection_t *introspection,
     const astarte_interface_t *interface, introspection_node_t **introspection_node)
 {
@@ -315,6 +328,12 @@ static astarte_result_t check_interface_update(introspection_t *introspection,
             return ASTARTE_RESULT_INTERFACE_CONFLICTING;
         }
 
+        // Check if aggregation is the same
+        if (interface->aggregation != old_interface->aggregation) {
+            ASTARTE_LOG_ERR("Interface aggregation conflicts with the one in introspection");
+            return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+        }
+
         // Check if major versions align correctly
         if (interface->major_version < old_interface->major_version) {
             ASTARTE_LOG_ERR("Interface with smaller major version than one in introspection");
@@ -328,6 +347,12 @@ static astarte_result_t check_interface_update(introspection_t *introspection,
                 "Interface with same major version and smaller or equal minor version than the one "
                 "in introspection");
             return ASTARTE_RESULT_INTERFACE_CONFLICTING;
+        }
+
+        // Check mapping compatibility
+        astarte_result_t ares = check_interface_mappings_update(old_interface, interface);
+        if (ares != ASTARTE_RESULT_OK) {
+            return ares;
         }
 
         ASTARTE_LOG_WRN("Interface '%s' can be overwritten with new version '%u.%u'",

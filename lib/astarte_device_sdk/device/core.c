@@ -327,8 +327,32 @@ astarte_result_t astarte_device_add_interface(
         ASTARTE_LOG_ERR("Received NULL reference for device handle or interface");
         return ASTARTE_RESULT_INVALID_PARAM;
     }
-    ASTARTE_LOG_DBG("Adding interface %s to the Astarte device", interface->name);
-    return introspection_update(&device->introspection, interface);
+
+    ASTARTE_LOG_DBG("Queuing interface %s to be added to the Astarte device", interface->name);
+
+    struct astarte_device_transmission_queue_msg queue_msg = { 0 };
+    queue_msg.operation = ASTARTE_TRANSMISSION_OP_ADD_INTERFACE;
+    queue_msg.interface = interface;
+
+    return astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
+}
+
+astarte_result_t astarte_device_remove_interface(
+    astarte_device_handle_t device, const astarte_interface_t *interface)
+{
+    if (!device || !interface) {
+        ASTARTE_LOG_ERR("Received NULL reference for device handle or interface");
+        return ASTARTE_RESULT_INVALID_PARAM;
+    }
+
+    ASTARTE_LOG_DBG("Queuing interface %s to be removed from the Astarte device", interface->name);
+
+    // Provide empty path and dummy payload_len to pass the transmission queue validations
+    struct astarte_device_transmission_queue_msg queue_msg = { 0 };
+    queue_msg.operation = ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE;
+    queue_msg.interface = interface;
+
+    return astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
 }
 
 astarte_result_t astarte_device_get_error_event(
@@ -484,6 +508,31 @@ static void process_transmission_queue(
     if (ares != ASTARTE_RESULT_OK) {
         // Prevent CPU starvation when the queue is empty
         k_msleep(TRANSMISSION_EMPTY_QUEUE_WAITING_MS);
+        goto exit;
+    }
+
+    // Intercept interface updates before token/pacing checks
+    if (msg.operation == ASTARTE_TRANSMISSION_OP_ADD_INTERFACE
+        || msg.operation == ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE) {
+
+        if (msg.operation == ASTARTE_TRANSMISSION_OP_ADD_INTERFACE) {
+            ASTARTE_LOG_DBG("Processing add interface operation for %s", msg.interface->name);
+
+            ares = introspection_update(&device->introspection, msg.interface);
+            if (ares != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR("Failed updating introspection: %s", astarte_result_to_name(ares));
+            }
+        } else if (msg.operation == ASTARTE_TRANSMISSION_OP_REMOVE_INTERFACE) {
+            ASTARTE_LOG_DBG("Processing remove interface operation for %s", msg.interface->name);
+
+            ares = introspection_remove(&device->introspection, msg.interface->name);
+            if (ares != ASTARTE_RESULT_OK) {
+                ASTARTE_LOG_ERR(
+                    "Failed removing from introspection: %s", astarte_result_to_name(ares));
+            }
+        }
+
+        astarte_transmission_queue_discard_interface(&device->transmission_queue);
         goto exit;
     }
 

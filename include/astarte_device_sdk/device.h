@@ -202,9 +202,7 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device);
 /**
  * @brief add an interface to the device.
  *
- * @warning This function has to be called while the device is in the disconnected state,
- * before a call to #astarte_device_connect or after a call to astarte_device_disconnect.
- *
+ * @note This function works asynchronously.
  * @note The user is responsible for making sure the interface struct remains valid for the
  * lifetime of the device. It is recommended to declare interface structs as static constants.
  *
@@ -213,6 +211,20 @@ astarte_result_t astarte_device_destroy(astarte_device_handle_t device);
  * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
  */
 astarte_result_t astarte_device_add_interface(
+    astarte_device_handle_t device, const astarte_interface_t *interface);
+
+/**
+ * @brief Remove an interface from the device.
+ *
+ * @note This function works asynchronously.
+ * @note The user is responsible for making sure the interface struct remains valid for the
+ * lifetime of the device. It is recommended to declare interface structs as static constants.
+ *
+ * @param device A valid Astarte device handle.
+ * @param interface The interface to remove from the device.
+ * @return ASTARTE_RESULT_OK if successful, otherwise an error code.
+ */
+astarte_result_t astarte_device_remove_interface(
     astarte_device_handle_t device, const astarte_interface_t *interface);
 
 /**

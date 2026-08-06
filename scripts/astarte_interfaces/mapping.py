@@ -179,6 +179,11 @@ class Mapping:
                 raise ValueError("Explicit timestamp should have a boolean value.")
             self.explicit_timestamp: bool = explicit_timestamp_val
 
+            required_val = mapping_definition.get("required", False)
+            if not isinstance(required_val, bool):
+                raise ValueError("Required should have a boolean value.")
+            self.required: bool = required_val
+
             retention_val = mapping_definition.get("retention", "discard")
             if not isinstance(retention_val, str) or retention_val not in (
                 "discard",
@@ -202,7 +207,13 @@ class Mapping:
                 raise ValueError("Field 'allow_unset' has no meaning for datastreams.")
 
         else:
-            invalid_prop_keys = ("explicit_timestamp", "reliability", "retention", "expiry")
+            invalid_prop_keys = (
+                "explicit_timestamp",
+                "reliability",
+                "retention",
+                "expiry",
+                "required",
+            )
             if any(k in mapping_definition for k in invalid_prop_keys):
                 raise ValueError(f"Fields {invalid_prop_keys} have no meaning for properties.")
 

@@ -121,6 +121,10 @@ def _build_mapping_struct(mapping) -> str:
         exp_ts_str = "true" if mapping.explicit_timestamp else "false"
         mapping_fields.append(f".explicit_timestamp = {exp_ts_str}")
 
+    if hasattr(mapping, "required"):
+        req_str = "true" if mapping.required else "false"
+        mapping_fields.append(f".required = {req_str}")
+
     if hasattr(mapping, "retention"):
         mapping_fields.append(f".retention = ASTARTE_MAPPING_RETENTION_{mapping.retention.upper()}")
 

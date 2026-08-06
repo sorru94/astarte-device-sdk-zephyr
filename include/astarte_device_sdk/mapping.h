@@ -111,6 +111,8 @@ typedef struct
     astarte_mapping_reliability_t reliability;
     /** @brief Explicit timestamp flag */
     bool explicit_timestamp;
+    /** @brief Field required flag */
+    bool required;
     /** @brief Mapping retention */
     astarte_mapping_retention_t retention;
     /** @brief Mapping expiry limit */

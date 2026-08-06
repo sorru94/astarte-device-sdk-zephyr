@@ -20,6 +20,13 @@
 ASTARTE_LOG_MODULE_REGISTER(astarte_object, CONFIG_ASTARTE_DEVICE_SDK_OBJECT_LOG_LEVEL);
 
 /************************************************
+ *         Static functions declaration         *
+ ***********************************************/
+
+static astarte_result_t verify_required_endpoints_present(const astarte_interface_t *interface,
+    const char *path, astarte_object_entry_t *entries, size_t entries_length);
+
+/************************************************
  *         Global functions definitions         *
  ***********************************************/
 
@@ -103,6 +110,8 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
         cleanup_ctx.entries[cleanup_ctx.length].path = inner_elem.name;
         ares = astarte_interface_get_mapping_from_paths(interface, path, inner_elem.name, &mapping);
         if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR("Field '%s' does not map to any endpoint in interface '%s'",
+                inner_elem.name, interface->name);
             return ares;
         }
         ares = astarte_data_deserialize(
@@ -120,9 +129,16 @@ astarte_result_t astarte_object_entries_deserialize(astarte_bson_element_t bson_
         }
     }
 
+    // Verify that all required endpoints are present in the parsed entries
+    ares = verify_required_endpoints_present(
+        interface, path, cleanup_ctx.entries, cleanup_ctx.length);
+    if (ares != ASTARTE_RESULT_OK) {
+        return ares;
+    }
+
     // Step 4: fill in the output variables
     *entries = cleanup_ctx.entries;
-    *entries_length = bson_doc_length;
+    *entries_length = cleanup_ctx.length;
 
     // Disable cleanup on success to prevent deallocation.
     // This is performed by a check in the cleanup function
@@ -138,4 +154,37 @@ void astarte_object_entries_destroy_deserialized(
         astarte_data_destroy_deserialized(entries[i].data);
     }
     astarte_free(entries);
+}
+
+/************************************************
+ *         Static functions definitions         *
+ ***********************************************/
+
+static astarte_result_t verify_required_endpoints_present(const astarte_interface_t *interface,
+    const char *path, astarte_object_entry_t *entries, size_t entries_length)
+{
+    for (size_t i = 0; i < interface->mappings_length; i++) {
+        if (!interface->mappings[i].required) {
+            continue;
+        }
+
+        bool endpoint_found = false;
+        for (size_t j = 0; j < entries_length; j++) {
+            const astarte_mapping_t *parsed_mapping = NULL;
+            astarte_interface_get_mapping_from_paths(
+                interface, path, entries[j].path, &parsed_mapping);
+            if (parsed_mapping == &interface->mappings[i]) {
+                endpoint_found = true;
+                break;
+            }
+        }
+
+        if (!endpoint_found) {
+            ASTARTE_LOG_ERR("Required endpoint '%s' is missing from the BSON payload",
+                interface->mappings[i].endpoint);
+            return ASTARTE_RESULT_INCOMPLETE_AGGREGATION_OBJECT;
+        }
+    }
+
+    return ASTARTE_RESULT_OK;
 }

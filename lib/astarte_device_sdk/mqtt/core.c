@@ -416,14 +416,15 @@ astarte_result_t astarte_mqtt_disconnect(astarte_mqtt_t *astarte_mqtt)
             break;
     }
 
+    astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTING;
+
     // The only case in which a disconnection request is allowed is if the client is connected.
     int mqtt_rc = mqtt_disconnect(&astarte_mqtt->client, NULL);
     if (mqtt_rc < 0) {
         ASTARTE_LOG_ERR("Device disconnection failure %d", mqtt_rc);
+        astarte_mqtt->connection_state = ASTARTE_MQTT_CONNECTION_ERROR;
         return ASTARTE_RESULT_MQTT_ERROR;
     }
-
-    astarte_mqtt->connection_state = ASTARTE_MQTT_DISCONNECTING;
 
     return ASTARTE_RESULT_OK;
 }

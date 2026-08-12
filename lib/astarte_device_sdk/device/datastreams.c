@@ -26,9 +26,9 @@ static astarte_result_t serialize_individual_payload(
     astarte_bson_serializer_t *bson, astarte_data_t data, const int64_t *timestamp);
 static astarte_result_t serialize_aggregated_payload(astarte_bson_serializer_t *outer_bson,
     astarte_object_entry_t *entries, size_t entries_len, const int64_t *timestamp);
-static void on_datastream_individual(
+static astarte_result_t on_datastream_individual(
     astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data);
-static void on_datastream_aggregated(astarte_device_handle_t device,
+static astarte_result_t on_datastream_aggregated(astarte_device_handle_t device,
     astarte_device_data_event_t base_event, astarte_object_entry_t *entries, size_t entries_len);
 
 /************************************************
@@ -219,7 +219,6 @@ void astarte_device_datastreams_handle_incoming(astarte_device_handle_t device,
         .device = device,
         .interface_name = interface->name,
         .path = path,
-        .user_data = device->cbk_user_data,
     };
 
     if (!astarte_bson_deserializer_check_validity(data, data_len)) {
@@ -250,8 +249,13 @@ void astarte_device_datastreams_handle_incoming(astarte_device_handle_t device,
             return;
         }
 
-        on_datastream_individual(device, base_event, data_deserialized);
-        astarte_data_destroy_deserialized(data_deserialized);
+        ares = on_datastream_individual(device, base_event, data_deserialized);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Failed in handling the received individual datastream. Interface: %s, path: %s.",
+                interface->name, path);
+            astarte_data_destroy_deserialized(data_deserialized);
+        }
     } else {
         astarte_object_entries_ctx_t cleanup_ctx = { .entries = NULL, .length = 0 };
         scope_defer(astarte_cleanup_object_entries)(&cleanup_ctx);
@@ -263,7 +267,18 @@ void astarte_device_datastreams_handle_incoming(astarte_device_handle_t device,
                 interface->name, path);
             return;
         }
-        on_datastream_aggregated(device, base_event, cleanup_ctx.entries, cleanup_ctx.length);
+
+        ares
+            = on_datastream_aggregated(device, base_event, cleanup_ctx.entries, cleanup_ctx.length);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Failed in handling the received aggregated datastream. Interface: %s, path: %s.",
+                interface->name, path);
+            return;
+        }
+        // Disarm automatic cleanup
+        cleanup_ctx.entries = NULL;
+        cleanup_ctx.length = 0;
     }
 }
 
@@ -357,7 +372,7 @@ exit:
     return ares;
 }
 
-static void on_datastream_individual(
+static astarte_result_t on_datastream_individual(
     astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
@@ -365,7 +380,7 @@ static void on_datastream_individual(
     if (!interface) {
         ASTARTE_LOG_ERR(
             "Couldn't find interface in device introspection (%s).", base_event.interface_name);
-        return;
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
     astarte_result_t ares
@@ -376,21 +391,23 @@ static void on_datastream_individual(
         ASTARTE_LOG_WRN("Received an individual datastream with missing explicit timestamp.");
     } else if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server individual datastream data validation failed.");
-        return;
+        return ares;
     }
 
-    if (device->datastream_individual_cbk) {
-        astarte_device_datastream_individual_event_t event = {
+    astarte_device_event_t dev_event = { .type = ASTARTE_DEVICE_EVENT_DATASTREAM_INDIVIDUAL,
+        .data.datastream_individual = {
             .base_event = base_event,
             .data = data,
-        };
-        device->datastream_individual_cbk(event);
-    } else {
-        ASTARTE_LOG_ERR("Datastream individual received, but no callback configured.");
+        } };
+
+    if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+        ASTARTE_LOG_ERR("Event queue full. Dropping incoming individual datastream.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    return ASTARTE_RESULT_OK;
 }
 
-static void on_datastream_aggregated(astarte_device_handle_t device,
+static astarte_result_t on_datastream_aggregated(astarte_device_handle_t device,
     astarte_device_data_event_t base_event, astarte_object_entry_t *entries, size_t entries_len)
 {
     const astarte_interface_t *interface = introspection_get(
@@ -398,7 +415,7 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
     if (!interface) {
         ASTARTE_LOG_ERR(
             "Couldn't find interface in device introspection (%s).", base_event.interface_name);
-        return;
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
     astarte_result_t ares = astarte_validation_aggregated_datastream(
@@ -409,17 +426,19 @@ static void on_datastream_aggregated(astarte_device_handle_t device,
         ASTARTE_LOG_WRN("Received an aggregated datastream with missing explicit timestamp.");
     } else if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server aggregated data validation failed.");
-        return;
+        return ares;
     }
 
-    if (device->datastream_object_cbk) {
-        astarte_device_datastream_object_event_t event = {
+    astarte_device_event_t dev_event = { .type = ASTARTE_DEVICE_EVENT_DATASTREAM_OBJECT,
+        .data.datastream_object = {
             .base_event = base_event,
             .entries = entries,
             .entries_len = entries_len,
-        };
-        device->datastream_object_cbk(event);
-    } else {
-        ASTARTE_LOG_ERR("Datastream object received, but no callback configured.");
+        } };
+
+    if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+        ASTARTE_LOG_ERR("Event queue full. Dropping incoming object datastream.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    return ASTARTE_RESULT_OK;
 }

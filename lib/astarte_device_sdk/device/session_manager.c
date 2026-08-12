@@ -247,12 +247,11 @@ static void state_machine_end_handshake_run(astarte_device_handle_t device)
         }
 #endif
 
-        if (device->connection_cbk) {
-            astarte_device_connection_event_t event = {
-                .device = device,
-                .user_data = device->cbk_user_data,
-            };
-            device->connection_cbk(event);
+        astarte_device_event_t dev_event
+            = { .type = ASTARTE_DEVICE_EVENT_CONNECTED, .data.connection = { .device = device } };
+
+        if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+            ASTARTE_LOG_ERR("Event queue full. Dropping connected event.");
         }
     }
 }

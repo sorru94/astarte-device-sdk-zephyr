@@ -70,9 +70,6 @@
 /** @brief Event bit used to signal the transmission thread to exit gracefully. */
 #define ASTARTE_DEVICE_DESTROY_EVENT_BIT BIT(1U)
 
-/** @brief Number of elements in the error event queue. */
-#define ASTARTE_DEVICE_ERROR_QUEUE_SIZE 16
-
 /** @brief Connection statuses for the Astarte device. */
 enum connection_states
 {
@@ -111,20 +108,6 @@ struct astarte_device
     uint8_t mqtt_session_present_flag;
     /** @brief Device introspection. */
     introspection_t introspection;
-    /** @brief (optional) User callback for connection events. */
-    astarte_device_connection_cbk_t connection_cbk;
-    /** @brief (optional) User callback for disconnection events. */
-    astarte_device_disconnection_cbk_t disconnection_cbk;
-    /** @brief (optional) User callback for incoming datastream individual events. */
-    astarte_device_datastream_individual_cbk_t datastream_individual_cbk;
-    /** @brief (optional) User callback for incoming datastream object events. */
-    astarte_device_datastream_object_cbk_t datastream_object_cbk;
-    /** @brief (optional) User callback for incoming property set events. */
-    astarte_device_property_set_cbk_t property_set_cbk;
-    /** @brief (optional) User callback for incoming property unset events. */
-    astarte_device_property_unset_cbk_t property_unset_cbk;
-    /** @brief (optional) User data to pass to all the set callbacks. */
-    void *cbk_user_data;
     /** @brief Connection state of the Astarte device. */
     enum connection_states connection_state;
     /** @brief Set if, since instance creation, a sync with Astarte has ever been performed. */
@@ -158,9 +141,10 @@ struct astarte_device
     /** @brief Stack for the worker thread. */
     K_KERNEL_STACK_MEMBER(worker_thread_stack, CONFIG_ASTARTE_DEVICE_SDK_WORKER_THREAD_STACK_SIZE);
     /** @brief User-facing error event queue. */
-    struct k_msgq error_queue;
+    struct k_msgq event_queue;
     /** @brief Buffer backing the error event queue. */
-    char error_queue_buffer[ASTARTE_DEVICE_ERROR_QUEUE_SIZE * sizeof(astarte_device_error_event_t)];
+    char event_queue_buffer[CONFIG_ASTARTE_DEVICE_SDK_EVENT_QUEUE_SIZE
+        * sizeof(astarte_device_event_t)];
 };
 
 #endif // DEVICE_CORE_H

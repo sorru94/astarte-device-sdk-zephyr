@@ -164,6 +164,13 @@ config ASTARTE_DEVICE_SDK_TRANSMISSION_QUEUE_SIZE
 	  the transmission queue.
 	  This section is used to retain messages with retention volatile only.
 
+config ASTARTE_DEVICE_SDK_EVENT_QUEUE_SIZE
+	int "Size of the event queue"
+	depends on ASTARTE_DEVICE_SDK
+	default 32
+	help
+	  This is the maximum amount of items that can be stored in the heap allocated event queue.
+
 menu "Development options"
 
 config ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_HTTP

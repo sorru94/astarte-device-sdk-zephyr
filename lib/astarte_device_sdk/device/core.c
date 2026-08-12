@@ -13,10 +13,12 @@
 
 #include "alloc.h"
 #include "cleanup.h"
+#include "data/deserialize.h"
 #include "device/core.h"
 #include "device/dispatcher.h"
 #include "device/session_manager.h"
 #include "mqtt/pubsub.h"
+#include "object_private.h"
 #include "pairing/core.h"
 
 #include "log.h"
@@ -149,13 +151,6 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     handle->http_timeout_ms = cfg->http_timeout_ms;
     memcpy(handle->device_id, cfg->device_id, ASTARTE_DEVICE_ID_LEN + 1);
     memcpy(handle->cred_secr, cfg->cred_secr, ASTARTE_PAIRING_CRED_SECR_LEN + 1);
-    handle->connection_cbk = cfg->connection_cbk;
-    handle->disconnection_cbk = cfg->disconnection_cbk;
-    handle->datastream_individual_cbk = cfg->datastream_individual_cbk;
-    handle->datastream_object_cbk = cfg->datastream_object_cbk;
-    handle->property_set_cbk = cfg->property_set_cbk;
-    handle->property_unset_cbk = cfg->property_unset_cbk;
-    handle->cbk_user_data = cfg->cbk_user_data;
     handle->connection_state = DEVICE_DISCONNECTED;
     handle->synchronization_completed = false;
 
@@ -248,8 +243,8 @@ astarte_result_t astarte_device_new(astarte_device_config_t *cfg, astarte_device
     }
 
     // Initialize the error event queue
-    k_msgq_init(&handle->error_queue, handle->error_queue_buffer,
-        sizeof(astarte_device_error_event_t), ASTARTE_DEVICE_ERROR_QUEUE_SIZE);
+    k_msgq_init(&handle->event_queue, handle->event_queue_buffer, sizeof(astarte_device_event_t),
+        CONFIG_ASTARTE_DEVICE_SDK_EVENT_QUEUE_SIZE);
 
     ASTARTE_LOG_DBG("Initializing Astarte worker thread");
 
@@ -355,18 +350,47 @@ astarte_result_t astarte_device_remove_interface(
     return astarte_transmission_queue_insert(&device->transmission_queue, &queue_msg);
 }
 
-astarte_result_t astarte_device_get_error_event(
-    astarte_device_handle_t device, astarte_device_error_event_t *event, k_timeout_t timeout)
+astarte_result_t astarte_device_get_event(
+    astarte_device_handle_t device, astarte_device_event_t *event, k_timeout_t timeout)
 {
     if (!device || !event) {
         return ASTARTE_RESULT_INVALID_PARAM;
     }
 
-    if (k_msgq_get(&device->error_queue, event, timeout) == 0) {
+    if (k_msgq_get(&device->event_queue, event, timeout) == 0) {
         return ASTARTE_RESULT_OK;
     }
 
     return ASTARTE_RESULT_TIMEOUT;
+}
+
+void astarte_device_event_cleanup(astarte_device_event_t *event)
+{
+    if (!event) {
+        return;
+    }
+
+    switch (event->type) {
+        case ASTARTE_DEVICE_EVENT_DATASTREAM_INDIVIDUAL:
+            astarte_data_destroy_deserialized(event->data.datastream_individual.data);
+            break;
+        case ASTARTE_DEVICE_EVENT_PROPERTY_SET:
+            astarte_data_destroy_deserialized(event->data.property_set.data);
+            break;
+        case ASTARTE_DEVICE_EVENT_DATASTREAM_OBJECT:
+            astarte_object_entries_destroy_deserialized(
+                event->data.datastream_object.entries, event->data.datastream_object.entries_len);
+            break;
+        case ASTARTE_DEVICE_EVENT_ERROR:
+        case ASTARTE_DEVICE_EVENT_CONNECTED:
+        case ASTARTE_DEVICE_EVENT_DISCONNECTED:
+        case ASTARTE_DEVICE_EVENT_PROPERTY_UNSET:
+        default:
+            break;
+    }
+
+    // Zero out the data union to prevent double-frees
+    memset(&event->data, 0, sizeof(event->data));
 }
 
 /************************************************
@@ -454,7 +478,7 @@ static void astarte_device_worker_thread_entry(void *par1, void * /*par2*/, void
 
             astarte_device_error_event_t err_ev
                 = { .result = ares, .context = "astarte_device_internal_poll" };
-            k_msgq_put(&device->error_queue, &err_ev, K_NO_WAIT);
+            k_msgq_put(&device->event_queue, &err_ev, K_NO_WAIT);
 
             k_msleep(POLLING_ERROR_RETRY_DELAY_MS);
             continue;
@@ -570,7 +594,7 @@ static void process_transmission_queue(
 
         astarte_device_error_event_t err_ev
             = { .result = ares, .context = "process_transmission_queue" };
-        k_msgq_put(&device->error_queue, &err_ev, K_NO_WAIT);
+        k_msgq_put(&device->event_queue, &err_ev, K_NO_WAIT);
 
         // Message safely remains at the head of the queue
         // Sleep for a short duration to back off before the loop retries.

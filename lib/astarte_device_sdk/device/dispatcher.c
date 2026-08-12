@@ -48,12 +48,11 @@ void astarte_device_dispatcher_on_disconnected(astarte_mqtt_t *astarte_mqtt)
 
     astarte_transmission_queue_purge_discard(&device->transmission_queue);
 
-    if (device->disconnection_cbk) {
-        astarte_device_disconnection_event_t event = {
-            .device = device,
-            .user_data = device->cbk_user_data,
-        };
-        device->disconnection_cbk(event);
+    astarte_device_event_t dev_event
+        = { .type = ASTARTE_DEVICE_EVENT_DISCONNECTED, .data.connection = { .device = device } };
+
+    if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+        ASTARTE_LOG_ERR("Event queue full. Dropping disconnected event.");
     }
 }
 

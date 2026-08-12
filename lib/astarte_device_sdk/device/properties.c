@@ -26,8 +26,9 @@ ASTARTE_LOG_MODULE_DECLARE(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_
  *         Static functions declaration         *
  ***********************************************/
 
-static void on_unset_property(astarte_device_handle_t device, astarte_device_data_event_t event);
-static void on_set_property(
+static astarte_result_t on_unset_property(
+    astarte_device_handle_t device, astarte_device_data_event_t event);
+static astarte_result_t on_set_property(
     astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data);
 
 /************************************************
@@ -184,15 +185,20 @@ astarte_result_t astarte_device_unset_property(
 void astarte_device_properties_handle_incoming(astarte_device_handle_t device,
     const astarte_interface_t *interface, const char *path, const char *data, size_t data_len)
 {
+    astarte_result_t ares = ASTARTE_RESULT_OK;
     astarte_device_data_event_t base_event = {
         .device = device,
         .interface_name = interface->name,
         .path = path,
-        .user_data = device->cbk_user_data,
     };
 
     if (data_len == 0) {
-        on_unset_property(device, base_event);
+        ares = on_unset_property(device, base_event);
+        if (ares != ASTARTE_RESULT_OK) {
+            ASTARTE_LOG_ERR(
+                "Failed in handling the received unset property. Interface: %s, path: %s.",
+                interface->name, path);
+        }
         return;
     }
 
@@ -210,7 +216,7 @@ void astarte_device_properties_handle_incoming(astarte_device_handle_t device,
     }
 
     const astarte_mapping_t *mapping = NULL;
-    astarte_result_t ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
+    ares = astarte_interface_get_mapping_from_path(interface, path, &mapping);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Could not find received mapping in interface %s", interface->name);
         return;
@@ -223,28 +229,33 @@ void astarte_device_properties_handle_incoming(astarte_device_handle_t device,
         return;
     }
 
-    on_set_property(device, base_event, data_deserialized);
-    astarte_data_destroy_deserialized(data_deserialized);
+    ares = on_set_property(device, base_event, data_deserialized);
+    if (ares != ASTARTE_RESULT_OK) {
+        ASTARTE_LOG_ERR("Failed in handling the received set property. Interface: %s, path: %s.",
+            interface->name, path);
+        astarte_data_destroy_deserialized(data_deserialized);
+    }
 }
 
 /************************************************
  *         Static functions definitions         *
  ***********************************************/
 
-static void on_unset_property(astarte_device_handle_t device, astarte_device_data_event_t event)
+static astarte_result_t on_unset_property(
+    astarte_device_handle_t device, astarte_device_data_event_t event)
 {
     const astarte_interface_t *interface = introspection_get(
         &device->introspection, event.interface_name);
     if (!interface) {
         ASTARTE_LOG_ERR(
             "Could not find interface in device introspection (%s).", event.interface_name);
-        return;
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
     astarte_result_t ares = astarte_validation_unset_property(interface, event.path);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property unset is invalid: %s.", astarte_result_to_name(ares));
-        return;
+        return ares;
     }
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
@@ -254,14 +265,17 @@ static void on_unset_property(astarte_device_handle_t device, astarte_device_dat
     }
 #endif
 
-    if (device->property_unset_cbk) {
-        device->property_unset_cbk(event);
-    } else {
-        ASTARTE_LOG_ERR("Unset property received, but no callback configured.");
+    astarte_device_event_t dev_event
+        = { .type = ASTARTE_DEVICE_EVENT_PROPERTY_UNSET, .data.property_unset = event };
+
+    if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+        ASTARTE_LOG_ERR("Event queue full. Dropping incoming unset property.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    return ASTARTE_RESULT_OK;
 }
 
-static void on_set_property(
+static astarte_result_t on_set_property(
     astarte_device_handle_t device, astarte_device_data_event_t base_event, astarte_data_t data)
 {
     const astarte_interface_t *interface = introspection_get(
@@ -269,13 +283,13 @@ static void on_set_property(
     if (!interface) {
         ASTARTE_LOG_ERR(
             "Could not find interface in device introspection (%s).", base_event.interface_name);
-        return;
+        return ASTARTE_RESULT_INTERFACE_NOT_FOUND;
     }
 
     astarte_result_t ares = astarte_validation_set_property(interface, base_event.path, data);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Server property data validation failed.");
-        return;
+        return ares;
     }
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
@@ -286,13 +300,15 @@ static void on_set_property(
     }
 #endif
 
-    if (device->property_set_cbk) {
-        astarte_device_property_set_event_t set_event = {
+    astarte_device_event_t dev_event = { .type = ASTARTE_DEVICE_EVENT_PROPERTY_SET,
+        .data.property_set = {
             .base_event = base_event,
             .data = data,
-        };
-        device->property_set_cbk(set_event);
-    } else {
-        ASTARTE_LOG_ERR("Set property received, but no callback configured.");
+        } };
+
+    if (k_msgq_put(&device->event_queue, &dev_event, K_NO_WAIT) != 0) {
+        ASTARTE_LOG_ERR("Event queue full. Dropping incoming set property.");
+        return ASTARTE_RESULT_INTERNAL_ERROR;
     }
+    return ASTARTE_RESULT_OK;
 }

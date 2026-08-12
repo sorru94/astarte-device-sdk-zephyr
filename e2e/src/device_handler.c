@@ -49,13 +49,7 @@ enum device_thread_flags
  ***********************************************/
 
 static void device_thread_entry_point(void *unused1, void *unused2, void *unused3);
-
-static void connection_callback(astarte_device_connection_event_t event);
-static void disconnection_callback(astarte_device_disconnection_event_t event);
-static void device_individual_callback(astarte_device_datastream_individual_event_t event);
-static void device_object_callback(astarte_device_datastream_object_event_t event);
-static void device_property_set_callback(astarte_device_property_set_event_t event);
-static void device_property_unset_callback(astarte_device_data_event_t event);
+static void handle_device_event(astarte_device_event_t *event);
 
 /************************************************
  *         Global functions definition          *
@@ -77,13 +71,6 @@ void setup_device()
         .http_timeout_ms = CONFIG_HTTP_TIMEOUT_MS,
         .mqtt_connection_timeout_ms = CONFIG_MQTT_CONNECTION_TIMEOUT_MS,
         .mqtt_poll_timeout_ms = CONFIG_MQTT_POLL_TIMEOUT_MS,
-        .cbk_user_data = NULL,
-        .connection_cbk = connection_callback,
-        .disconnection_cbk = disconnection_callback,
-        .datastream_individual_cbk = device_individual_callback,
-        .datastream_object_cbk = device_object_callback,
-        .property_set_cbk = device_property_set_callback,
-        .property_unset_cbk = device_property_unset_callback,
     };
 
     CHECK_ASTARTE_OK_HALT(astarte_device_new(&config, &device_handle), "Device creation failure.");
@@ -231,19 +218,16 @@ static void device_thread_entry_point(void *unused1, void *unused2, void *unused
     CHECK_ASTARTE_OK_HALT(astarte_device_connect(device_handle), "Device connection failure.");
 
     while (!atomic_test_bit(&device_thread_flags, DEVICE_THREAD_TERMINATION_FLAG)) {
-        astarte_device_error_event_t error_event = { 0 };
-        astarte_result_t get_res
-            = astarte_device_get_error_event(device_handle, &error_event, K_MSEC(100));
+        astarte_device_event_t event = { 0 };
+        astarte_result_t get_res = astarte_device_get_event(device_handle, &event, K_MSEC(100));
         if ((get_res != ASTARTE_RESULT_OK) && (get_res != ASTARTE_RESULT_TIMEOUT)) {
             LOG_ERR("Error event retrieval failure: %s", astarte_result_to_name(get_res));
             continue;
         }
 
         if (get_res == ASTARTE_RESULT_OK) {
-            // NOLINTNEXTLINE
-            LOG_ERR("Astarte internal device error: %s (Context: %s)",
-                astarte_result_to_name(error_event.result),
-                error_event.context ? error_event.context : "Unknown");
+            handle_device_event(&event);
+            astarte_device_event_cleanup(&event);
         }
     }
 
@@ -253,65 +237,95 @@ static void device_thread_entry_point(void *unused1, void *unused2, void *unused
         LOG_ERR("Device disconnection failure: %d", res);
     }
 
+    while (atomic_test_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG)) {
+        astarte_device_event_t event = { 0 };
+        astarte_result_t get_res = astarte_device_get_event(device_handle, &event, K_MSEC(100));
+        if ((get_res != ASTARTE_RESULT_OK) && (get_res != ASTARTE_RESULT_TIMEOUT)) {
+            LOG_ERR("Error event retrieval failure: %s", astarte_result_to_name(get_res));
+            continue;
+        }
+
+        if (get_res == ASTARTE_RESULT_OK) {
+            handle_device_event(&event);
+            astarte_device_event_cleanup(&event);
+        }
+    }
+
     LOG_INF("Exiting from the polling thread.");
 }
 
-static void connection_callback(astarte_device_connection_event_t event)
+static void handle_device_event(astarte_device_event_t *event)
 {
-    (void) event;
-    LOG_INF("Astarte device connected");
-    atomic_set_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG);
-}
-
-static void disconnection_callback(astarte_device_disconnection_event_t event)
-{
-    (void) event;
-    LOG_INF("Astarte device disconnected");
-    atomic_clear_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG);
-}
-
-static void device_individual_callback(astarte_device_datastream_individual_event_t event)
-{
-    LOG_INF("Individual datastream callback");
-
+    switch (event->type) {
+        case ASTARTE_DEVICE_EVENT_ERROR: {
+            // NOLINTNEXTLINE
+            LOG_ERR("Astarte internal device error: %s (Context: %s)",
+                astarte_result_to_name(event->data.error.result),
+                event->data.error.context ? event->data.error.context : "Unknown");
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_CONNECTED: {
+            LOG_INF("Astarte device connected."); // NOLINT
+            atomic_set_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG);
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_DISCONNECTED: {
+            LOG_INF("Astarte device disconnected."); // NOLINT
+            atomic_clear_bit(&device_thread_flags, DEVICE_THREAD_CONNECTED_FLAG);
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_DATASTREAM_INDIVIDUAL: {
+            const char *interface_name
+                = event->data.datastream_individual.base_event.interface_name;
+            const char *path = event->data.datastream_individual.base_event.path;
+            astarte_data_t individual = event->data.datastream_individual.data;
+            // NOLINTNEXTLINE
+            LOG_INF("Datastream individual event, interface: %s, path: %s", interface_name, path);
 #ifndef CONFIG_LOG_ONLY
-    CHECK_HALT(data_expected_individual(
-                   event.base_event.interface_name, event.base_event.path, &event.data)
-            != 0,
-        "Received individual datastream does not match any expected one");
+            CHECK_HALT(data_expected_individual(interface_name, path, &individual) != 0,
+                "Received individual datastream does not match any expected one");
 #endif
-}
-
-static void device_object_callback(astarte_device_datastream_object_event_t event)
-{
-    LOG_INF("Object datastream callback");
-
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_DATASTREAM_OBJECT: {
+            const char *interface_name = event->data.datastream_object.base_event.interface_name;
+            const char *path = event->data.datastream_object.base_event.path;
+            astarte_object_entry_t *entries = event->data.datastream_object.entries;
+            size_t entries_length = event->data.datastream_object.entries_len;
+            // NOLINTNEXTLINE
+            LOG_INF("Datastream object event, interface: %s, path: %s", interface_name, path);
 #ifndef CONFIG_LOG_ONLY
-    CHECK_HALT(data_expected_object(event.base_event.interface_name, event.base_event.path,
-                   event.entries, event.entries_len)
-            != 0,
-        "Received object datastream does not match any expected one");
+            CHECK_HALT(data_expected_object(interface_name, path, entries, entries_length) != 0,
+                "Received object datastream does not match any expected one");
 #endif
-}
-
-static void device_property_set_callback(astarte_device_property_set_event_t event)
-{
-    LOG_INF("InterfaceTestingPropertySetTestElement set callback");
-
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_PROPERTY_SET: {
+            const char *interface_name = event->data.property_set.base_event.interface_name;
+            const char *path = event->data.property_set.base_event.path;
+            astarte_data_t individual = event->data.property_set.data;
+            // NOLINTNEXTLINE
+            LOG_INF("Property set event, interface: %s, path: %s", interface_name, path);
 #ifndef CONFIG_LOG_ONLY
-    CHECK_HALT(data_expected_set_property(
-                   event.base_event.interface_name, event.base_event.path, &event.data)
-            != 0,
-        "Received property set event does not match any expected one");
+            CHECK_HALT(data_expected_set_property(interface_name, path, &individual) != 0,
+                "Received property set event does not match any expected one");
 #endif
-}
-
-static void device_property_unset_callback(astarte_device_data_event_t event)
-{
-    LOG_INF("InterfaceTestingPropertySetTestElement unset callback");
-
+            break;
+        }
+        case ASTARTE_DEVICE_EVENT_PROPERTY_UNSET: {
+            const char *interface_name = event->data.property_unset.interface_name;
+            const char *path = event->data.property_unset.path;
+            // NOLINTNEXTLINE
+            LOG_INF("Property unset event, interface: %s, path: %s", interface_name, path);
 #ifndef CONFIG_LOG_ONLY
-    CHECK_HALT(data_expected_unset_property(event.interface_name, event.path) != 0,
-        "Received property unset event does not match any expected one");
+            CHECK_HALT(data_expected_unset_property(interface_name, path) != 0,
+                "Received property unset event does not match any expected one");
 #endif
+            break;
+        }
+        default: {
+            LOG_ERR("Unreacheable code reached, unknown event type: %d", event->type);
+            break;
+        }
+    }
 }

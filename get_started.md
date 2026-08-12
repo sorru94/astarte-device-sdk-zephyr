@@ -439,9 +439,9 @@ static void device_rx_thread_entry_point(void *device_handle, void *unused1, voi
     }
 
     while(true) {
-        astarte_device_error_event_t error_event = { 0 };
-        astarte_result_t get_res = astarte_device_get_error_event(
-            device, &error_event, K_MSEC(100));
+        astarte_device_event_t event = { 0 };
+        astarte_result_t get_res = astarte_device_get_event(
+            device, &event, K_MSEC(100));
 
         if ((get_res != ASTARTE_RESULT_OK) && (get_res != ASTARTE_RESULT_TIMEOUT)) {
             LOG_ERR("Error event retrieval failure: %s", astarte_result_to_name(get_res));
@@ -449,10 +449,8 @@ static void device_rx_thread_entry_point(void *device_handle, void *unused1, voi
         }
 
         if (get_res == ASTARTE_RESULT_OK) {
-            // NOLINTNEXTLINE
-            LOG_ERR("Astarte internal device error: %s (Context: %s)",
-                astarte_result_to_name(error_event.result),
-                error_event.context ? error_event.context : "Unknown");
+            // Here the incoming events can be handled
+            astarte_device_event_cleanup(&event);
         }
     }
 }

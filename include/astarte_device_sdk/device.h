@@ -37,25 +37,36 @@
  */
 typedef struct astarte_device *astarte_device_handle_t;
 
+/** @brief Type of device event. */
+typedef enum
+{
+    ASTARTE_DEVICE_EVENT_ERROR, /**< Error event. */
+    ASTARTE_DEVICE_EVENT_CONNECTED, /**< Connection event. */
+    ASTARTE_DEVICE_EVENT_DISCONNECTED, /**< Disconnection event. */
+    ASTARTE_DEVICE_EVENT_DATASTREAM_INDIVIDUAL, /**< Datastream individual event. */
+    ASTARTE_DEVICE_EVENT_DATASTREAM_OBJECT, /**< Datastream object event. */
+    ASTARTE_DEVICE_EVENT_PROPERTY_SET, /**< Property set event. */
+    ASTARTE_DEVICE_EVENT_PROPERTY_UNSET /**< Property unset event. */
+} astarte_device_event_type_t;
+
+/** @brief Context for a single error event. */
+typedef struct
+{
+    astarte_result_t result; /**< The error code. */
+    const char *context; /**< Optional string describing where the error occurred. */
+} astarte_device_error_event_t;
+
 /** @brief Context for a single connection event. */
 typedef struct
 {
     astarte_device_handle_t device; /**< Handle to the device triggering the event */
-    void *user_data; /**< User data configured during device initialization */
 } astarte_device_connection_event_t;
-
-/** @brief Function pointer for connection events. */
-typedef void (*astarte_device_connection_cbk_t)(astarte_device_connection_event_t event);
 
 /** @brief Context for a single disconnection event. */
 typedef struct
 {
     astarte_device_handle_t device; /**< Handle to the device triggering the event */
-    void *user_data; /**< User data configured during device initialization */
 } astarte_device_disconnection_event_t;
-
-/** @brief Function pointer for disconnection events. */
-typedef void (*astarte_device_disconnection_cbk_t)(astarte_device_disconnection_event_t event);
 
 /** @brief Common context for all data events. */
 typedef struct
@@ -63,7 +74,6 @@ typedef struct
     astarte_device_handle_t device; /**< Handle to the device triggering the event */
     const char *interface_name; /**< Name of the interface on which the event is triggered */
     const char *path; /**< Path on which event is triggered */
-    void *user_data; /**< User data configured during device initialization */
 } astarte_device_data_event_t;
 
 /** @brief Context for a single datastream individual event. */
@@ -73,10 +83,6 @@ typedef struct
     astarte_data_t data; /**< Received data from Astarte */
 } astarte_device_datastream_individual_event_t;
 
-/** @brief Function pointer for datastream individual events. */
-typedef void (*astarte_device_datastream_individual_cbk_t)(
-    astarte_device_datastream_individual_event_t event);
-
 /** @brief Context for a single datastream object event. */
 typedef struct
 {
@@ -85,10 +91,6 @@ typedef struct
     size_t entries_len; /**< Length of the array of Astarte object entries. */
 } astarte_device_datastream_object_event_t;
 
-/** @brief Function pointer for datastream object events. */
-typedef void (*astarte_device_datastream_object_cbk_t)(
-    astarte_device_datastream_object_event_t event);
-
 /** @brief Context for a single property set event. */
 typedef struct
 {
@@ -96,11 +98,21 @@ typedef struct
     astarte_data_t data; /**< Received data from Astarte */
 } astarte_device_property_set_event_t;
 
-/** @brief Function pointer for property set events. */
-typedef void (*astarte_device_property_set_cbk_t)(astarte_device_property_set_event_t event);
-
-/** @brief Function pointer for property unset events. */
-typedef void (*astarte_device_property_unset_cbk_t)(astarte_device_data_event_t event);
+/** @brief Device event. */
+typedef struct
+{
+    astarte_device_event_type_t type; /**< Type of device event */
+    union
+    {
+        astarte_device_error_event_t error;
+        astarte_device_connection_event_t connection;
+        astarte_device_disconnection_event_t disconnection;
+        astarte_device_datastream_individual_event_t datastream_individual;
+        astarte_device_datastream_object_event_t datastream_object;
+        astarte_device_property_set_event_t property_set;
+        astarte_device_data_event_t property_unset;
+    } data; /**< Container for a data event */
+} astarte_device_event_t;
 
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 /** @brief Context for a single property load event. */
@@ -116,13 +128,6 @@ typedef struct
 /** @brief Function pointer for loading properties. */
 typedef void (*astarte_device_property_loader_cbk_t)(astarte_device_property_loader_event_t event);
 #endif
-
-/** @brief Context for a single error event. */
-typedef struct
-{
-    astarte_result_t result; /**< The error code. */
-    const char *context; /**< Optional string describing where the error occurred. */
-} astarte_device_error_event_t;
 
 /**
  * @brief Configuration struct for an Astarte device.
@@ -146,20 +151,6 @@ typedef struct
     char device_id[ASTARTE_DEVICE_ID_LEN + 1];
     /** @brief Credential secret to be used for connecting to Astarte. */
     char cred_secr[ASTARTE_PAIRING_CRED_SECR_LEN + 1];
-    /** @brief Optional callback for a connection event. */
-    astarte_device_connection_cbk_t connection_cbk;
-    /** @brief Optional callback for a disconnection event. */
-    astarte_device_disconnection_cbk_t disconnection_cbk;
-    /** @brief Optional callback for a datastream individual reception event. */
-    astarte_device_datastream_individual_cbk_t datastream_individual_cbk;
-    /** @brief Optional callback for a datastream object reception event. */
-    astarte_device_datastream_object_cbk_t datastream_object_cbk;
-    /** @brief Optional callback for a set property event. */
-    astarte_device_property_set_cbk_t property_set_cbk;
-    /** @brief Optional callback for a unset property event. */
-    astarte_device_property_unset_cbk_t property_unset_cbk;
-    /** @brief User data passed to each callback function. */
-    void *cbk_user_data;
     /** @brief Array of interfaces to be added to the device. */
     const astarte_interface_t **interfaces;
     /** @brief Number of elements in the interfaces array. */
@@ -338,14 +329,23 @@ astarte_result_t astarte_device_get_property(astarte_device_handle_t device,
 /**
  * @brief Fetch the next error event from the Astarte device.
  *
+ * @note Events must be cleaned up with #astarte_device_event_cleanup to prevent memory leaks.
+ *
  * @param[in] device Handle to the device instance.
- * @param[out] event Pointer to the error event struct to populate.
+ * @param[out] event Pointer to the event struct to populate.
  * @param[in] timeout Zephyr timeout (e.g., K_FOREVER, K_NO_WAIT, or K_MSEC).
  * @return ASTARTE_RESULT_OK if an event was received, ASTARTE_RESULT_TIMEOUT if the queue was
  * empty.
  */
-astarte_result_t astarte_device_get_error_event(
-    astarte_device_handle_t device, astarte_device_error_event_t *event, k_timeout_t timeout);
+astarte_result_t astarte_device_get_event(
+    astarte_device_handle_t device, astarte_device_event_t *event, k_timeout_t timeout);
+
+/**
+ * @brief Cleanup an Astarte device event.
+ *
+ * @param[in] event Pointer to the event struct to cleanup.
+ */
+void astarte_device_event_cleanup(astarte_device_event_t *event);
 
 #ifdef __cplusplus
 }

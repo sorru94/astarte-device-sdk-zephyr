@@ -353,9 +353,11 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.transport.type = MQTT_TRANSPORT_SECURE;
     astarte_mqtt->client.clean_session = (astarte_mqtt->clean_session) ? 1 : 0;
 
-    astarte_mqtt->sec_tag_list[0] = CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG;
 #ifndef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
-    astarte_mqtt->sec_tag_list[1] = CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG;
+    astarte_mqtt->sec_tag_list[0] = CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG;
+    astarte_mqtt->sec_tag_list[1] = CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG;
+#else
+    astarte_mqtt->sec_tag_list[0] = CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG;
 #endif
 
     struct mqtt_sec_config *tls_config = &(astarte_mqtt->client.transport.tls.config);
@@ -374,6 +376,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.rx_buf_size = ARRAY_SIZE(astarte_mqtt->rx_buffer);
     astarte_mqtt->client.tx_buf = astarte_mqtt->tx_buffer;
     astarte_mqtt->client.tx_buf_size = ARRAY_SIZE(astarte_mqtt->tx_buffer);
+
+    ASTARTE_LOG_ERR("Broker hostname %s",astarte_mqtt->broker_hostname);
 
     // Request connection to broker
     int mqtt_rc = mqtt_connect(&astarte_mqtt->client);

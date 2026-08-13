@@ -23,6 +23,12 @@
 #include "log.h"
 #include "mqtt/caching.h"
 
+#ifndef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
+#define ASTARTE_MQTT_SEC_TAG_LIST_SIZE 1
+#else
+#define ASTARTE_MQTT_SEC_TAG_LIST_SIZE 2
+#endif
+
 /** @brief Max allowed hostname characters are 253 */
 #define ASTARTE_MQTT_MAX_BROKER_HOSTNAME_LEN 253
 /** @brief Max allowed port number is 65535 */
@@ -154,6 +160,10 @@ struct astarte_mqtt
     astarte_mqtt_on_disconnected_cbk_t on_disconnected_cbk;
     /** @brief Callback used to notify the user that an MQTT message has been received. */
     astarte_mqtt_on_incoming_cbk_t on_incoming_cbk;
+    /** @brief Broker address. */
+    struct sockaddr_in broker_addr;
+    /** @brief Security tag list. */
+    sec_tag_t sec_tag_list[ASTARTE_MQTT_SEC_TAG_LIST_SIZE];
 };
 
 #ifdef __cplusplus

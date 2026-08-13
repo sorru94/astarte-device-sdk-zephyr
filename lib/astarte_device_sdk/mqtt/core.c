@@ -338,9 +338,12 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     // NOLINTNEXTLINE(hicpp-signed-bitwise)
     dns_ctx.resolved_addr.sin_port = htons((uint16_t) port_val);
 
+    // Store the resolved address in the astarte_mqtt structure
+    memcpy(&astarte_mqtt->broker_addr, &dns_ctx.resolved_addr, sizeof(struct sockaddr_in));
+
     // MQTT client configuration
     mqtt_client_init(&astarte_mqtt->client);
-    astarte_mqtt->client.broker = (struct sockaddr *) &dns_ctx.resolved_addr;
+    astarte_mqtt->client.broker = (struct sockaddr *) &astarte_mqtt->broker_addr;
     astarte_mqtt->client.evt_cb = mqtt_evt_handler;
     astarte_mqtt->client.client_id.utf8 = (uint8_t *) astarte_mqtt->client_id;
     astarte_mqtt->client.client_id.size = strlen(astarte_mqtt->client_id);
@@ -350,13 +353,10 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     astarte_mqtt->client.transport.type = MQTT_TRANSPORT_SECURE;
     astarte_mqtt->client.clean_session = (astarte_mqtt->clean_session) ? 1 : 0;
 
-    // MQTT TLS configuration
-    sec_tag_t sec_tag_list[] = {
+    astarte_mqtt->sec_tag_list[0] = CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG;
 #ifndef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
-        CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG,
+    astarte_mqtt->sec_tag_list[1] = CONFIG_ASTARTE_DEVICE_SDK_MQTTS_CA_CERT_TAG;
 #endif
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-    };
 
     struct mqtt_sec_config *tls_config = &(astarte_mqtt->client.transport.tls.config);
 #ifndef CONFIG_ASTARTE_DEVICE_SDK_DEVELOP_USE_NON_TLS_MQTT
@@ -365,8 +365,8 @@ astarte_result_t astarte_mqtt_connect(astarte_mqtt_t *astarte_mqtt)
     tls_config->peer_verify = TLS_PEER_VERIFY_NONE;
 #endif
     tls_config->cipher_list = NULL;
-    tls_config->sec_tag_list = sec_tag_list;
-    tls_config->sec_tag_count = ARRAY_SIZE(sec_tag_list);
+    tls_config->sec_tag_list = astarte_mqtt->sec_tag_list;
+    tls_config->sec_tag_count = ARRAY_SIZE(astarte_mqtt->sec_tag_list);
     tls_config->hostname = astarte_mqtt->broker_hostname;
 
     // MQTT buffers configuration

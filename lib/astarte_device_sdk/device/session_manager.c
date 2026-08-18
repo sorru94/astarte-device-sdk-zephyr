@@ -341,7 +341,7 @@ static void send_device_capabilities(astarte_device_handle_t device)
     }
 
     ares = astarte_bson_serializer_append_string(
-        &bson, "purge_properties_compression_format", "plaintext");
+        &bson, "purge_properties_compression_format", "zlib");
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed to append string to capabilities BSON");
         goto exit;

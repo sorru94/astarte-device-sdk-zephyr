@@ -334,36 +334,35 @@ static void send_device_capabilities(astarte_device_handle_t device)
     ASTARTE_LOG_DBG("Publishing device capabilities");
 
     astarte_bson_serializer_t bson = { 0 };
+    scope_defer(astarte_bson_serializer_destroy)(&bson);
+
     astarte_result_t ares = astarte_bson_serializer_init(&bson);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed to initialize BSON serializer for capabilities");
-        goto exit;
+        return;
     }
 
     ares = astarte_bson_serializer_append_string(
-        &bson, "purge_properties_compression_format", "zlib");
+        &bson, "purge_properties_compression_format", "plaintext");
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed to append string to capabilities BSON");
-        goto exit;
+        return;
     }
 
     ares = astarte_bson_serializer_append_end_of_document(&bson);
     if (ares != ASTARTE_RESULT_OK) {
         ASTARTE_LOG_ERR("Failed to finalize capabilities BSON document");
-        goto exit;
+        return;
     }
 
     int size = 0;
     const void *document = astarte_bson_serializer_get_serialized(&bson, &size);
     if (!document) {
         ASTARTE_LOG_ERR("Failed to get serialized BSON document");
-        goto exit;
+        return;
     }
 
     astarte_mqtt_publish(&device->astarte_mqtt, topic, (void *) document, size, 2, NULL);
-
-exit:
-    astarte_bson_serializer_destroy(&bson);
 }
 
 static void send_emptycache(astarte_device_handle_t device)

@@ -17,7 +17,3 @@ manifest:
       remote: zephyrproject-rtos
       revision: v4.4.1
       import: true
-    - name: zlib-zephyr
-      remote: secomind
-      revision: release-v1.3.1
-      path: modules/zlib

@@ -10,6 +10,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- Uncompressed purge properties. Uses the new device capabilities message to purge properties without compression, removing the zlib dependency from the SDK.
+- Device capabilities. Added support for Astarte device capabilities message.
+- Reception queue. Implemented a reception queue for handling incoming messages safely.
+- Interface validation. Added validation for required endpoints and fields within interfaces.
+- Worker thread and transmission queue. Introduced a worker thread and transmission queue for sending data to Astarte, including for introspection updates.
+- MQTT persistent message storage. Added persistency to the MQTT message storage for reliable offline buffering.
+
+### Changed
+- Memory allocation. Replaced large stack allocations with dynamic allocation for arrays to improve reliability and prevent stack overflows.
+- Restructured device source code. Moved the device driver into its own folder.
+- Using scope based cleanup helpers to manage memory. See the [Zephyr documentation](https://docs.zephyrproject.org/latest/kernel/cleanup.html)
+
+### Removed
+- User callbacks for reception of device events have been removed in favour of the event queue system.
+
+### Fixed
+- Properties publishing. Ensured properties can be correctly published even when not currently connected to Astarte.
+
 ## [0.10.0] - 2026-06-18
 ### Added
 - Support for Astarte 1.3.x.

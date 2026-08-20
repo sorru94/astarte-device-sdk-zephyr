@@ -8,11 +8,9 @@
 #ifdef CONFIG_ASTARTE_DEVICE_SDK_PERMANENT_STORAGE
 
 #include "alloc.h"
-#include "astarte_zlib.h"
 #include "device/datastreams.h"
 #include "mqtt/pubsub.h"
 #include "storage/prop.h"
-#include <zlib.h>
 
 #include "log.h"
 ASTARTE_LOG_MODULE_DECLARE(astarte_device, CONFIG_ASTARTE_DEVICE_SDK_DEVICE_LOG_LEVEL);
@@ -49,35 +47,21 @@ static void cleanup_device_props(device_props_cleanup_ctx_t *ctx)
 
 ASTARTE_SCOPE_DEFER_DEFINE(cleanup_device_props, device_props_cleanup_ctx_t *);
 
-// Context to hold the purge properties heap allocated variables.
-typedef struct
-{
-    char *decomp_data;
-    sys_slist_t *allow_list;
-} purge_cleanup_ctx_t;
-
 // Custom purge properties cleanup function.
-static void cleanup_purge_ctx(purge_cleanup_ctx_t *ctx)
+static void cleanup_allow_list(sys_slist_t *allow_list)
 {
-    if (ctx) {
-        // free all nodes that were added to the list
-        if (ctx->allow_list) {
-            sys_snode_t *node = NULL;
-            sys_snode_t *safe_node = NULL;
-            SYS_SLIST_FOR_EACH_NODE_SAFE(ctx->allow_list, node, safe_node)
-            {
-                struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
-                astarte_free(allow_node);
-                allow_node = NULL;
-            }
+    if (allow_list) {
+        sys_snode_t *node = NULL;
+        sys_snode_t *safe_node = NULL;
+        SYS_SLIST_FOR_EACH_NODE_SAFE(allow_list, node, safe_node)
+        {
+            struct allow_node *allow_node = CONTAINER_OF(node, struct allow_node, node);
+            astarte_free(allow_node);
         }
-        // free the main buffer
-        astarte_free(ctx->decomp_data);
-        ctx->decomp_data = NULL;
     }
 }
 
-ASTARTE_SCOPE_DEFER_DEFINE(cleanup_purge_ctx, purge_cleanup_ctx_t *);
+ASTARTE_SCOPE_DEFER_DEFINE(cleanup_allow_list, sys_slist_t *);
 
 /************************************************
  *         Static functions declaration         *
@@ -134,56 +118,29 @@ astarte_result_t astarte_device_properties_send_purge(astarte_device_handle_t de
         ASTARTE_LOG_ERR("Error getting stored properties string: %s", astarte_result_to_name(ares));
         return ares;
     }
-    scope_var(scoped_char, intr_str)(intr_str_size > 0 ? intr_str_size : 1);
-    if (intr_str_size != 0) {
-        if (!intr_str) {
-            ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-            return ASTARTE_RESULT_OUT_OF_MEMORY;
-        }
 
+    // When there is no property to purge, send 4 zero bytes to indicate an empty purge message
+    size_t payload_size = (intr_str_size != 0) ? intr_str_size : 4U;
+    scope_var(scoped_char, payload)(payload_size);
+    if (!payload) {
+        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
+        return ASTARTE_RESULT_OUT_OF_MEMORY;
+    }
+
+    if (intr_str_size != 0) {
         ares = astarte_storage_property_get_device_string(
-            &device->caching, &device->introspection, intr_str, &intr_str_size);
+            &device->caching, &device->introspection, payload, &intr_str_size);
         if (ares != ASTARTE_RESULT_OK) {
             ASTARTE_LOG_ERR("Can't get stored properties string: %s", astarte_result_to_name(ares));
             return ares;
         }
     }
 
-    // Estimate compression result size and payload size
-    char *compression_input = intr_str;
-    size_t compression_input_len
-        = (compression_input && intr_str_size > 0) ? (intr_str_size - 1) : 0;
-    uLongf compressed_len = compressBound(compression_input_len);
-    size_t payload_size = 4 + compressed_len;
-
-    scope_var(scoped_uint8, payload)(payload_size);
-    if (!payload) {
-        ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
-        return ASTARTE_RESULT_OUT_OF_MEMORY;
-    }
-    // Fill the first 32 bits of the payload
-    uint32_t raw_len = __builtin_bswap32(compression_input_len);
-    memcpy(payload, &raw_len, sizeof(raw_len));
-    // Perform the compression and store result in the payload
-    int compress_res = astarte_zlib_compress((char unsigned *) &payload[4], &compressed_len,
-        (char unsigned *) compression_input, compression_input_len);
-    if (compress_res != Z_OK) {
-        ASTARTE_LOG_ERR("Error compressing the purge properties message %d.", compress_res);
-        return ASTARTE_RESULT_INTERNAL_ERROR;
-    }
-    // 'astarte_zlib_compress' updates 'compressed_len' to the actual size of the compressed data
-    payload_size = 4 + compressed_len;
-    // Check if payload is not too large for a MQTT message
-    if (payload_size > INT_MAX) {
-        ASTARTE_LOG_ERR("Purge properties payload is too long for a single MQTT message.");
-        return ASTARTE_RESULT_MQTT_ERROR;
-    }
-
     // Transmit the payload
     const char *topic = device->control_producer_prop_topic;
     const int qos = 2;
-    ASTARTE_LOG_INF("Sending purge properties to: '%s', with uncompressed content: '%s'", topic,
-        (compression_input) ? compression_input : "");
+    ASTARTE_LOG_INF(
+        "Sending purge properties to: '%s', with uncompressed content: '%s'", topic, payload);
     astarte_mqtt_publish(&device->astarte_mqtt, topic, payload, payload_size, qos, NULL);
 
     return ASTARTE_RESULT_OK;
@@ -250,44 +207,28 @@ astarte_result_t astarte_device_properties_send_device_owned(astarte_device_hand
 void astarte_device_properties_handle_purge(
     astarte_device_handle_t device, const char *data, size_t data_len)
 {
-    if (data_len < 4) {
-        ASTARTE_LOG_WRN("Payload too small for a purge message.");
-        return;
-    }
-
     sys_slist_t allow_list = { 0 };
     sys_slist_init(&allow_list);
+    scope_defer(cleanup_allow_list)(&allow_list);
 
-    purge_cleanup_ctx_t ctx = { .decomp_data = NULL, .allow_list = &allow_list };
-    scope_defer(cleanup_purge_ctx)(&ctx);
+    // The data received through MQTT is not null-terminated and could be null
+    ASTARTE_LOG_DBG("Received purge properties: '%.*s'", (int) data_len, data ? data : "");
 
-    uint32_t raw_len = 0;
-    memcpy(&raw_len, data, sizeof(raw_len));
-    uLongf decomp_data_len = __builtin_bswap32(raw_len);
-
-    ctx.decomp_data = astarte_calloc(decomp_data_len + 1, sizeof(char));
-    if (!ctx.decomp_data) {
+    // Allocate a mutable copy, adding 1 byte for the null terminator
+    scope_var(scoped_char, data_copy)(data_len + 1);
+    if (!data_copy) {
         ASTARTE_LOG_ERR("Out of memory %s: %d", __FILE__, __LINE__);
         return;
     }
 
-    if (decomp_data_len != 0) {
-        int uncompress_res = uncompress((char unsigned *) ctx.decomp_data, &decomp_data_len,
-            (char unsigned *) data + 4, data_len - 4);
-        if (uncompress_res != Z_OK) {
-            ASTARTE_LOG_ERR("Decompression error %d.", uncompress_res);
-            return;
-        }
-    }
-
-    ASTARTE_LOG_DBG("Received purge properties: '%s'", ctx.decomp_data);
-
     // Parse the received message and fill a list of properties
-    if (decomp_data_len != 0) {
+    if (data_len != 0) {
+        memcpy(data_copy, data, data_len);
+
         char *saveptr = NULL;
-        char *property = strtok_r(ctx.decomp_data, ";", &saveptr);
+        char *property = strtok_r(data_copy, ";", &saveptr);
         if (!property) {
-            ASTARTE_LOG_ERR("Error parsing the purge property message %s.", ctx.decomp_data);
+            ASTARTE_LOG_ERR("Error parsing the purge property message %s.", data_copy);
             return;
         }
         do {

@@ -5,14 +5,18 @@
  */
 
 &flash0 {
-	partitions {
-		astarte_partition: partition@100000 {
-			label = "astarte";
-			reg = <0x00100000 DT_SIZE_K(128)>;
-		};
-		key_value_partition: partition@120000 {
-			label = "key_value";
-			reg = <0x00120000 DT_SIZE_K(16)>;
-		};
-	};
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        astarte_partition: partition@100000 {
+            label = "astarte";
+            reg = <0x00100000 DT_SIZE_K(128)>;
+        };
+        key_value_partition: partition@120000 {
+            label = "key_value";
+            reg = <0x00120000 DT_SIZE_K(16)>;
+        };
+    };
 };

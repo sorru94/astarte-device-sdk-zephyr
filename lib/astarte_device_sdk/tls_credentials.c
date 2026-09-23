@@ -22,7 +22,7 @@ ASTARTE_LOG_MODULE_REGISTER(
 astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t *client_crt)
 {
     int tls_rc = tls_credential_add(CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG,
-        TLS_CREDENTIAL_SERVER_CERTIFICATE, client_crt->crt_pem, strlen(client_crt->crt_pem) + 1);
+        TLS_CREDENTIAL_PUBLIC_CERTIFICATE, client_crt->crt_pem, strlen(client_crt->crt_pem) + 1);
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client crt to credentials %d.", tls_rc);
         psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
@@ -40,7 +40,7 @@ astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t
     if (tls_rc != 0) {
         ASTARTE_LOG_ERR("Failed adding client private key to credentials %d.", tls_rc);
         tls_credential_delete(
-            CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+            CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PUBLIC_CERTIFICATE);
         psa_status_t psa_ret = psa_destroy_key(client_crt->privkey);
         if (psa_ret != PSA_SUCCESS) {
             ASTARTE_LOG_ERR("psa_destroy_key returned %d", psa_ret);
@@ -57,7 +57,7 @@ astarte_result_t astarte_tls_credential_add(astarte_tls_credentials_client_crt_t
 astarte_result_t astarte_tls_credential_delete(void)
 {
     int tls_rc = tls_credential_delete(
-        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_SERVER_CERTIFICATE);
+        CONFIG_ASTARTE_DEVICE_SDK_CLIENT_CERT_TAG, TLS_CREDENTIAL_PUBLIC_CERTIFICATE);
     if ((tls_rc != 0) && (tls_rc != -ENOENT)) {
         ASTARTE_LOG_ERR("Failed removing the client certificate from credentials %d.", tls_rc);
         return ASTARTE_RESULT_TLS_ERROR;

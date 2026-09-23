@@ -5,10 +5,14 @@
  */
 
 &flash_sim0 {
-	partitions {
-		astarte_partition: partition@e0000 {
-			label = "astarte";
-			reg = <0x000e0000 DT_SIZE_K(128)>;
-		};
-	};
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        astarte_partition: partition@e0000 {
+            label = "astarte";
+            reg = <0x000e0000 DT_SIZE_K(128)>;
+        };
+    };
 };

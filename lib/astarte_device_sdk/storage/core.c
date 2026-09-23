@@ -26,15 +26,18 @@ ASTARTE_LOG_MODULE_REGISTER(astarte_storage, CONFIG_ASTARTE_DEVICE_SDK_STORAGE_L
  ***********************************************/
 
 #define ZMS_PARTITION astarte_partition
-#if !FIXED_PARTITION_EXISTS(ZMS_PARTITION)
-#error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
-#endif // FIXED_PARTITION_EXISTS(ZMS_PARTITION)
 
 #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 4, 0)
+#if !PARTITION_EXISTS(ZMS_PARTITION)
+#error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
+#endif // PARTITION_EXISTS(ZMS_PARTITION)
 #define ZMS_PARTITION_DEVICE PARTITION_DEVICE(ZMS_PARTITION)
 #define ZMS_PARTITION_OFFSET PARTITION_OFFSET(ZMS_PARTITION)
 #define ZMS_PARTITION_SIZE PARTITION_SIZE(ZMS_PARTITION)
 #else
+#if !FIXED_PARTITION_EXISTS(ZMS_PARTITION)
+#error "Permanent storage is enabled but 'astarte_partition' flash partition is missing."
+#endif // FIXED_PARTITION_EXISTS(ZMS_PARTITION)
 #define ZMS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(ZMS_PARTITION)
 #define ZMS_PARTITION_OFFSET FIXED_PARTITION_OFFSET(ZMS_PARTITION)
 #define ZMS_PARTITION_SIZE FIXED_PARTITION_SIZE(ZMS_PARTITION)

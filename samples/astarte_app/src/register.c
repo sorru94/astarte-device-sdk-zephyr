@@ -7,7 +7,7 @@
 #include "register.h"
 
 #include <zephyr/logging/log.h>
-#include <zephyr/sys_clock.h>
+#include <zephyr/sys/clock.h>
 
 #include "astarte_device_sdk/result.h"
 #include "nvs.h"

@@ -55,7 +55,7 @@ static void astarte_storage_test_before(void *f)
 
     k_mutex_lock(&fixture->test_mutex, K_FOREVER);
 
-    struct zms_fs zms_fs;
+    struct zms_fs zms_fs = { 0 };
     zms_fs.flash_device = fixture->flash_device;
     zms_fs.offset = fixture->flash_offset;
     zms_fs.sector_size = fixture->flash_sector_size;
@@ -75,7 +75,7 @@ static void astarte_storage_test_after(void *f)
 
     astarte_storage_destroy(&fixture->caching_handle);
 
-    struct zms_fs zms_fs;
+    struct zms_fs zms_fs = { 0 };
     zms_fs.flash_device = fixture->flash_device;
     zms_fs.offset = fixture->flash_offset;
     zms_fs.sector_size = fixture->flash_sector_size;

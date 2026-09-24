@@ -31,10 +31,7 @@ Second, a new entry should be added to the projects list:
     # ... other projects ...
     - name: astarte-device-sdk-zephyr
       remote: astarte-platform
-      repo-path: astarte-device-sdk-zephyr.git
-      path: astarte-device-sdk-zephyr
-      revision: v0.11.0
-      west-commands: scripts/west-commands.yml
+      revision: v0.11.1
       import: true
 ```
 Remember to run `west update` after performing changes to the manifest file.
@@ -70,7 +67,7 @@ The west workspace should be then intialized, using the Astarte libary repositor
 repository.
 
 ```shell
-west init -m git@github.com:astarte-platform/astarte-device-sdk-zephyr --mr v0.11.0
+west init -m git@github.com:astarte-platform/astarte-device-sdk-zephyr --mr v0.11.1
 west update
 ```
 
@@ -83,13 +80,14 @@ west zephyr-export
 west packages pip --install
 west packages pip --install -- -r ./astarte-device-sdk-zephyr/scripts/requirements.txt
 ```
-#### Fetching binary blobs for ESP32
 
-If building for an esp32 the binary blobs will need to be downloaded before building the
-application.
+#### Fetching proprietary binary blobs
+
+If building for boards requiring proprietary binary blobs an additional fetch step is required.
 
 ```shell
 west blobs fetch hal_espressif
+west blobs fetch hal_nxp
 ```
 
 Note: this command should be re-run when updating Zephyr to a newer version
@@ -150,7 +148,7 @@ Translating an interface from a JSON definition to a C definition for Zephyr can
 and error-prone process.
 
 For this reason, an extension command for `west` has been created to facilitate this procedure.
-The `generate-interfaces` extension command accepts as input one or more JSON interface definitions
+The `astarte-interfaces` extension command accepts as input one or more JSON interface definitions
 and automatically generates the corresponding C source code.
 Run `west astarte-interfaces --help` to learn about the generation options.
 
@@ -214,40 +212,6 @@ The dependencies for generating the doxygen documentation are:
 
 An extension command for `west` has been created to facilitate generating the documentation.
 Run `west astarte-docs --help` for more information on how to generate the documentation.
-
-## VS Code integration
-
-Here are some quick tips to configure VS Code with a Zephyr workspace.
-Make sure the following extensions are installed:
-- C/C++ Extension Pack
-- Python
-
-Create the file `./.vscode/settings.json` and fill it with the following content:
-```json
-{
-    // Hush CMake
-	"cmake.configureOnOpen": false,
-
-    // Configure Python so that each new terminal will activate the venv
-    // defaultInterpreterPath is not always be picked up, backup cmd: 'Python: select interpreter'
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
-
-    // IntelliSense
-    "C_Cpp.default.compilerPath": "${userHome}/zephyr-sdk-0.16.8/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc",
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
-    "C_Cpp.autoAddFileAssociations": false,
-    "C_Cpp.debugShortcut": false
-}
-```
-The first setting will avoid noisy popups from the CMake extension.
-The python related settings will ensure that each time the integrated terminal is open, the
-venv containing `west` will be automatically activated.
-The C/C++ settings will configure intellisense. Those setting might be slightly different
-for your specific Zephyr SDK installation as versions might change.
-Also, the compile commands path assumes `west build` gets run from the root of the zephyr
-workspace.
 
 ## Architectural documentation
 
